@@ -124,10 +124,16 @@ export function useGame(): GameController {
 
           // Process discard responses
           if (current.lastDiscard) {
-            const humanCanRon = WINDS.some(w =>
-              current.actionsAvailable[w]?.canRon && current.players[w].isHuman
+            // 检查人类玩家是否有任何响应动作（荣和/碰/吃/杠）
+            const humanHasResponse = WINDS.some(w =>
+              current.players[w].isHuman && (
+                current.actionsAvailable[w]?.canRon ||
+                current.actionsAvailable[w]?.canPon ||
+                current.actionsAvailable[w]?.canChi ||
+                current.actionsAvailable[w]?.canKan
+              )
             );
-            if (humanCanRon) { setIsAiThinking(false); return; }
+            if (humanHasResponse) { setIsAiThinking(false); return; }
 
             const result = processAiResponses(current);
             if (result) { setState(result); setIsAiThinking(false); return; }
@@ -169,49 +175,68 @@ export function useGame(): GameController {
   }, []);
 
   // Human action (tsumo/ron/pon/chi/kan/riichi/pass)
-  const humanAction = useCallback((action: string, tiles?: Tile[]) => {
+  const humanAction = useCallback((action: string, _tiles?: Tile[]) => {
     const s = stateRef.current;
-    const cp = s.players[s.currentPlayer];
-    if (!cp?.isHuman) return;
+    const humanWind = WINDS.find(w => s.players[w].isHuman) ?? 0;
 
     switch (action) {
+      // ---- 自摸（摸牌后触发） ----
       case 'tsumo':
         if (s.actionsAvailable[s.currentPlayer]?.canTsumo) {
           setState(prev => executeWin(prev, prev.currentPlayer, true));
           addMessage('🎉 自摸和牌！');
         }
         break;
+
+      // ---- 荣和（响应弃牌） ----
       case 'ron':
-        setState(prev => executeWin(prev, prev.currentPlayer, false));
-        addMessage(`💥 荣和！`);
+        // 荣和：用人类的风位，因为响应者可能不是当前玩家
+        setState(prev => executeWin(prev, humanWind, false));
+        addMessage('💥 荣和！');
         break;
+
+      // ---- 碰 ----
       case 'pon':
         if (s.lastDiscard) {
-          const matching = cp.hand.filter(t => sameTile(t, s.lastDiscard!));
+          const matching = s.players[humanWind].hand.filter(t => sameTile(t, s.lastDiscard!));
           if (matching.length >= 2) {
-            setState(prev => executeMeld(prev, prev.currentPlayer, MeldType.PON, matching.slice(0, 2)));
+            setState(prev => executeMeld(prev, humanWind, MeldType.PON, matching.slice(0, 2)));
             addMessage('🔴 碰！');
           }
         }
         break;
+
+      // ---- 吃 ----
       case 'chi':
-        if (s.lastDiscard && tiles && tiles.length >= 2) {
-          setState(prev => executeMeld(prev, prev.currentPlayer, MeldType.CHI, tiles));
-          addMessage('🟢 吃！');
+        if (s.lastDiscard) {
+          // 简单吃：用相邻的牌
+          const valid = s.players[humanWind].hand.filter(t =>
+            t.suit === s.lastDiscard!.suit &&
+            Math.abs(t.value - s.lastDiscard!.value) <= 2 &&
+            t.value !== s.lastDiscard!.value
+          );
+          if (valid.length >= 2) {
+            setState(prev => executeMeld(prev, humanWind, MeldType.CHI, valid.slice(0, 2)));
+            addMessage('🟢 吃！');
+          }
         }
         break;
+
+      // ---- 大明杠 ----
       case 'kan':
         if (s.lastDiscard) {
-          const matching = cp.hand.filter(t => sameTile(t, s.lastDiscard!));
+          const matching = s.players[humanWind].hand.filter(t => sameTile(t, s.lastDiscard!));
           if (matching.length >= 3) {
-            setState(prev => executeMeld(prev, prev.currentPlayer, MeldType.KAN, matching.slice(0, 3)));
+            setState(prev => executeMeld(prev, humanWind, MeldType.KAN, matching.slice(0, 3)));
             addMessage('🔵 杠！');
           }
         }
         break;
+
+      // ---- 暗杠 ----
       case 'ankan': {
         const groups = new Map<string, Tile[]>();
-        for (const t of cp.hand) {
+        for (const t of s.players[s.currentPlayer].hand) {
           const k = `${t.suit}${t.value}`;
           if (!groups.has(k)) groups.set(k, []);
           groups.get(k)!.push(t);
@@ -225,10 +250,12 @@ export function useGame(): GameController {
         }
         break;
       }
+
+      // ---- 加杠 ----
       case 'kakan':
-        for (const meld of cp.melds) {
+        for (const meld of s.players[s.currentPlayer].melds) {
           if (meld.type === 'pon') {
-            const extra = cp.hand.find(t => sameTile(t, meld.tiles[0]));
+            const extra = s.players[s.currentPlayer].hand.find(t => sameTile(t, meld.tiles[0]));
             if (extra) {
               setState(prev => executeMeld(prev, prev.currentPlayer, MeldType.KAKAN, [extra]));
               addMessage('🔵 加杠！');
@@ -237,6 +264,8 @@ export function useGame(): GameController {
           }
         }
         break;
+
+      // ---- 立直 ----
       case 'riichi':
         if (s.actionsAvailable[s.currentPlayer]?.canRiichi) {
           setState(prev => ({
@@ -248,8 +277,24 @@ export function useGame(): GameController {
           addMessage('⚡ 立直！');
         }
         break;
+
+      // ---- 过（不进行任何操作） ----
       case 'pass':
-        setState(prev => nextTurn(prev));
+        if (s.lastDiscard) {
+          // 响应阶段过牌：清除人类动作，让游戏循环处理AI的响应
+          setState(prev => ({
+            ...prev,
+            actionsAvailable: prev.actionsAvailable.map((a, i) =>
+              i === humanWind ? {
+                canChi: false, chiOptions: [], canPon: false, canKan: false,
+                canRon: false, canTsumo: false, canRiichi: false, canAnkan: false,
+                canKakan: false, canNineOrphans: false,
+              } : a
+            ),
+          }));
+        } else {
+          setState(prev => nextTurn(prev));
+        }
         break;
     }
   }, [addMessage]);

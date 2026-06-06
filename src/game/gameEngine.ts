@@ -26,12 +26,11 @@ export function createInitialState(): GameState {
     hasCalled: false,
   }));
 
-  // Deal: dealer gets 14, others 13
+  // 配牌：每人13张，庄家先摸第14张
   let idx = 0;
   for (let i = 0; i < 4; i++) {
-    const count = i === 0 ? 14 : 13;
-    players[i].hand = sortHand(wall.slice(idx, idx + count));
-    idx += count;
+    players[i].hand = sortHand(wall.slice(idx, idx + 13));
+    idx += 13;
   }
   const remainingWall = wall.slice(idx);
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Tile, GameState } from '../game/types';
 import { MeldType, GamePhase, WINDS } from '../game/types';
-import { createInitialState, drawTile, discardTile, executeMeld, executeWin, nextTurn } from '../game/gameEngine';
+import { createInitialState, drawTile, discardTile, executeMeld, executeWin, nextTurn, createNextHand } from '../game/gameEngine';
 import { aiChooseDiscard, aiChooseAction, aiDecideRiichi } from '../game/ai';
 import { sameTile } from '../game/tiles';
 
@@ -337,12 +337,19 @@ export function useGame(): GameController {
     setMessages(['🎴 东方幻想麻雀 - 新游戏开始！', '摸牌中...']);
   }, []);
 
+  const nextHandFn = useCallback(() => {
+    if (aiTimerRef.current !== null) window.clearTimeout(aiTimerRef.current);
+    setState(prev => createNextHand(prev));
+    setSelectedTileId(null);
+    setMessages(prev => [...prev.slice(-5), '🔄 下一局...', '摸牌中...']);
+  }, []);
+
   return {
     state,
     humanDiscard,
     humanAction,
     newGame,
-    nextHand: newGame,
+    nextHand: nextHandFn,
     selectedTileId,
     setSelectedTileId,
     messages,

@@ -7,19 +7,29 @@ import { getManganName } from '../game/scoring';
 interface GameOverModalProps {
   state: GameState;
   onNewGame: () => void;
+  onNextHand: () => void;
 }
 
-const GameOverModal: React.FC<GameOverModalProps> = ({ state, onNewGame }) => {
+const GameOverModal: React.FC<GameOverModalProps> = ({ state, onNewGame, onNextHand }) => {
   const result = state.result;
-  if (!result || state.phase !== GamePhase.HAND_OVER) return null;
+  if (!result || (state.phase !== GamePhase.HAND_OVER && state.phase !== GamePhase.GAME_OVER)) return null;
+
+  const isGameOver = state.phase === GamePhase.GAME_OVER;
+  const roundName = `${state.roundWind === Wind.EAST ? '东' : '南'}${(state.handCount % 4) + 1}局`;
 
   return (
     <div className="modal-overlay">
       <div className="modal-content">
+        <div className="round-banner">
+          {roundName} {state.honba > 0 ? `本场${state.honba} ` : ''}
+          {state.riichiSticks > 0 ? `立直棒×${state.riichiSticks}` : ''}
+        </div>
+
         <h2 className="modal-title">
-          {result.type === 'tsumo' ? '🎉 自摸和牌！' :
+          {isGameOver ? '🏁 游戏结束' :
+           result.type === 'tsumo' ? '🎉 自摸和牌！' :
            result.type === 'ron' ? '💥 荣和！' :
-           result.type === 'draw' ? '🔄 流局' : '🏁 游戏结束'}
+           '🔄 流局'}
         </h2>
 
         {result.type === 'draw' && (
@@ -67,7 +77,11 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ state, onNewGame }) => {
         </div>
 
         <div className="modal-actions">
-          <button className="btn-primary" onClick={onNewGame}>下一局</button>
+          {isGameOver ? (
+            <button className="btn-primary" onClick={onNewGame}>重新开始</button>
+          ) : (
+            <button className="btn-primary" onClick={onNextHand}>下一局</button>
+          )}
         </div>
       </div>
     </div>

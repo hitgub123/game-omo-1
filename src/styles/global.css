@@ -878,6 +878,17 @@ body {
   to { transform: translateY(0); opacity: 1; }
 }
 
+.round-banner {
+  text-align: center;
+  font-size: 12px;
+  color: var(--border-gold);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background: rgba(201, 168, 76, 0.1);
+  border-radius: 4px;
+}
+
 .modal-title {
   font-size: 22px;
   text-align: center;

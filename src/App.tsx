@@ -4,7 +4,7 @@ import GameTable from './components/GameTable';
 import './styles/global.css';
 
 const App: React.FC = () => {
-  const { state, humanDiscard, humanAction, newGame, messages, isAiThinking } = useGame();
+  const { state, humanDiscard, humanAction, newGame, nextHand, messages, isAiThinking } = useGame();
 
   return (
     <div className="app-container">
@@ -19,6 +19,7 @@ const App: React.FC = () => {
         onTileClick={humanDiscard}
         onAction={humanAction}
         onNewGame={newGame}
+        onNextHand={nextHand}
       />
 
       <div className="status-bar">

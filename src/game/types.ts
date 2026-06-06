@@ -161,6 +161,7 @@ export interface GameState {
   result?: HandResult;
   dealerIndex: Wind;
   drawnTile?: Tile;
+  handCount: number;        // 总局数（用于东南场判断）
 }
 
 /** 角色定义 */

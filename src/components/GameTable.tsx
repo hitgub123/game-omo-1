@@ -13,13 +13,14 @@ interface GameTableProps {
   onTileClick: (tileId: number) => void;
   onAction: (action: string) => void;
   onNewGame: () => void;
+  onNextHand: () => void;
 }
 
 function fmtScore(score: number): string {
   return score < 0 ? `−${Math.abs(score).toLocaleString()}` : score.toLocaleString();
 }
 
-const GameTable: React.FC<GameTableProps> = ({ state, onTileClick, onAction, onNewGame }) => {
+const GameTable: React.FC<GameTableProps> = ({ state, onTileClick, onAction, onNewGame, onNextHand }) => {
   return (
     <div className="game-table">
       <div className="table-header">
@@ -48,7 +49,7 @@ const GameTable: React.FC<GameTableProps> = ({ state, onTileClick, onAction, onN
       <ActionPanel state={state} onAction={onAction} />
 
       {state.phase === GamePhase.HAND_OVER && state.result && (
-        <GameOverModal state={state} onNewGame={onNewGame} />
+        <GameOverModal state={state} onNewGame={onNewGame} onNextHand={onNextHand} />
       )}
     </div>
   );

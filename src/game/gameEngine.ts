@@ -1,7 +1,7 @@
 import type { Tile, Meld, GameState, Player, AvailableActions, ChiOption, HandResult, WinResult } from './types';
 import { Wind, MeldType, GamePhase, TOUHOU_CHARACTERS, INITIAL_SCORE, WINDS } from './types';
 import { createTileDeck, shuffleArray, sortHand, tileKey, findTiles, isTerminalHonor } from './tiles';
-import { checkWin, findTenpaiDiscards } from './hand';
+import { checkWin, findTenpaiDiscards, checkTenpai } from './hand';
 import { calculateScore, calculatePayouts } from './scoring';
 
 export function createInitialState(): GameState {
@@ -47,6 +47,7 @@ export function createInitialState(): GameState {
     honba: 0,
     riichiSticks: 0,
     kanCount: 0,
+    handCount: 0,
     actionsAvailable: WINDS.map(() => emptyActions()),
     turnHistory: [],
     dealerIndex: Wind.EAST,
@@ -55,7 +56,7 @@ export function createInitialState(): GameState {
 
 // ---- Draw ----
 export function drawTile(state: GameState): GameState {
-  if (state.wall.length === 0) return { ...state, phase: GamePhase.HAND_OVER };
+  if (state.wall.length === 0) return executeDraw(state);
   const wall = [...state.wall];
   const drawnTile = wall.shift()!;
   const players = state.players.map(p => ({ ...p, hand: [...p.hand] }));
@@ -402,5 +403,138 @@ function emptyActions(): AvailableActions {
     canChi: false, chiOptions: [], canPon: false, canKan: false,
     canRon: false, canTsumo: false, canRiichi: false, canAnkan: false,
     canKakan: false, canNineOrphans: false,
+  };
+}
+
+// ---- Draw (流局) ----
+export function executeDraw(state: GameState): GameState {
+  // 检查各家是否听牌
+  const tenpaiPlayers: Wind[] = [];
+  const notenPlayers: Wind[] = [];
+  for (const p of state.players) {
+    const tenpai = checkTenpai(p.hand, p.melds);
+    if (tenpai) tenpaiPlayers.push(p.wind);
+    else notenPlayers.push(p.wind);
+  }
+
+  // 流局结算（ノーテン罰符）
+  const payments: { from: Wind; to: Wind; amount: number }[] = [];
+  if (tenpaiPlayers.length > 0 && tenpaiPlayers.length < 4) {
+    const totalSticks = 1500 + state.honba * 300;
+    // nōten bappu: 听牌人数不等分
+    const payPerNoten = Math.ceil(totalSticks / notenPlayers.length / 100) * 100;
+    for (const t of tenpaiPlayers) {
+      for (const n of notenPlayers) {
+        payments.push({ from: n, to: t, amount: payPerNoten });
+      }
+    }
+  }
+
+  const players = state.players.map(p => ({ ...p }));
+  for (const pay of payments) {
+    players[pay.from].score -= pay.amount;
+    players[pay.to].score += pay.amount;
+  }
+
+  const result: HandResult = {
+    type: 'draw',
+    tenpaiPlayers,
+    payments,
+    drawReason: tenpaiPlayers.length === 0 ? '四家不听' :
+                tenpaiPlayers.length === 4 ? '四家听牌' : '流局',
+  };
+
+  return { ...state, players, result, phase: GamePhase.HAND_OVER };
+}
+
+// ---- Next hand (下一局) ----
+export function createNextHand(prevState: GameState): GameState {
+  const result = prevState.result;
+  if (!result) return createInitialState();
+
+  // 判断是否连庄
+  const isDealerWin = result.winners?.includes(prevState.dealerIndex) ?? false;
+  const isDealerTenpai = result.type === 'draw' &&
+    (result.tenpaiPlayers?.includes(prevState.dealerIndex) ?? false);
+  const isRenchan = isDealerWin || isDealerTenpai;
+
+  // 计算新的庄家和本场
+  let newDealer: Wind;
+  let newHonba: number;
+  let newHandCount: number;
+
+  if (isRenchan) {
+    newDealer = prevState.dealerIndex;
+    newHonba = prevState.honba + 1;
+    newHandCount = prevState.handCount;
+  } else {
+    newDealer = ((prevState.dealerIndex + 1) % 4) as Wind;
+    newHonba = 0;
+    newHandCount = prevState.handCount + 1;
+  }
+
+  // 判断场风
+  const roundWind: Wind = newHandCount < 4 ? Wind.EAST : Wind.SOUTH;
+
+  // 判断游戏是否结束
+  const anyNegative = prevState.players.some(p => p.score < 0);
+  const southEnded = roundWind === Wind.SOUTH && newDealer === Wind.EAST && newHonba === 0;
+
+  if (anyNegative || southEnded) {
+    return {
+      ...prevState,
+      phase: GamePhase.GAME_OVER,
+      result: prevState.result,
+    };
+  }
+
+  // 生成新一局
+  const deck = shuffleArray(createTileDeck());
+  const deadWall = deck.slice(0, 14);
+  const wall = deck.slice(14);
+  const doraIndicators = [deadWall[4]];
+
+  // 继承分数
+  const players: Player[] = WINDS.map((wind) => ({
+    name: TOUHOU_CHARACTERS[wind].name,
+    wind,
+    hand: [],
+    melds: [],
+    discards: [],
+    discardsSize: 0,
+    isRiichi: false,
+    riichiDiscardIndex: -1,
+    score: prevState.players[wind].score,
+    isDealer: wind === newDealer,
+    isHuman: wind === Wind.EAST,
+    tenpai: false,
+    hasCalled: false,
+  }));
+
+  // 配牌
+  let idx = 0;
+  for (let i = 0; i < 4; i++) {
+    players[i].hand = sortHand(wall.slice(idx, idx + 13));
+    idx += 13;
+  }
+  const remainingWall = wall.slice(idx);
+
+  return {
+    wall: remainingWall,
+    deadWall,
+    doraIndicators,
+    uraDoraIndicators: [],
+    players,
+    currentPlayer: newDealer,
+    turn: 0,
+    phase: GamePhase.DRAWING,
+    roundWind,
+    honba: newHonba,
+    riichiSticks: prevState.riichiSticks,
+    kanCount: 0,
+    actionsAvailable: WINDS.map(() => emptyActions()),
+    turnHistory: [],
+    dealerIndex: newDealer,
+    handCount: newHandCount,
   };
 }

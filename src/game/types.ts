@@ -3,94 +3,95 @@
 // ============================================================
 
 /** 牌的花色 */
-export enum TileSuit {
-  MAN = 'm',   // 萬子 (1-9)
-  PIN = 'p',   // 筒子 (1-9)
-  SOU = 's',   // 索子 (1-9)
-  HONOR = 'z', // 字牌 (1=东 2=南 3=西 4=北 5=白 6=发 7=中)
-}
+export const TileSuit = {
+  MAN: 'm',
+  PIN: 'p',
+  SOU: 's',
+  HONOR: 'z',
+} as const;
+export type TileSuit = (typeof TileSuit)[keyof typeof TileSuit];
 
 /** 一张牌 */
 export interface Tile {
-  id: number;       // 唯一 ID 0-135
+  id: number;
   suit: TileSuit;
-  value: number;    // 1-9 (数牌) / 1-7 (字牌)
+  value: number; // 1-9 (数牌) / 1-7 (字牌)
 }
 
 /** 风圈/风位 */
-export enum Wind {
-  EAST = 0,
-  SOUTH = 1,
-  WEST = 2,
-  NORTH = 3,
-}
+export const Wind = {
+  EAST: 0,
+  SOUTH: 1,
+  WEST: 2,
+  NORTH: 3,
+} as const;
+export type Wind = (typeof Wind)[keyof typeof Wind];
 
-/** 副露（鸣牌）类型 */
-export enum MeldType {
-  CHI = 'chi',       // 吃
-  PON = 'pon',       // 碰
-  KAN = 'kan',       // 明杠（大明杠）
-  KAKAN = 'kakan',   // 加杠
-  ANKAN = 'ankan',   // 暗杠
-}
+/** 副露类型 */
+export const MeldType = {
+  CHI: 'chi',
+  PON: 'pon',
+  KAN: 'kan',
+  KAKAN: 'kakan',
+  ANKAN: 'ankan',
+} as const;
+export type MeldType = (typeof MeldType)[keyof typeof MeldType];
 
-/** 一个副露（面子） */
+/** 一个副露 */
 export interface Meld {
   type: MeldType;
   tiles: Tile[];
-  from?: Wind;       // 从谁那里拿的牌
-  calledTile: Tile;  // 被鸣的那张牌
+  from?: Wind;
+  calledTile: Tile;
 }
-
-/** 四个玩家的座位 */
-export const SEAT_ORDER: Wind[] = [Wind.EAST, Wind.SOUTH, Wind.WEST, Wind.NORTH];
 
 /** 玩家状态 */
 export interface Player {
   name: string;
   wind: Wind;
-  hand: Tile[];          // 手牌（门前清）
-  melds: Meld[];         // 副露面子
-  discards: Tile[];      // 河牌
-  discardsSize: number;  // 河中牌张数（包括拔北等）
-  isRiichi: boolean;     // 是否立直
-  riichiDiscardIndex: number; // 立直时打出的牌在河中的位置
+  hand: Tile[];
+  melds: Meld[];
+  discards: Tile[];
+  discardsSize: number;
+  isRiichi: boolean;
+  riichiDiscardIndex: number;
   score: number;
   isDealer: boolean;
   isHuman: boolean;
-  tenpai: boolean;       // 是否听牌（用于流局）
-  hasCalled: boolean;    // 是否鸣牌过（影响一发、门前清等）
+  tenpai: boolean;
+  hasCalled: boolean;
 }
 
 /** 牌局阶段 */
-export enum GamePhase {
-  WAITING = 'waiting',
-  DEALING = 'dealing',
-  DRAWING = 'drawing',
-  DISCARDING = 'discarding',
-  ACTION_PROMPT = 'action_prompt',
-  HAND_OVER = 'hand_over',
-  GAME_OVER = 'game_over',
-}
+export const GamePhase = {
+  WAITING: 'waiting',
+  DEALING: 'dealing',
+  DRAWING: 'drawing',
+  DISCARDING: 'discarding',
+  ACTION_PROMPT: 'action_prompt',
+  HAND_OVER: 'hand_over',
+  GAME_OVER: 'game_over',
+} as const;
+export type GamePhase = (typeof GamePhase)[keyof typeof GamePhase];
 
-/** 吃牌的选项：用哪两张牌 + 组成顺子的牌 */
+/** 吃牌选项 */
 export interface ChiOption {
-  tiles: [Tile, Tile];   // 手牌中用来吃的两张牌
-  tile1: Tile;            // 吃后要打出的牌（如果手牌多于一张）
+  tiles: [Tile, Tile];
+  tile1: Tile;
 }
 
-/** 玩家当前可做的动作 */
+/** 玩家可做的动作 */
 export interface AvailableActions {
   canChi: boolean;
-  chiOptions: ChiOption[][]; // 按花色分组的吃牌选项
+  chiOptions: ChiOption[][];
   canPon: boolean;
-  canKan: boolean;        // 大明杠
+  canKan: boolean;
   canRon: boolean;
-  canTsumo: boolean;      // 自摸和
-  canRiichi: boolean;     // 立直
-  canAnkan: boolean;      // 暗杠
-  canKakan: boolean;      // 加杠
-  canNineOrphans: boolean; // 九种九牌（流局）
+  canTsumo: boolean;
+  canRiichi: boolean;
+  canAnkan: boolean;
+  canKakan: boolean;
+  canNineOrphans: boolean;
 }
 
 /** 役种信息 */
@@ -98,7 +99,7 @@ export interface YakuInfo {
   id: string;
   name: string;
   han: number;
-  hanOpen?: number;      // 副露减一飜（部分役）
+  hanOpen?: number;
   isYakuman: boolean;
   isDoubleYakuman: boolean;
 }
@@ -112,24 +113,24 @@ export interface WinResult {
   yaku: YakuInfo[];
   totalHan: number;
   fu: number;
-  basePoints: number;    // 基本点
+  basePoints: number;
   payments: { player: Wind; amount: number }[];
   winnerGets: number;
   isDealerWin: boolean;
-  handTiles: Tile[];     // 和牌时的手牌（用于显示）
+  handTiles: Tile[];
 }
 
-/** 一局的结果 */
+/** 一局结果 */
 export interface HandResult {
   type: 'tsumo' | 'ron' | 'draw' | 'chombo' | 'nagashi';
   winners?: Wind[];
   winResults?: WinResult[];
   drawReason?: string;
-  tenpaiPlayers?: Wind[]; // 流局听牌者
+  tenpaiPlayers?: Wind[];
   payments?: { from: Wind; to: Wind; amount: number }[];
 }
 
-/** 历史动作记录 */
+/** 历史动作 */
 export interface TurnAction {
   type: 'draw' | 'discard' | 'chi' | 'pon' | 'kan' | 'ankan' | 'kakan'
        | 'riichi' | 'ron' | 'tsumo' | 'pass' | 'nine_orphans';
@@ -138,53 +139,34 @@ export interface TurnAction {
   tiles?: Tile[];
 }
 
-/** 完整的牌局状态 */
+/** 完整牌局状态 */
 export interface GameState {
-  /** 牌山 */
   wall: Tile[];
-  /** 王牌（杠宝牌指示牌区域） */
   deadWall: Tile[];
-  /** 表宝牌指示牌 */
   doraIndicators: Tile[];
-  /** 里宝牌指示牌（立直后揭晓） */
   uraDoraIndicators: Tile[];
-  /** 四家 */
   players: Player[];
-  /** 当前行动玩家 */
   currentPlayer: Wind;
-  /** 回合数 */
   turn: number;
-  /** 牌局阶段 */
   phase: GamePhase;
-  /** 场风 */
   roundWind: Wind;
-  /** 本场数 */
   honba: number;
-  /** 立直棒累积 */
   riichiSticks: number;
-  /** 上一次打出的牌 */
   lastDiscard?: Tile;
-  /** 打出这张牌的玩家 */
   lastDiscardPlayer?: Wind;
-  /** 杠的次数 */
   kanCount: number;
-  /** 各玩家可做的动作 */
   actionsAvailable: AvailableActions[];
-  /** 历史记录 */
   turnHistory: TurnAction[];
-  /** 本局结果 */
   result?: HandResult;
-  /** 庄家 */
   dealerIndex: Wind;
-  /** 自摸摸到的牌（未加入手牌前暂存） */
   drawnTile?: Tile;
 }
 
 /** 角色定义 */
 export interface TouhouCharacter {
   name: string;
-  title: string;        // 称号
-  color: string;        // 主题色
+  title: string;
+  color: string;
   colorLight: string;
   colorDark: string;
   description: string;
@@ -193,11 +175,6 @@ export interface TouhouCharacter {
 // ============================================================
 // 常量
 // ============================================================
-
-export const TOTAL_TILES = 136;
-export const HAND_SIZE = 13;
-export const WALL_BREAK = 14;       // 王牌数量
-export const DORA_AFTER_KAN = 1;    // 每杠增加一张宝牌指示牌
 
 export const INITIAL_SCORE = 25000;
 export const RIICHI_AMOUNT = 1000;
@@ -211,23 +188,13 @@ export const WIND_NAMES: Record<Wind, string> = {
 
 export const WINDS: Wind[] = [Wind.EAST, Wind.SOUTH, Wind.WEST, Wind.NORTH];
 
-/** 数牌名称 */
-export const TILE_NAMES: Record<string, string[]> = {
+export const TILE_DISPLAY: Record<string, string[]> = {
   m: ['一萬','二萬','三萬','四萬','五萬','六萬','七萬','八萬','九萬'],
   p: ['一筒','二筒','三筒','四筒','五筒','六筒','七筒','八筒','九筒'],
   s: ['一索','二索','三索','四索','五索','六索','七索','八索','九索'],
   z: ['東','南','西','北','白','發','中'],
 };
 
-/** 数牌简称（用于显示） */
-export const TILE_SHORT_NAMES: Record<string, string[]> = {
-  m: ['1m','2m','3m','4m','5m','6m','7m','8m','9m'],
-  p: ['1p','2p','3p','4p','5p','6p','7p','8p','9p'],
-  s: ['1s','2s','3s','4s','5s','6s','7s','8s','9s'],
-  z: ['東','南','西','北','白','發','中'],
-};
-
-/** 东方角色配置 */
 export const TOUHOU_CHARACTERS: Record<Wind, TouhouCharacter> = {
   [Wind.EAST]: {
     name: '博丽灵梦',

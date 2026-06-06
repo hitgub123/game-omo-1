@@ -1,0 +1,997 @@
+/* ============================================================
+   东方幻想麻雀 - 全局样式
+   设计主题：和风 + 东方Project
+   ============================================================ */
+
+/* ---- CSS变量 ---- */
+:root {
+  /* 麻将桌色 */
+  --table-green: #1b5e20;
+  --table-green-dark: #0d3b0f;
+  --table-green-light: #2e7d32;
+
+  /* 东方角色色 */
+  --reimu: #e84057;
+  --marisa: #f5d442;
+  --sakuya: #4a90d9;
+  --patchouli: #9b59b6;
+
+  /* 牌色 */
+  --man-color: #c62828;
+  --pin-color: #2e7d32;
+  --sou-color: #1565c0;
+  --honor-gold: #f9a825;
+
+  /* UI色 */
+  --bg-dark: #1a1a2e;
+  --bg-panel: rgba(0, 0, 0, 0.7);
+  --text-primary: #f0e6d3;
+  --text-secondary: #a0a0a0;
+  --border-gold: #c9a84c;
+
+  /* 牌尺寸 */
+  --tile-width: 48px;
+  --tile-height: 64px;
+  --tile-small-width: 28px;
+  --tile-small-height: 38px;
+  --tile-radius: 6px;
+}
+
+/* ---- 基础重置 ---- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Noto Sans SC', 'Noto Sans JP', 'Segoe UI', sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- 应用容器 ---- */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(232, 64, 87, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(155, 89, 182, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 0%, rgba(245, 212, 66, 0.05) 0%, transparent 50%),
+    linear-gradient(180deg, #16213e 0%, #1a1a2e 100%);
+}
+
+/* ---- 头部 ---- */
+.app-header {
+  text-align: center;
+  padding: 8px 16px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%);
+  user-select: none;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.app-title {
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--reimu), var(--marisa), var(--sakuya), var(--patchouli));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 6px;
+  text-shadow: none;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.app-subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  letter-spacing: 4px;
+  margin-top: 2px;
+  text-transform: uppercase;
+}
+
+/* ---- 游戏桌 ---- */
+.game-table {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 8px;
+  min-height: 0;
+}
+
+/* ---- 桌头信息 ---- */
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 12px;
+  background: var(--bg-panel);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.game-info {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.round-info {
+  font-weight: 700;
+  color: var(--border-gold);
+  font-size: 15px;
+}
+
+.honba-info, .riichi-sticks {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.btn-new-game {
+  padding: 4px 16px;
+  background: linear-gradient(135deg, var(--reimu), #c62828);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-new-game:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.2);
+  box-shadow: 0 2px 8px rgba(232, 64, 87, 0.4);
+}
+
+/* ---- 中央桌区域 ---- */
+.table-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  position: relative;
+}
+
+/* ---- 对手区域 (上) ---- */
+.opponent-horizontal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.opponent-horizontal .hand-tiles {
+  display: flex;
+  gap: 1px;
+}
+
+/* ---- 中段：左右对手 + 弃牌区 ---- */
+.table-middle {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  min-height: 0;
+}
+
+.side-player {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.opponent-vertical {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  height: 100%;
+}
+
+.opponent-vertical .hand-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: center;
+}
+
+/* ---- 对手信息 ---- */
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-left: 3px solid;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.player-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.player-title {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.player-score {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dealer-badge, .riichi-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+}
+
+.dealer-badge {
+  background: var(--border-gold);
+  color: #000;
+}
+
+.riichi-badge {
+  background: var(--reimu);
+  color: white;
+  animation: pulse-badge 1s infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ---- 弃牌区 (中央) ---- */
+.discard-area {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr auto;
+  gap: 4px;
+  padding: 8px;
+  background:
+    radial-gradient(ellipse at center, rgba(27, 94, 32, 0.6) 0%, rgba(13, 59, 15, 0.8) 100%);
+  border-radius: 12px;
+  border: 2px solid var(--table-green-light);
+  position: relative;
+  min-height: 0;
+}
+
+/* 角落标记 */
+.discard-area::before {
+  content: '🎴';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.discard-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.discard-label {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.6;
+}
+
+.discard-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.discard-empty {
+  color: rgba(255,255,255,0.15);
+  font-size: 12px;
+}
+
+/* ---- 牌山信息 ---- */
+.wall-info {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 6px;
+}
+
+.wall-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.dora-indicators {
+  display: flex;
+  gap: 2px;
+}
+
+/* ---- 玩家区域 (下) ---- */
+.player-section {
+  background: rgba(0,0,0,0.4);
+  border-radius: 8px;
+  padding: 6px 8px;
+  flex-shrink: 0;
+}
+
+.player-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.player-hand {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 0;
+  min-height: var(--tile-height);
+  position: relative;
+}
+
+/* ---- 副露区 ---- */
+.meld-area {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.meld-group {
+  display: flex;
+  gap: 1px;
+  padding: 1px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+}
+
+.meld-chi { border-left: 2px solid #4caf50; }
+.meld-pon { border-left: 2px solid #f44336; }
+.meld-kan, .meld-ankan, .meld-kakan { border-left: 2px solid #2196f3; }
+
+/* ---- 河牌 ---- */
+.discard-river {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  min-height: 20px;
+}
+
+.player-river {
+  justify-content: center;
+}
+
+/* ============================================================
+   牌面组件
+   ============================================================ */
+
+.tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tile-width);
+  height: var(--tile-height);
+  background: linear-gradient(180deg, #fffef5 0%, #f5f0e1 100%);
+  border: 1px solid #d4c9a8;
+  border-radius: var(--tile-radius);
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  flex-shrink: 0;
+}
+
+.tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 5;
+}
+
+.tile:active {
+  transform: translateY(-1px);
+}
+
+.tile-small {
+  width: var(--tile-small-width);
+  height: var(--tile-small-height);
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.tile-small:hover {
+  transform: translateY(-2px);
+}
+
+.tile-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 2px;
+}
+
+/* 数牌 - 数字 */
+.tile-number {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.tile-small .tile-number {
+  font-size: 11px;
+}
+
+.tile-suit {
+  font-size: 13px;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.tile-small .tile-suit {
+  font-size: 8px;
+}
+
+/* 字牌 */
+.tile-honor-char {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.tile-small .tile-honor-char {
+  font-size: 13px;
+}
+
+.tile-honor-sub {
+  font-size: 8px;
+  opacity: 0.7;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.tile-small .tile-honor-sub {
+  display: none;
+}
+
+/* ---- 花色着色 ---- */
+
+/* 萬子 */
+.suit-man .tile-number,
+.suit-man .tile-suit { color: var(--man-color); }
+.suit-man { border-bottom: 2px solid var(--man-color); }
+
+/* 筒子 */
+.suit-pin .tile-number,
+.suit-pin .tile-suit { color: var(--pin-color); }
+.suit-pin { border-bottom: 2px solid var(--pin-color); }
+
+/* 索子 */
+.suit-sou .tile-number,
+.suit-sou .tile-suit { color: var(--sou-color); }
+.suit-sou { border-bottom: 2px solid var(--sou-color); }
+
+/* 字牌 */
+.honor {
+  background: linear-gradient(180deg, #fafafa 0%, #e8e4d8 100%);
+}
+.honor-east .tile-honor-char,
+.honor-east .tile-honor-sub { color: #2e7d32; }
+.honor-east { border-bottom: 2px solid #2e7d32; }
+
+.honor-south .tile-honor-char,
+.honor-south .tile-honor-sub { color: #c62828; }
+.honor-south { border-bottom: 2px solid #c62828; }
+
+.honor-west .tile-honor-char,
+.honor-west .tile-honor-sub { color: #e65100; }
+.honor-west { border-bottom: 2px solid #e65100; }
+
+.honor-north .tile-honor-char,
+.honor-north .tile-honor-sub { color: #1565c0; }
+.honor-north { border-bottom: 2px solid #1565c0; }
+
+.honor-white .tile-honor-char,
+.honor-white .tile-honor-sub { color: #616161; }
+.honor-white { border-bottom: 2px solid #9e9e9e; }
+
+.honor-green .tile-honor-char,
+.honor-green .tile-honor-sub { color: #2e7d32; }
+.honor-green { border-bottom: 2px solid #2e7d32; }
+
+.honor-red .tile-honor-char,
+.honor-red .tile-honor-sub { color: #c62828; }
+.honor-red { border-bottom: 2px solid #c62828; }
+
+/* ---- 牌状态 ---- */
+.tile-selected {
+  transform: translateY(-8px) !important;
+  box-shadow: 0 6px 16px rgba(201, 168, 76, 0.5) !important;
+  border-color: var(--border-gold) !important;
+}
+
+.tile-highlighted {
+  box-shadow: 0 0 0 2px var(--border-gold), 0 2px 8px rgba(201, 168, 76, 0.4);
+}
+
+.tile-dimmed {
+  opacity: 0.7;
+}
+
+.tile-riichi {
+  transform: rotate(90deg) !important;
+  transform-origin: center;
+  margin: 0 4px;
+}
+
+.tile-riichi:hover {
+  transform: rotate(90deg) translateY(-2px) !important;
+}
+
+/* 牌背面 */
+.tile-back {
+  background: linear-gradient(180deg, #1a5c2a 0%, #0d3b1a 100%);
+  border-color: #0a2e14;
+  cursor: default;
+}
+
+.tile-back:hover {
+  transform: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.tile-back-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.tile-back-pattern {
+  color: rgba(255,255,255,0.15);
+  font-size: 20px;
+}
+
+.tile-small .tile-back-pattern {
+  font-size: 12px;
+}
+
+/* ============================================================
+   操作面板
+   ============================================================ */
+
+.action-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px;
+  background: var(--bg-panel);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-action {
+  padding: 6px 18px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+  position: relative;
+}
+
+.btn-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.btn-action:active {
+  transform: translateY(0);
+}
+
+.btn-ron {
+  background: linear-gradient(135deg, #ff1744, #d50000);
+  color: white;
+  box-shadow: 0 2px 8px rgba(255, 23, 68, 0.3);
+}
+
+.btn-tsumo {
+  background: linear-gradient(135deg, #ff6f00, #e65100);
+  color: white;
+  box-shadow: 0 2px 8px rgba(255, 111, 0, 0.3);
+}
+
+.btn-pon {
+  background: linear-gradient(135deg, #f44336, #c62828);
+  color: white;
+}
+
+.btn-chi {
+  background: linear-gradient(135deg, #4caf50, #2e7d32);
+  color: white;
+}
+
+.btn-kan {
+  background: linear-gradient(135deg, #2196f3, #1565c0);
+  color: white;
+}
+
+.btn-riichi {
+  background: linear-gradient(135deg, var(--marisa), #f57f17);
+  color: #1a1a2e;
+  animation: glow-riichi 1.5s infinite;
+}
+
+@keyframes glow-riichi {
+  0%, 100% { box-shadow: 0 0 8px rgba(245, 212, 66, 0.4); }
+  50% { box-shadow: 0 0 20px rgba(245, 212, 66, 0.8); }
+}
+
+.btn-pass {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-primary);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.btn-discard-confirm {
+  background: linear-gradient(135deg, var(--border-gold), #8d6e2c);
+  color: #1a1a2e;
+  padding: 6px 24px;
+  font-size: 14px;
+}
+
+.action-hint {
+  color: var(--text-secondary);
+  font-size: 12px;
+  animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ============================================================
+   状态栏
+   ============================================================ */
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  background: var(--bg-panel);
+  border-top: 1px solid rgba(201, 168, 76, 0.2);
+  flex-shrink: 0;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.status-messages {
+  flex: 1;
+  overflow: hidden;
+  max-height: 48px;
+}
+
+.status-message {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thinking-indicator {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  padding: 0 8px;
+}
+
+.thinking-dot {
+  font-size: 8px;
+  color: var(--marisa);
+  animation: thinking-bounce 1.2s infinite;
+}
+
+.thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes thinking-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ============================================================
+   弹窗
+   ============================================================ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  background: linear-gradient(180deg, #1e2a3a 0%, #16213e 100%);
+  border: 1px solid var(--border-gold);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 440px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  animation: slideUp 0.3s;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-title {
+  font-size: 22px;
+  text-align: center;
+  margin-bottom: 16px;
+  color: var(--border-gold);
+}
+
+.win-result {
+  padding: 12px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.win-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.winner-name {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.win-type {
+  font-size: 12px;
+  padding: 2px 8px;
+  background: rgba(201, 168, 76, 0.2);
+  border-radius: 4px;
+  color: var(--border-gold);
+}
+
+.win-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.win-tile, .win-score, .win-points {
+  font-size: 13px;
+}
+
+.win-points {
+  font-weight: 700;
+  color: var(--border-gold);
+  font-size: 15px;
+}
+
+.yaku-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.yaku-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: var(--text-primary);
+}
+
+.yaku-badge.yakuman {
+  background: linear-gradient(135deg, var(--reimu), var(--marisa));
+  color: #1a1a2e;
+  font-weight: 700;
+}
+
+.payment-details {
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 8px;
+}
+
+.payment-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 2px 0;
+}
+
+.payment-amount {
+  font-weight: 700;
+  color: var(--reimu);
+}
+
+.draw-result {
+  text-align: center;
+  padding: 12px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.tenpai-info {
+  margin-top: 8px;
+  color: var(--border-gold);
+}
+
+.score-summary {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+}
+
+.score-summary h3 {
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+}
+
+.score-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: 4px 0;
+  font-weight: 600;
+}
+
+.score-row .negative {
+  color: var(--reimu);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.btn-primary {
+  padding: 10px 32px;
+  background: linear-gradient(135deg, var(--border-gold), #8d6e2c);
+  color: #1a1a2e;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 2px;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(201, 168, 76, 0.4);
+}
+
+/* ---- 滚动条美化 ---- */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ============================================================
+   响应式适配
+   ============================================================ */
+
+@media (max-width: 768px) {
+  :root {
+    --tile-width: 38px;
+    --tile-height: 52px;
+    --tile-small-width: 22px;
+    --tile-small-height: 30px;
+    --tile-radius: 4px;
+  }
+
+  .app-title { font-size: 18px; letter-spacing: 3px; }
+  .side-player { width: 80px; }
+  .player-name { font-size: 11px; }
+  .player-score { font-size: 12px; }
+  .btn-action { padding: 4px 12px; font-size: 11px; }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --tile-width: 32px;
+    --tile-height: 44px;
+    --tile-small-width: 18px;
+    --tile-small-height: 26px;
+  }
+
+  .game-table { padding: 4px; gap: 4px; }
+  .discard-area { padding: 4px; }
+  .side-player { width: 60px; }
+}

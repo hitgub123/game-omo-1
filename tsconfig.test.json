@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "module": "esnext",
+    "moduleResolution": "node16",
+    "module": "node16",
+    "strict": true,
+    "outDir": "/tmp/test-dist",
+    "rootDir": "src",
+    "declaration": false,
+    "emitDeclarationOnly": false,
+    "noEmit": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "sourceMap": false
+  },
+  "include": ["src/game/*.ts", "src/__tests__/*.ts"]
+}

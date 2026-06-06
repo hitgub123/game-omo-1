@@ -100,7 +100,7 @@ export function aiChooseAction(state: GameState, playerWind: Wind): string | nul
 }
 
 function aiMeldDecision(
-  _hand: Tile[], discarded: Tile, actionType: string, state: GameState, _playerWind: Wind,
+  _hand: Tile[], discarded: Tile, actionType: string, state: GameState, playerWind: Wind,
 ): boolean {
   if (actionType === 'pon') {
     if (isDragonTile(discarded)) return true;
@@ -108,7 +108,7 @@ function aiMeldDecision(
     return Math.random() < 0.5;
   }
   if (actionType === 'chi') {
-    if (state.players[0].hasCalled) return Math.random() < 0.4;
+    if (state.players[playerWind].hasCalled) return Math.random() < 0.4;
     return false;
   }
   return Math.random() < 0.3;
@@ -122,8 +122,8 @@ function aiDecideAnkan(hand: Tile[]): boolean {
   return false;
 }
 
-function aiDecideRiichi(hand: Tile[], state: GameState, _playerWind: Wind): boolean {
-  const tenpaiOptions = findTenpaiDiscards(hand, state.players[0].melds);
+function aiDecideRiichi(hand: Tile[], state: GameState, playerWind: Wind): boolean {
+  const tenpaiOptions = findTenpaiDiscards(hand, state.players[playerWind].melds);
   if (tenpaiOptions.size === 0) return false;
 
   for (const [, tenpai] of tenpaiOptions) {

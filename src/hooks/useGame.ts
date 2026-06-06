@@ -15,7 +15,15 @@ export interface GameController {
   setSelectedTileId: (id: number | null) => void;
   messages: string[];
   isAiThinking: boolean;
+  debugInfo: string;
 }
+
+// 空动作（用于清除）
+const EMPTY_ACTIONS = {
+  canChi: false, chiOptions: [], canPon: false, canKan: false,
+  canRon: false, canTsumo: false, canRiichi: false, canAnkan: false,
+  canKakan: false, canNineOrphans: false,
+};
 
 export function useGame(): GameController {
   const [state, setState] = useState<GameState>(() => createInitialState());
@@ -25,6 +33,7 @@ export function useGame(): GameController {
     '摸牌中...',
   ]);
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [debugInfo, setDebugInfo] = useState('');
   const stateRef = useRef(state);
   const aiTimerRef = useRef<number | null>(null);
   stateRef.current = state;
@@ -33,7 +42,14 @@ export function useGame(): GameController {
     setMessages(prev => [...prev.slice(-99), msg]);
   }, []);
 
-  // Process AI responses to a discard
+  const updateDebug = useCallback((s: GameState, label: string) => {
+    const cp = s.players[s.currentPlayer];
+    setDebugInfo(
+      `[${label}] 阶段:${s.phase} 玩家:${cp?.name}[${s.currentPlayer}] 牌山:${s.wall.length} 弃牌:${!!s.lastDiscard}`
+    );
+  }, []);
+
+  // Process AI responses
   const processAiResponses = useCallback((s: GameState): GameState | null => {
     for (const wind of WINDS) {
       if (wind === s.currentPlayer) continue;
@@ -43,6 +59,9 @@ export function useGame(): GameController {
       if (player.isHuman) continue;
 
       const choice = aiChooseAction(s, wind);
+      console.log(`[AI] ${player.name} wind=${wind} choice=${choice}`, 
+        `ron:${actions.canRon} pon:${actions.canPon} chi:${actions.canChi}`);
+
       if (choice === 'ron' && actions.canRon) {
         return executeWin(s, wind, false);
       }
@@ -54,16 +73,17 @@ export function useGame(): GameController {
         }
       }
       if (choice === 'chi' && actions.canChi && s.lastDiscard) {
-        const validTiles = player.hand.filter(t =>
+        const valid = player.hand.filter(t =>
           t.suit === s.lastDiscard!.suit &&
           Math.abs(t.value - s.lastDiscard!.value) <= 2 &&
           t.value !== s.lastDiscard!.value
         );
-        if (validTiles.length >= 2) {
+        if (valid.length >= 2) {
           addMessage(`🟢 ${player.name} 吃！`);
-          return executeMeld(s, wind, MeldType.CHI, validTiles.slice(0, 2));
+          return executeMeld(s, wind, MeldType.CHI, valid.slice(0, 2));
         }
       }
+      // 如果AI过牌，继续检查下一个玩家
     }
     return null;
   }, [addMessage]);
@@ -71,9 +91,14 @@ export function useGame(): GameController {
   // Game loop
   const processGameState = useCallback(() => {
     const s = stateRef.current;
-    if (!s || s.phase === GamePhase.HAND_OVER || s.phase === GamePhase.GAME_OVER) return;
+    if (!s || s.phase === GamePhase.HAND_OVER || s.phase === GamePhase.GAME_OVER) {
+      updateDebug(s || stateRef.current, 'END');
+      return;
+    }
+    updateDebug(s, 'LOOP');
     if (aiTimerRef.current !== null) window.clearTimeout(aiTimerRef.current);
 
+    const delay = s.lastDiscard ? 400 : 600;
     aiTimerRef.current = window.setTimeout(() => {
       const current = stateRef.current;
       if (!current || current.phase === GamePhase.HAND_OVER || current.phase === GamePhase.GAME_OVER) {
@@ -82,13 +107,13 @@ export function useGame(): GameController {
       setIsAiThinking(true);
 
       try {
-        // DRAWING phase
+        // ---- DRAWING: 任意玩家摸牌 ----
         if (current.phase === GamePhase.DRAWING) {
           setState(prev => drawTile(prev));
           setIsAiThinking(false); return;
         }
 
-        // DISCARDING phase
+        // ---- DISCARDING ----
         if (current.phase === GamePhase.DISCARDING) {
           const cp = current.players[current.currentPlayer];
           if (!cp.isHuman) {
@@ -112,50 +137,57 @@ export function useGame(): GameController {
           setIsAiThinking(false); return;
         }
 
-        // ACTION_PROMPT phase
+        // ---- ACTION_PROMPT ----
         if (current.phase === GamePhase.ACTION_PROMPT) {
           const cp = current.players[current.currentPlayer];
           const actions = current.actionsAvailable[current.currentPlayer];
+          const humanWind = WINDS.find(w => current.players[w].isHuman) ?? 0;
+          const humanActions = current.actionsAvailable[humanWind];
 
-          // Post-draw actions for human (tsumo/riichi/ankan)
-          if (cp.isHuman && actions && (actions.canTsumo || actions.canRiichi || actions.canAnkan || actions.canKakan) && !current.lastDiscard) {
+          // 情况1: 人类有摸牌后动作（自摸/立直/暗杠）
+          if (cp.isHuman && actions && !current.lastDiscard &&
+              (actions.canTsumo || actions.canRiichi || actions.canAnkan || actions.canKakan)) {
             setIsAiThinking(false); return;
           }
 
-          // Process discard responses
+          // 情况2: 人类的响应阶段（有人弃牌）
           if (current.lastDiscard) {
-            // 检查人类玩家是否有任何响应动作（荣和/碰/吃/杠）
-            const humanHasResponse = WINDS.some(w =>
-              current.players[w].isHuman && (
-                current.actionsAvailable[w]?.canRon ||
-                current.actionsAvailable[w]?.canPon ||
-                current.actionsAvailable[w]?.canChi ||
-                current.actionsAvailable[w]?.canKan
-              )
+            const humanHasAction = humanActions && (
+              humanActions.canRon || humanActions.canPon ||
+              humanActions.canChi || humanActions.canKan
             );
-            if (humanHasResponse) { setIsAiThinking(false); return; }
 
+            if (humanHasAction && current.players[humanWind].isHuman) {
+              // 人类有响应选项，等待UI
+              updateDebug(current, 'WAIT_HUMAN_RESPONSE');
+              setIsAiThinking(false); return;
+            }
+
+            // 处理AI响应
             const result = processAiResponses(current);
-            if (result) { setState(result); setIsAiThinking(false); return; }
+            if (result) {
+              setState(result);
+              setIsAiThinking(false); return;
+            }
 
+            // 无人响应 → 下家摸牌
             setState(prev => nextTurn(prev));
           } else if (!cp.isHuman) {
+            // AI回合有动作（非响应阶段）
             if (actions?.canTsumo) {
               setState(prev => executeWin(prev, prev.currentPlayer, true));
-            } else if (actions?.canRiichi && aiDecideRiichi(cp.hand, current, current.currentPlayer)) {
-              // Already handled in DISCARDING
             } else {
-              // Need to discard
+              // 强制切换到打牌阶段
               setState(prev2 => ({ ...prev2, phase: GamePhase.DISCARDING }));
             }
           }
         }
       } catch (e) {
-        console.error('Game loop:', e);
+        console.error('Game loop error:', e);
       }
       setIsAiThinking(false);
-    }, s.lastDiscard ? 600 : 800);
-  }, [addMessage, processAiResponses]);
+    }, delay);
+  }, [addMessage, processAiResponses, updateDebug]);
 
   useEffect(() => {
     processGameState();
@@ -168,16 +200,26 @@ export function useGame(): GameController {
   const humanDiscard = useCallback((tileId: number) => {
     const s = stateRef.current;
     const cp = s.players[s.currentPlayer];
-    if (!cp?.isHuman) return;
-    if (s.phase !== GamePhase.DISCARDING && s.phase !== GamePhase.ACTION_PROMPT) return;
+    if (!cp?.isHuman) {
+      console.warn('[DISCARD] Not human turn', s.currentPlayer);
+      return;
+    }
+    if (s.phase !== GamePhase.DISCARDING && s.phase !== GamePhase.ACTION_PROMPT) {
+      console.warn('[DISCARD] Wrong phase', s.phase);
+      return;
+    }
     const newState = discardTile(s, tileId);
-    if (newState !== s) { setState(newState); setSelectedTileId(null); }
+    if (newState !== s) {
+      setState(newState);
+      setSelectedTileId(null);
+    }
   }, []);
 
-  // Human action (tsumo/ron/pon/chi/kan/riichi/pass)
+  // Human action
   const humanAction = useCallback((action: string, _tiles?: Tile[]) => {
     const s = stateRef.current;
     const humanWind = WINDS.find(w => s.players[w].isHuman) ?? 0;
+    console.log('[ACTION]', action, 'humanWind=', humanWind, 'phase=', s.phase, 'lastDiscard=', !!s.lastDiscard);
 
     switch (action) {
       case 'tsumo':
@@ -187,14 +229,11 @@ export function useGame(): GameController {
         }
         break;
 
-      // ---- 荣和（响应弃牌） ----
       case 'ron':
-        // 荣和：用人类的风位，因为响应者可能不是当前玩家
         setState(prev => executeWin(prev, humanWind, false));
         addMessage('💥 荣和！');
         break;
 
-      // ---- 碰 ----
       case 'pon':
         if (s.lastDiscard) {
           const matching = s.players[humanWind].hand.filter(t => sameTile(t, s.lastDiscard!));
@@ -205,10 +244,8 @@ export function useGame(): GameController {
         }
         break;
 
-      // ---- 吃 ----
       case 'chi':
         if (s.lastDiscard) {
-          // 简单吃：用相邻的牌
           const valid = s.players[humanWind].hand.filter(t =>
             t.suit === s.lastDiscard!.suit &&
             Math.abs(t.value - s.lastDiscard!.value) <= 2 &&
@@ -221,7 +258,6 @@ export function useGame(): GameController {
         }
         break;
 
-      // ---- 大明杠 ----
       case 'kan':
         if (s.lastDiscard) {
           const matching = s.players[humanWind].hand.filter(t => sameTile(t, s.lastDiscard!));
@@ -232,7 +268,6 @@ export function useGame(): GameController {
         }
         break;
 
-      // ---- 暗杠 ----
       case 'ankan': {
         const groups = new Map<string, Tile[]>();
         for (const t of s.players[s.currentPlayer].hand) {
@@ -250,7 +285,6 @@ export function useGame(): GameController {
         break;
       }
 
-      // ---- 加杠 ----
       case 'kakan':
         for (const meld of s.players[s.currentPlayer].melds) {
           if (meld.type === 'pon') {
@@ -264,9 +298,8 @@ export function useGame(): GameController {
         }
         break;
 
-      // ---- 立直 ----
       case 'riichi':
-        if (s.actionsAvailable[s.currentPlayer]?.canRiichi) {
+        if (s.actionsAvailable[humanWind]?.canRiichi) {
           setState(prev => ({
             ...prev,
             players: prev.players.map((p, i) =>
@@ -277,20 +310,19 @@ export function useGame(): GameController {
         }
         break;
 
-      // ---- 过（不进行任何操作） ----
+      // ---- 过牌（关键修复：使用函数式更新，从最新状态计算humanWind）----
       case 'pass':
         if (s.lastDiscard) {
-          // 响应阶段过牌：清除人类动作，让游戏循环处理AI的响应
-          setState(prev => ({
-            ...prev,
-            actionsAvailable: prev.actionsAvailable.map((a, i) =>
-              i === humanWind ? {
-                canChi: false, chiOptions: [], canPon: false, canKan: false,
-                canRon: false, canTsumo: false, canRiichi: false, canAnkan: false,
-                canKakan: false, canNineOrphans: false,
-              } : a
-            ),
-          }));
+          // 清除人类的所有响应动作，让游戏循环处理AI响应
+          setState(prev => {
+            const hWind = WINDS.find(w => prev.players[w].isHuman) ?? 0;
+            return {
+              ...prev,
+              actionsAvailable: prev.actionsAvailable.map((a, i) =>
+                i === hWind ? { ...EMPTY_ACTIONS } : a
+              ),
+            };
+          });
         } else {
           setState(prev => nextTurn(prev));
         }
@@ -315,5 +347,6 @@ export function useGame(): GameController {
     setSelectedTileId,
     messages,
     isAiThinking,
+    debugInfo,
   };
 }

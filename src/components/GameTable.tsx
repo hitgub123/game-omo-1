@@ -1,6 +1,8 @@
 import React from 'react';
 import type { GameState } from '../game/types';
 import { Wind, GamePhase, TOUHOU_CHARACTERS } from '../game/types';
+import { getDoraFromIndicator, tileDisplayName } from '../game/tiles';
+import { checkTenpai } from '../game/hand';
 import TileComponent from './TileComponent';
 import ActionPanel from './ActionPanel';
 import GameOverModal from './GameOverModal';
@@ -62,14 +64,16 @@ interface OpponentProps {
 const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical }) => {
   const player = state.players[wind];
   const ch = TOUHOU_CHARACTERS[wind];
+  const isActive = state.currentPlayer === wind && state.phase !== GamePhase.HAND_OVER;
 
   return (
-    <div className={`opponent-area ${vertical ? 'opponent-vertical' : 'opponent-horizontal'}`}>
+    <div className={`opponent-area ${vertical ? 'opponent-vertical' : 'opponent-horizontal'} ${isActive ? 'player-active' : ''}`}>
       <div className="player-info" style={{ borderColor: ch.color }}>
         <span className="player-name" style={{ color: ch.color }}>{player.name}</span>
         <span className="player-score" style={{ color: ch.colorLight }}>{fmtScore(player.score)}</span>
         {player.isRiichi && <span className="riichi-badge">立直</span>}
         {player.isDealer && <span className="dealer-badge">庄</span>}
+        {isActive && <span className="turn-arrow">◀</span>}
       </div>
 
       <div className={`hand-tiles ${vertical ? 'hand-vertical' : ''}`}>
@@ -112,9 +116,26 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, onTile
   const player = state.players[playerWind];
   const ch = TOUHOU_CHARACTERS[playerWind];
   const canAct = state.phase === GamePhase.DISCARDING || state.phase === GamePhase.ACTION_PROMPT;
+  const isActive = state.currentPlayer === playerWind && state.phase !== GamePhase.HAND_OVER;
+
+  // 计算听牌提示
+  const tenpai = React.useMemo(() => {
+    if (player.hand.length === 14) {
+      // 刚摸牌，检查14张牌是否为和牌
+      return null;
+    }
+    // 13张时检查听牌
+    if (player.hand.length === 13 && player.melds.length <= 4 && !player.isRiichi) {
+      try {
+        return checkTenpai(player.hand, player.melds);
+      } catch { return null; }
+    }
+    return null;
+  }, [player.hand, player.melds, player.isRiichi]);
 
   return (
-    <div className="player-section">
+    <div className={`player-section ${isActive ? 'player-active' : ''}`}>
+      {isActive && <div className="turn-indicator">▼ 你的回合 ▼</div>}
       <div className="player-bar">
         <div className="player-info" style={{ borderColor: ch.color }}>
           <span className="player-name" style={{ color: ch.color }}>{player.name}</span>
@@ -144,6 +165,17 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, onTile
             isRiichi={player.isRiichi} />
         ))}
       </div>
+
+      {/* 听牌提示 */}
+      {tenpai && tenpai.waitTiles.length > 0 && !player.isRiichi && (
+        <div className="tenpai-hint">
+          <span className="tenpai-label">听牌：</span>
+          {tenpai.waitTiles.map((tile, i) => (
+            <TileComponent key={i} tile={tile} small highlighted />
+          ))}
+          <span className="tenpai-count">共{tenpai.waitTiles.length}种</span>
+        </div>
+      )}
 
       <div className="discard-river player-river">
         {player.discards.map((tile, i) => (
@@ -177,12 +209,24 @@ const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
         </div>
       ))}
       <div className="wall-info">
-        <span className="wall-count">残 {state.wall.length} 枚</span>
-        <div className="dora-indicators">
-          {state.doraIndicators.map((tile, i) => (
-            <TileComponent key={`dora-${i}`} tile={tile} small />
-          ))}
+        <div className="dora-section">
+          {state.doraIndicators.length > 0 && (
+            <>
+              <span className="dora-label">宝牌指示牌</span>
+              {state.doraIndicators.map((tile, i) => {
+                const dora = getDoraFromIndicator(tile);
+                return (
+                  <div key={i} className="dora-pair">
+                    <TileComponent tile={tile} small />
+                    <span className="dora-arrow">→</span>
+                    <span className="dora-tile-name">{tileDisplayName({...tile, id: -1, suit: dora.suit, value: dora.value})}</span>
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
+        <span className="wall-count">残 {state.wall.length} 枚</span>
       </div>
     </div>
   );

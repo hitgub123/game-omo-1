@@ -16,6 +16,7 @@ export interface Tile {
   id: number;
   suit: TileSuit;
   value: number; // 1-9 (数牌) / 1-7 (字牌)
+  isAkadora?: boolean; // 红宝牌（赤5）
 }
 
 /** 风圈/风位 */

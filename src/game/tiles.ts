@@ -7,7 +7,9 @@ export function createTileDeck(): Tile[] {
   for (const suit of suits) {
     for (let val = 1; val <= 9; val++) {
       for (let c = 0; c < 4; c++) {
-        deck.push({ id: id++, suit, value: val });
+        // 每个花色有一张赤5（红宝牌）
+        const isRed = val === 5 && c === 0;
+        deck.push({ id: id++, suit, value: val, isAkadora: isRed });
       }
     }
   }
@@ -108,3 +110,48 @@ export function tileKeyDisplayName(key: string): string {
   const suits: Record<string, string> = { m:'萬', p:'筒', s:'索' };
   return numNames[val - 1] + suits[suit];
 }
+
+/** 根据宝牌指示牌计算宝牌是什么 */
+export function getDoraFromIndicator(tile: Tile): { suit: TileSuit; value: number } {
+  if (tile.suit === 'z') {
+    // 字牌顺序：東→南→西→北→東, 白→發→中→白
+    if (tile.value >= 5) {
+      const dragons = [5, 6, 7];
+      const idx = dragons.indexOf(tile.value);
+      return { suit: 'z', value: dragons[(idx + 1) % 3] };
+    }
+    const winds = [1, 2, 3, 4];
+    const idx = winds.indexOf(tile.value);
+    return { suit: 'z', value: winds[(idx + 1) % 4] };
+  }
+  // 数牌：1→2→...→9→1
+  return { suit: tile.suit, value: (tile.value % 9) + 1 };
+}
+
+/** 计算手牌中的宝牌数量 */
+export function countDora(
+  hand: Tile[],
+  doraIndicators: Tile[],
+  includeAkadora: boolean,
+): number {
+  let doraCount = 0;
+
+  for (const indicator of doraIndicators) {
+    const dora = getDoraFromIndicator(indicator);
+    for (const t of hand) {
+      if (t.suit === dora.suit && t.value === dora.value) {
+        doraCount++;
+      }
+    }
+  }
+
+  // 赤宝牌：每张+1翻
+  if (includeAkadora) {
+    doraCount += hand.filter(t => t.isAkadora).length;
+  }
+
+  return doraCount;
+}
+
+/** tileKey对应的显示名 */
+export { tileKeyDisplayName as tileKeyName };

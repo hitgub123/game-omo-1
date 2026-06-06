@@ -1,6 +1,6 @@
 import type { Tile, TileSuit, Meld, YakuInfo, GameState } from './types';
 import { Wind, MeldType } from './types';
-import { tileKey, isTerminalHonor } from './tiles';
+import { tileKey, isTerminalHonor, countDora } from './tiles';
 
 export type TileCount = Record<string, number>;
 
@@ -200,6 +200,8 @@ export interface YakuContext {
   allTiles: Tile[];
   winGroup: Group[];
   pairGroup: Group;
+  doraCount: number;         // 宝牌翻数
+  doraIndicators: Tile[];    // 宝牌指示牌
 }
 
 // ---- Fu calculation ----
@@ -496,10 +498,16 @@ export function evaluateHand(
     }
 
     const totalHan = yaku.reduce((sum, y) => sum + (y.hanOpen !== undefined && ctx.hasCalled ? y.hanOpen : y.han), 0);
-    const fu = totalHan > 0 ? fuCalc(ctx) : 0;
+    const doraHan = ctx.doraCount || 0;
 
+    // 有役（非宝牌）才有和牌资格
     if (totalHan > 0) {
-      results.push({ yaku, totalHan, fu, divisions: [div] });
+      if (doraHan > 0) {
+        yaku.push({ id: 'dora', name: `宝牌${doraHan}`, han: doraHan, isYakuman: false, isDoubleYakuman: false });
+      }
+      const finalHan = totalHan + doraHan;
+      const fu = fuCalc(ctx);
+      results.push({ yaku, totalHan: finalHan, fu, divisions: [div] });
     }
   }
 
@@ -541,7 +549,12 @@ export function checkWin(
     melds,
     handTiles,
     allTiles,
-  };
+    doraCount: 0, // filled below
+  } as Omit<YakuContext, 'winGroup' | 'pairGroup'> & { doraCount: number };
+
+  // 计算宝牌
+  const doraHan = countDora(allTiles, gameState.doraIndicators, true);
+  baseCtx.doraCount = doraHan;
 
   // Kokushi check
   const kokushiCtx: YakuContext = { ...baseCtx, winGroup: [], pairGroup: { type: 'pair', tileKey: '' } };

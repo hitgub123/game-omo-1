@@ -180,10 +180,9 @@ export function useGame(): GameController {
     const humanWind = WINDS.find(w => s.players[w].isHuman) ?? 0;
 
     switch (action) {
-      // ---- 自摸（摸牌后触发） ----
       case 'tsumo':
-        if (s.actionsAvailable[s.currentPlayer]?.canTsumo) {
-          setState(prev => executeWin(prev, prev.currentPlayer, true));
+        if (s.actionsAvailable[humanWind]?.canTsumo) {
+          setState(prev => executeWin(prev, humanWind, true));
           addMessage('🎉 自摸和牌！');
         }
         break;

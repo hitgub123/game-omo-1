@@ -346,6 +346,92 @@ body {
   border-radius: 8px;
   padding: 6px 8px;
   flex-shrink: 0;
+  transition: box-shadow 0.3s;
+}
+
+.player-active {
+  box-shadow: 0 0 16px rgba(201, 168, 76, 0.3), inset 0 0 16px rgba(201, 168, 76, 0.05);
+}
+
+.turn-indicator {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--marisa);
+  letter-spacing: 2px;
+  padding: 2px 0;
+  animation: pulse-indicator 1.5s infinite;
+}
+
+@keyframes pulse-indicator {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.turn-arrow {
+  color: var(--border-gold);
+  font-size: 14px;
+  animation: pulse-arrow 1s infinite;
+  margin-left: 4px;
+}
+
+@keyframes pulse-arrow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.tenpai-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(233, 30, 99, 0.15);
+  border: 1px solid rgba(233, 30, 99, 0.3);
+  border-radius: 6px;
+  margin: 2px 0;
+}
+
+.tenpai-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e91e63;
+}
+
+.tenpai-count {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-left: 2px;
+}
+
+.dora-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dora-label {
+  font-size: 10px;
+  color: var(--border-gold);
+  font-weight: 600;
+}
+
+.dora-pair {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.dora-arrow {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.dora-tile-name {
+  font-size: 10px;
+  color: var(--border-gold);
+  font-weight: 600;
 }
 
 .player-bar {

@@ -476,11 +476,10 @@ export function createNextHand(prevState: GameState): GameState {
   // 判断场风
   const roundWind: Wind = newHandCount < 4 ? Wind.EAST : Wind.SOUTH;
 
-  // 判断游戏是否结束
+  // 判断游戏是否结束：
+  // handCount = 非连庄的轮庄次数 → 0-3东场, 4-7南场
   const anyNegative = prevState.players.some(p => p.score < 0);
-  const southEnded = roundWind === Wind.SOUTH && newDealer === Wind.EAST && newHonba === 0;
-
-  if (anyNegative || southEnded) {
+  if (anyNegative || newHandCount >= 8) {
     return {
       ...prevState,
       phase: GamePhase.GAME_OVER,

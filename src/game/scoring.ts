@@ -17,8 +17,8 @@ function ronPayment(basePoints: number, isDealerWin: boolean): number {
 }
 
 export function calculateBasePoints(fu: number, han: number): number {
-  const isYakuman = han >= 13;
-  if (isYakuman) return 8000;
+  const base = fu * Math.pow(2, han + 2);
+  if (han >= 13) return 8000;
   if (han >= 11) return 6000;
   if (han >= 8) return 4000;
   if (han >= 6) return 3000;
@@ -29,9 +29,8 @@ export function calculateBasePoints(fu: number, han: number): number {
     if (fu >= 70) return 1300;
     if (fu >= 60) return 1200;
   }
-  const base = fu * Math.pow(2, han + 2);
   if (base > 2000) return 2000;
-  return Math.ceil(base / 100) * 100;
+  return base;
 }
 
 export function calculateScore(
@@ -62,7 +61,7 @@ export function calculateScore(
   return {
     basePoints,
     payments,
-    ronPayment: isTsumo ? 0 : ronPaymentAmount,
+    ronPayment: isTsumo ? 0 : ronPaymentAmount + honba * 300,
     winnerGets: winnerGets + riichiBonus,
     honbaAddition: honba * 300,
     riichiBonus,
@@ -85,7 +84,7 @@ export function calculatePayouts(
     for (let i = 0; i < 4; i++) {
       const wind = WINDS[i];
       if (wind !== winnerWind) {
-        const amount = wind === Wind.EAST ? score.payments[0] : score.payments[1];
+        const amount = (wind === Wind.EAST ? score.payments[0] : score.payments[1]) + honba * 100;
         payouts.push({ from: wind, to: winnerWind, amount });
       }
     }

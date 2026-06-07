@@ -1,8 +1,9 @@
 import React from 'react';
 import type { GameState } from '../game/types';
-import { Wind, GamePhase, TOUHOU_CHARACTERS } from '../game/types';
+import { Wind, GamePhase, TOUHOU_CHARACTERS, WINDS } from '../game/types';
 import { getDoraFromIndicator, tileDisplayName } from '../game/tiles';
 import { checkTenpai } from '../game/hand';
+import type { TenpaiInfo } from '../game/hand';
 import TileComponent from './TileComponent';
 import ActionPanel from './ActionPanel';
 import GameOverModal from './GameOverModal';
@@ -20,7 +21,7 @@ interface GameTableProps {
   swapMode: boolean;
   onSwapTile: (tileKey: string) => void;
   riichiMode: boolean;
-  riichiValidTileIds: Set<number>;
+  riichiValidTileIds: Map<number, TenpaiInfo>;
   onCancelRiichi: () => void;
 }
 
@@ -46,16 +47,10 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
       {swapMode && <div className="swap-banner">🔄 点击牌山中要交换的牌，或右键取消</div>}
 
       <div className="table-area">
-        <OpponentSection state={state} wind={Wind.NORTH} />
-        <div className="table-middle">
-          <div className="side-player left-player">
-            <OpponentSection state={state} wind={Wind.WEST} vertical />
-          </div>
-          <DiscardArea state={state} />
-          <div className="side-player right-player">
-            <OpponentSection state={state} wind={Wind.SOUTH} vertical />
-          </div>
-        </div>
+        <OpponentSection state={state} wind={Wind.WEST} />
+        <OpponentSection state={state} wind={Wind.NORTH} vertical />
+        <DiscardArea state={state} />
+        <OpponentSection state={state} wind={Wind.SOUTH} vertical />
         <PlayerSection state={state} playerWind={Wind.EAST} selectedTileId={selectedTileId}
           onTileClick={onTileClick} onTileDoubleClick={onTileDoubleClick}
           onTileContextMenu={onTileContextMenu}
@@ -124,7 +119,7 @@ interface PlayerSectionProps {
   onTileDoubleClick: (tileId: number) => void;
   onTileContextMenu: (tileId: number, e: React.MouseEvent) => void;
   riichiMode: boolean;
-  riichiValidTileIds: Set<number>;
+  riichiValidTileIds: Map<number, TenpaiInfo>;
 }
 
 const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, riichiMode, riichiValidTileIds }) => {
@@ -139,6 +134,13 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
     }
     return null;
   }, [player.hand, player.melds, player.isRiichi]);
+
+  const riichiWaitInfo = React.useMemo(() => {
+    if (!riichiMode || selectedTileId === null) return null;
+    const info = riichiValidTileIds.get(selectedTileId);
+    if (!info) return null;
+    return info.waitTiles;
+  }, [riichiMode, selectedTileId, riichiValidTileIds]);
 
   // 新摸的牌ID
   const drawnTileId = state.drawnTile?.id;
@@ -191,12 +193,25 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
           <span className="tenpai-count">共{tenpai.waitTiles.length}种</span>
         </div>
       )}
+
+      {riichiWaitInfo && riichiWaitInfo.length > 0 && (
+        <div className="riichi-wait-hint">
+          打出此牌可听：
+          {riichiWaitInfo.map((tile, i) => (
+            <TileComponent key={i} tile={tile} small highlighted />
+          ))}
+          <span className="tenpai-count">共{riichiWaitInfo.length}种</span>
+        </div>
+      )}
     </div>
   );
 };
 
 // ---- Discard Area (center, all players) ----
 const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
+  const humanWind = WINDS.find(w => state.players[w].isHuman) ?? Wind.EAST;
+  const humanActions = state.actionsAvailable[humanWind];
+  const humanCanCall = humanActions && (humanActions.canRon || humanActions.canPon || humanActions.canChi || humanActions.canKan);
   return (
     <div className="discard-area">
       {state.players.map((player, i) => (
@@ -210,7 +225,8 @@ const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
             ) : (
               player.discards.map((tile, j) => (
                 <TileComponent key={`d${i}-${j}`} tile={tile} small dimmed
-                  isRiichi={player.isRiichi && player.riichiDiscardIndex === j} />
+                  isRiichi={player.isRiichi && player.riichiDiscardIndex === j}
+                  isCalled={humanCanCall && state.lastDiscard?.id === tile.id} />
               ))
             )}
           </div>

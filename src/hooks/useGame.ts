@@ -5,6 +5,9 @@ import { createInitialState, drawTile, discardTile, executeMeld, executeWin, nex
 import { aiChooseDiscard, aiChooseAction, aiDecideRiichi } from '../game/ai';
 import { sameTile, sortHand } from '../game/tiles';
 import { findTenpaiDiscards } from '../game/hand';
+import { riichiCheckWin as checkWin } from '../game/riichi-check';
+import { syantenRiichiHints } from '../game/syanten-wrapper';
+import type { TenpaiInfo } from '../game/hand';
 
 export interface GameController {
   state: GameState;
@@ -23,7 +26,8 @@ export interface GameController {
   executeSwap: (wallTileKey: string) => void;
   cancelSwap: () => void;
   riichiMode: boolean;
-  riichiValidTileIds: Set<number>;
+  riichiValidTileIds: Map<number, TenpaiInfo>;
+  riichiHint: string;
   cancelRiichi: () => void;
 }
 
@@ -46,7 +50,8 @@ export function useGame(): GameController {
   const [swapMode, setSwapMode] = useState(false);
   const [swapSourceTileId, setSwapSourceTileId] = useState<number | null>(null);
   const [riichiMode, setRiichiMode] = useState(false);
-  const [riichiValidTileIds, setRiichiValidTileIds] = useState<Set<number>>(new Set());
+  const [riichiValidTileIds, setRiichiValidTileIds] = useState<Map<number, TenpaiInfo>>(new Map());
+  const [riichiHint, setRiichiHint] = useState('');
   const stateRef = useRef(state);
   const aiTimerRef = useRef<number | null>(null);
   stateRef.current = state;
@@ -57,13 +62,14 @@ export function useGame(): GameController {
 
   const updateDebug = useCallback((s: GameState, label: string) => {
     const cp = s.players[s.currentPlayer];
-    setDebugInfo(
-      `[${label}] 阶段:${s.phase} 玩家:${cp?.name}[${s.currentPlayer}] 牌山:${s.wall.length} 弃牌:${!!s.lastDiscard}`
-    );
+    const info = `[${label}] 阶段:${s.phase} 玩家:${cp?.name}[${s.currentPlayer}] 牌山:${s.wall.length} 摸牌:${!!s.drawnTile} 弃牌:${!!s.lastDiscard}`;
+    setDebugInfo(info);
+    console.log(`%c${info}`, 'color:#42a5f5');
   }, []);
 
   // Process AI responses
   const processAiResponses = useCallback((s: GameState): GameState | null => {
+    console.log(`[AI-RESP] 开始检查响应 lastDiscard:${!!s.lastDiscard} discPlayer:${s.lastDiscardPlayer} currentPlayer:${s.currentPlayer}`);
     for (const wind of WINDS) {
       if (wind === s.currentPlayer) continue;
       const actions = s.actionsAvailable[wind];
@@ -72,8 +78,8 @@ export function useGame(): GameController {
       if (player.isHuman) continue;
 
       const choice = aiChooseAction(s, wind);
-      console.log(`[AI] ${player.name} wind=${wind} choice=${choice}`, 
-        `ron:${actions.canRon} pon:${actions.canPon} chi:${actions.canChi}`);
+      console.log(`[AI-RESP] ${player.name} wind=${wind} choice=${choice}`, 
+        `ron:${actions.canRon} pon:${actions.canPon} chi:${actions.canChi} kan:${actions.canKan}`);
 
       if (choice === 'ron' && actions.canRon) {
         return executeWin(s, wind, false);
@@ -137,8 +143,11 @@ export function useGame(): GameController {
                 addMessage(`⚡ ${cp.name} 立直！`);
                 const marked = {
                   ...current,
+                  riichiSticks: current.riichiSticks + 1,
                   players: current.players.map((p, i) =>
-                    i === current.currentPlayer ? { ...p, isRiichi: true } : p
+                    i === current.currentPlayer
+                      ? { ...p, isRiichi: true, score: p.score - 1000 }
+                      : p
                   ),
                 };
                 setState(() => discardTile(marked, tile.id));
@@ -147,8 +156,10 @@ export function useGame(): GameController {
               }
             }
           } else if (cp.isRiichi && current.drawnTile) {
-            // 立直后的自摸切（tsumogiri）
+            console.log('[TSUMOGIRI]', cp.name, '自摸切', current.drawnTile.suit + current.drawnTile.value);
             setState(prev2 => discardTile(prev2, current.drawnTile!.id));
+          } else if (cp.isRiichi) {
+            console.log('[TSUMOGIRI-FAIL]', cp.name, '无 drawnTile', 'phase:', current.phase);
           }
           // 非立直人类等待双击出牌
           setIsAiThinking(false); return;
@@ -187,8 +198,19 @@ export function useGame(): GameController {
               setIsAiThinking(false); return;
             }
 
-            // 无人响应 → 下家摸牌
-            setState(prev => nextTurn(prev));
+            // 无人响应 → AI 能荣和但选择过 → 振听
+            let nextState = current;
+            for (const w of WINDS) {
+              if (w !== current.currentPlayer && !current.players[w].isHuman) {
+                if (current.actionsAvailable[w]?.canRon) {
+                  if (!nextState.furitenPlayers.includes(w)) {
+                    nextState = { ...nextState, furitenPlayers: [...nextState.furitenPlayers, w] };
+                    console.log(`[FURITEN] ${current.players[w].name} 见逃，振听`);
+                  }
+                }
+              }
+            }
+            setState(() => nextTurn(nextState));
           } else if (!cp.isHuman) {
             // AI回合有动作（非响应阶段）
             if (actions?.canTsumo) {
@@ -197,6 +219,9 @@ export function useGame(): GameController {
               // 强制切换到打牌阶段
               setState(prev2 => ({ ...prev2, phase: GamePhase.DISCARDING }));
             }
+          } else {
+            // 人类无特殊动作 → 强制进入打牌阶段
+            setState(prev2 => ({ ...prev2, phase: GamePhase.DISCARDING }));
           }
         }
       } catch (e) {
@@ -237,18 +262,25 @@ export function useGame(): GameController {
         const marked = {
           ...prev,
           phase: GamePhase.DISCARDING,
+          riichiSticks: prev.riichiSticks + 1,
           players: prev.players.map((p, i) =>
-            i === prev.currentPlayer ? { ...p, isRiichi: true } : p
+            i === prev.currentPlayer
+              ? { ...p, isRiichi: true, score: p.score - 1000 }
+              : p
           ),
         };
         return discardTile(marked, tileId);
       });
       setRiichiMode(false);
-      setRiichiValidTileIds(new Set());
+      setRiichiValidTileIds(new Map());
       setSelectedTileId(null);
       return;
     }
 
+    if (cp.isRiichi && s.drawnTile && tileId !== s.drawnTile.id) {
+      addMessage('立直后只能打刚摸到的牌（自摸切）');
+      return;
+    }
     const newState = discardTile(s, tileId);
     if (newState !== s) {
       setState(newState);
@@ -341,13 +373,18 @@ export function useGame(): GameController {
 
       case 'riichi':
         if (s.actionsAvailable[humanWind]?.canRiichi) {
-          // 进入立直选牌模式：计算哪些牌打出后能听牌
           const humanHand = s.players[humanWind].hand;
           const tenpaiMap = findTenpaiDiscards(humanHand, s.players[humanWind].melds);
-          const validIds = new Set<number>();
-          for (const [tileId] of tenpaiMap) validIds.add(Number(tileId));
           setRiichiMode(true);
-          setRiichiValidTileIds(validIds);
+          setRiichiValidTileIds(tenpaiMap);
+          // 用 syanten 获取每张牌打出后的等待牌名称
+          const hints = syantenRiichiHints(humanHand);
+          if (hints.size > 0) {
+            const sample = [...hints.values()][0];
+            setRiichiHint(`高亮牌可打 → 点击看能听哪些牌（例：${sample.join('、')}）`);
+          } else {
+            setRiichiHint('高亮牌打出后可听牌');
+          }
           addMessage(`⚡ 请选择要立直打出的牌（高亮牌可打）`);
         }
         break;
@@ -355,29 +392,27 @@ export function useGame(): GameController {
       // ---- 过牌（关键修复：使用函数式更新，从最新状态计算humanWind）----
       case 'pass':
         if (s.lastDiscard) {
-          // 检查是否有AI能响应
-          const aiCanAct = WINDS.some(w => 
-            w !== s.currentPlayer && !s.players[w].isHuman &&
-            !!s.actionsAvailable[w] && (
-              s.actionsAvailable[w]!.canRon || 
-              s.actionsAvailable[w]!.canPon ||
-              s.actionsAvailable[w]!.canChi
-            )
-          );
-          if (!aiCanAct) {
-            // 无人可响应，直接进入下一家摸牌
-            setState(prev => nextTurn(prev));
+          const hWind = WINDS.find(w => s.players[w].isHuman) ?? 0;
+          const humanActions = s.actionsAvailable[hWind];
+          // 能荣和但选择过 → 振听
+          if (humanActions?.canRon) {
+            addMessage(s.players[hWind].isRiichi ? '立直后见逃，永久振听' : '见逃，临时振听');
+          }
+          // 清除人类动作，然后直接处理 AI 响应（不等 effect 重跑）
+          const cleared = {
+            ...s,
+            furitenPlayers: humanActions?.canRon
+              ? [...new Set([...s.furitenPlayers, hWind])]
+              : s.furitenPlayers,
+            actionsAvailable: s.actionsAvailable.map((a, i) =>
+              i === hWind ? { ...EMPTY_ACTIONS } : a
+            ),
+          };
+          const aiResult = processAiResponses(cleared);
+          if (aiResult) {
+            setState(aiResult);
           } else {
-            // 有AI能响应，清除人类动作让游戏循环处理
-            setState(prev => {
-              const hWind = WINDS.find(w => prev.players[w].isHuman) ?? 0;
-              return {
-                ...prev,
-                actionsAvailable: prev.actionsAvailable.map((a, i) =>
-                  i === hWind ? { ...EMPTY_ACTIONS } : a
-                ),
-              };
-            });
+            setState(nextTurn(cleared));
           }
         } else {
           setState(prev => nextTurn(prev));
@@ -397,11 +432,18 @@ export function useGame(): GameController {
 
   const nextHandFn = useCallback(() => {
     if (aiTimerRef.current !== null) window.clearTimeout(aiTimerRef.current);
-    setState(prev => createNextHand(prev));
-    setSelectedTileId(null);
+    const s = stateRef.current;
+    if (s.players.some(p => p.score < 0) || s.handCount >= 7) {
+      setState(createInitialState());
+      setSelectedTileId(null);
+      setMessages(prev => [...prev.slice(-5), '🔄 有人负分，开始新游戏', '摸牌中...']);
+    } else {
+      setState(prev => createNextHand(prev));
+      setSelectedTileId(null);
+      setMessages(prev => [...prev.slice(-5), '🔄 下一局...', '摸牌中...']);
+    }
     setSwapMode(false);
     setSwapSourceTileId(null);
-    setMessages(prev => [...prev.slice(-5), '🔄 下一局...', '摸牌中...']);
   }, []);
 
   // ---- 换牌功能（右键菜单） ----
@@ -417,48 +459,74 @@ export function useGame(): GameController {
   }, []);
 
   const executeSwap = useCallback((wallTileKey: string) => {
+    const s = stateRef.current;
+    if (swapSourceTileId === null) {
+      addMessage('请先右键点击要交换的手牌');
+      return;
+    }
+    if (s.phase !== GamePhase.DISCARDING && s.phase !== GamePhase.ACTION_PROMPT) {
+      addMessage('现在不是你的回合，无法换牌');
+      cancelSwap();
+      return;
+    }
+    if (s.currentPlayer !== Wind.EAST) {
+      addMessage('现在不是你的回合，无法换牌');
+      cancelSwap();
+      return;
+    }
+    const suit = wallTileKey[0] as TileSuit;
+    const value = parseInt(wallTileKey[1]);
+    const wallTile = s.wall.find(t => t.suit === suit && t.value === value);
+    if (!wallTile) {
+      addMessage('牌山中找不到该牌');
+      cancelSwap();
+      return;
+    }
+    const srcId = swapSourceTileId;
     setState(prev => {
-      if (swapSourceTileId === null) return prev;
-      const suit = wallTileKey[0] as TileSuit;
-      const value = parseInt(wallTileKey[1]);
-
-      const wallIdx = prev.wall.findIndex(t => t.suit === suit && t.value === value);
-      if (wallIdx === -1) return prev;
-
-      const newHand = prev.players[Wind.EAST].hand.filter(t => t.id !== swapSourceTileId);
-      if (newHand.length === prev.players[Wind.EAST].hand.length) return prev;
+      const oldTile = prev.players[Wind.EAST].hand.find(t => t.id === srcId);
+      if (!oldTile) return prev;
+      const newHand = prev.players[Wind.EAST].hand.filter(t => t.id !== srcId);
 
       const newWall = [...prev.wall];
+      const wallIdx = newWall.findIndex(t => t.suit === suit && t.value === value);
+      if (wallIdx === -1) return prev;
       const newTile = newWall.splice(wallIdx, 1)[0];
+      newWall.push(oldTile); // 换出的手牌放回牌山
       const sortedHand = sortHand([...newHand, newTile]);
 
       const newPlayers = prev.players.map(p => ({ ...p, hand: [...p.hand] }));
       newPlayers[Wind.EAST].hand = sortedHand;
 
+      const newActions = prev.actionsAvailable.map(a => ({ ...a }));
+      // 换牌后检查能否和牌（天和/换牌即和）
+      const winCheck = checkWin(sortedHand, [], newTile, true, Wind.EAST, prev);
+      const canTsumoNow = winCheck !== null && winCheck.yaku.length > 0;
       // 换牌后检查能否立直
       const tenpaiCheck = findTenpaiDiscards(sortedHand, []);
-      const newActions = prev.actionsAvailable.map(a => ({ ...a }));
       newActions[Wind.EAST] = {
         ...newActions[Wind.EAST],
         canRiichi: tenpaiCheck.size > 0,
+        canTsumo: canTsumoNow,
       };
 
-      addMessage('🔄 换牌完成');
+      addMessage(canTsumoNow ? '🔄 换牌完成 — 和牌！' : '🔄 换牌完成');
       return {
         ...prev,
         wall: newWall,
         players: newPlayers,
         actionsAvailable: newActions,
-        phase: GamePhase.DISCARDING,
+        drawnTile: newTile,
+        phase: canTsumoNow ? GamePhase.ACTION_PROMPT : GamePhase.DISCARDING,
       };
     });
     setSwapMode(false);
     setSwapSourceTileId(null);
-  }, [swapSourceTileId, addMessage]);
+  }, [swapSourceTileId, addMessage, cancelSwap]);
 
   const cancelRiichi = useCallback(() => {
     setRiichiMode(false);
-    setRiichiValidTileIds(new Set());
+    setRiichiValidTileIds(new Map());
     addMessage('取消立直');
   }, [addMessage]);
 
@@ -480,6 +548,7 @@ export function useGame(): GameController {
     cancelSwap,
     riichiMode,
     riichiValidTileIds,
+    riichiHint,
     cancelRiichi,
   };
 }

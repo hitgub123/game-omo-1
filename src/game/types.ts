@@ -162,6 +162,7 @@ export interface GameState {
   dealerIndex: Wind;
   drawnTile?: Tile;
   handCount: number;        // 总局数（用于东南场判断）
+  furitenPlayers: Wind[];   // 当前振听中的玩家
 }
 
 /** 角色定义 */

@@ -143,6 +143,24 @@ export interface TenpaiInfo {
 
 export function checkTenpai(hand: Tile[], melds: Meld[] = []): TenpaiInfo | null {
   if (hand.length !== 13) return null;
+  if (melds.length > 0) {
+    // 有副露时不检查七对子
+    return checkTenpaiStandard(hand, melds);
+  }
+  // Check both standard and chiitoitsu
+  const std = checkTenpaiStandard(hand, melds);
+  const chii = checkTenpaiChiitoi(hand);
+  const koku = checkTenpaiKokushi(hand);
+  const waitTiles: Tile[] = [];
+  let allDivisions: MahjongDivision[] = [];
+  if (std) { waitTiles.push(...std.waitTiles); allDivisions.push(...std.divisions); }
+  if (chii) waitTiles.push(...chii.waitTiles);
+  if (koku) waitTiles.push(...koku.waitTiles);
+  if (waitTiles.length === 0) return null;
+  return { waitTiles, divisions: allDivisions };
+}
+
+function checkTenpaiStandard(hand: Tile[], melds: Meld[]): TenpaiInfo | null {
   const waitTiles: Tile[] = [];
   let allDivisions: MahjongDivision[] = [];
 
@@ -163,6 +181,42 @@ export function checkTenpai(hand: Tile[], melds: Meld[] = []): TenpaiInfo | null
 
   if (waitTiles.length === 0) return null;
   return { waitTiles, divisions: allDivisions };
+}
+
+function checkTenpaiChiitoi(hand: Tile[]): TenpaiInfo | null {
+  const counts = getTileCounts(hand);
+  let pairs = 0;
+  let isolated: string | null = null;
+  for (const [k, c] of Object.entries(counts)) {
+    if (c === 1) isolated = k;
+    else if (c >= 2) pairs++; // c=2,3,4 都只能算1对（必须7种不同对子）
+  }
+  if (pairs === 6 && isolated) {
+    const suit = isolated[0] as TileSuit;
+    const value = parseInt(isolated[1]);
+    return { waitTiles: [{ id: -1, suit, value }], divisions: [] };
+  }
+  return null;
+}
+
+function checkTenpaiKokushi(hand: Tile[]): TenpaiInfo | null {
+  if (!hand.every(t => isTerminalHonor(t))) return null;
+  const orphans: string[] = [];
+  for (const suit of ['m', 'p', 's'] as TileSuit[]) {
+    orphans.push(`${suit}1`, `${suit}9`);
+  }
+  for (let v = 1; v <= 7; v++) orphans.push(`z${v}`);
+  const counts = getTileCounts(hand);
+  const present = orphans.filter(k => (counts[k] || 0) >= 1);
+  if (present.length === 12 && hand.length === 13) {
+    const missing = orphans.find(k => !present.includes(k))!;
+    return { waitTiles: [{ id: -1, suit: missing[0] as TileSuit, value: parseInt(missing[1]) }], divisions: [] };
+  }
+  if (present.length === 13) {
+    const waitTiles = orphans.map(k => ({ id: -1, suit: k[0] as TileSuit, value: parseInt(k[1]) }));
+    return { waitTiles, divisions: [] };
+  }
+  return null;
 }
 
 export function findTenpaiDiscards(hand: Tile[], melds: Meld[] = []): Map<number, TenpaiInfo> {
@@ -204,6 +258,26 @@ export interface YakuContext {
   doraIndicators: Tile[];    // 宝牌指示牌
 }
 
+function isRyanmenWait(ctx: YakuContext): boolean {
+  const wt = ctx.winningTile;
+  // 单骑听牌 → 不是两面
+  if (wt.suit === ctx.pairGroup.tileKey[0] && wt.value === parseInt(ctx.pairGroup.tileKey[1])) return false;
+  for (const g of ctx.winGroup) {
+    if (g.type !== 'sequence') continue;
+    const sv = g.value || 0;
+    const wv = wt.value;
+    if (g.suit !== wt.suit || wv < sv || wv > sv + 2) continue;
+    // 坎张 (e.g., 2_4 + 3)
+    if (wv === sv + 1) return false;
+    // 边张 12+3 或 89+7
+    if (sv === 1 && wv === 3) return false;
+    if (sv === 7 && wv === 7) return false;
+    return true; // 两面
+  }
+  // 双碰 → 不是两面
+  return false;
+}
+
 // ---- Fu calculation ----
 function checkPinfuShape(ctx: YakuContext): boolean {
   if (ctx.hasCalled) return false;
@@ -212,6 +286,8 @@ function checkPinfuShape(ctx: YakuContext): boolean {
   }
   const pSuit = ctx.pairGroup.tileKey[0];
   if (pSuit === 'z') return false;
+  // 平和必须两面听牌
+  if (!isRyanmenWait(ctx)) return false;
   return true;
 }
 
@@ -244,6 +320,24 @@ function fuCalc(ctx: YakuContext): number {
     }
   }
 
+  // 听牌形 +2符: 坎张/边张/单骑
+  const wt = ctx.winningTile;
+  // 单骑: winning tile completes the pair
+  if (wt.suit === ctx.pairGroup.tileKey[0] && wt.value === parseInt(ctx.pairGroup.tileKey[1])) {
+    fu += 2;
+  } else {
+    for (const g of ctx.winGroup) {
+      if (g.type !== 'sequence') continue;
+      const sv = g.value || 0;
+      const wv = wt.value;
+      if (g.suit !== wt.suit || wv < sv || wv > sv + 2) continue;
+      if (wv === sv + 1) { fu += 2; break; } // 坎张 (e.g., 2_4 + 3)
+      if (sv === 1 && wv === 3) { fu += 2; break; } // 边张 12+3
+      if (sv === 7 && wv === 7) { fu += 2; break; } // 边张 89+7
+      // 两面 0fu
+    }
+  }
+
   const pSuit = ctx.pairGroup.tileKey[0] as TileSuit;
   const pVal = parseInt(ctx.pairGroup.tileKey[1]);
   if (pSuit === 'z') {
@@ -257,6 +351,7 @@ function fuCalc(ctx: YakuContext): number {
 
 // ---- Yaku checks ----
 function checkKokushi(ctx: YakuContext): boolean {
+  if (!ctx.allTiles.every(t => isTerminalHonor(t))) return false;
   const required: string[] = [];
   for (const suit of ['m', 'p', 's'] as TileSuit[]) {
     required.push(`${suit}1`, `${suit}9`);
@@ -454,6 +549,39 @@ export function evaluateHand(
     const chkHonitsu = () => checkHonitsu(ctx) ? { id: 'honiitsu', name: '混一色', han: ctx.hasCalled ? 2 : 3, hanOpen: 2, isYakuman: false, isDoubleYakuman: false } as YakuInfo : null;
     const checkJunchan = () => checkChanta(ctx, true) ? { id: 'junchan', name: '纯全带幺九', han: ctx.hasCalled ? 2 : 3, hanOpen: 2, isYakuman: false, isDoubleYakuman: false } as YakuInfo : null;
     const checkRyanpeikouYaku = () => checkRyanpeikou(ctx) ? { id: 'ryanpeikou', name: '二杯口', han: 3, isYakuman: false, isDoubleYakuman: false } as YakuInfo : null;
+    const checkIipeikou = () => {
+      if (ctx.hasCalled) return null;
+      const seqs = ctx.winGroup.filter(g => g.type === 'sequence');
+      const seqCounts = new Map<string, number>();
+      for (const s of seqs) {
+        const k = `${s.suit}${s.value}`;
+        seqCounts.set(k, (seqCounts.get(k) || 0) + 1);
+      }
+      if ([...seqCounts.values()].filter(c => c >= 2).length >= 1) {
+        return { id: 'iipeikou', name: '一盃口', han: 1, isYakuman: false, isDoubleYakuman: false } as YakuInfo;
+      }
+      return null;
+    };
+    const checkSanshokuDoukou = () => {
+      const trips = ctx.winGroup.filter(g => g.type === 'triplet') as Group[];
+      for (const t of trips) {
+        if (t.suit === 'z') continue;
+        const same = trips.filter(t2 => t2.suit !== t.suit && t2.value === t.value);
+        if (same.length >= 2) {
+          return { id: 'sanshoku_doukou', name: '三色同刻', han: 2, isYakuman: false, isDoubleYakuman: false } as YakuInfo;
+        }
+      }
+      return null;
+    };
+    const checkSankantsu = () => {
+      const kanCount = ctx.melds.filter(m =>
+        m.type === MeldType.KAN || m.type === MeldType.ANKAN || m.type === MeldType.KAKAN
+      ).length;
+      if (kanCount >= 3) {
+        return { id: 'sankantsu', name: '三杠子', han: 2, isYakuman: false, isDoubleYakuman: false } as YakuInfo;
+      }
+      return null;
+    };
     const chkChinitsu = () => checkChinitsu(ctx) ? { id: 'chinitsu', name: '清一色', han: ctx.hasCalled ? 5 : 6, hanOpen: 5, isYakuman: false, isDoubleYakuman: false } as YakuInfo : null;
 
     // Yakuman
@@ -475,7 +603,7 @@ export function evaluateHand(
       checkTanyao, checkHaitei, checkHoutei, checkRinshan, checkChankan,
       checkSanshoku, checkIttsuuYaku, checkChantaYaku, checkToitoi,
       checkSanankouYaku, checkSangenYaku, checkHonroutou, chkHonitsu,
-      checkJunchan, checkRyanpeikouYaku, chkChinitsu,
+      checkJunchan, checkIipeikou, checkRyanpeikouYaku, checkSanshokuDoukou, checkSankantsu, chkChinitsu,
     ];
 
     for (const check of checks) {
@@ -491,9 +619,12 @@ export function evaluateHand(
 
     const yakumanCount = yaku.filter(y => y.isYakuman).length;
     if (yakumanCount > 0) {
-      const totalHan = yakumanCount * 13;
-      const fu = ctx.isTsumo ? 20 : 25;
-      results.push({ yaku, totalHan, fu, divisions: [div] });
+      results.push({
+        yaku: yaku.filter(y => y.isYakuman),
+        totalHan: yakumanCount * 13,
+        fu: 0,
+        divisions: [div],
+      });
       continue;
     }
 
@@ -562,18 +693,34 @@ export function checkWin(
     return { yaku: [{ id: 'kokushi', name: '国士无双', han: 0, isYakuman: true, isDoubleYakuman: false }], totalHan: 13, fu: 25, divisions: [] };
   }
 
-  // Chiitoi check
+  // Chiitoi check — 不立即返回，要跟标准形比较取高分
+  let chiitoiResult: EvaluationResult | null = null;
   if (allTiles.length === 14 && melds.length === 0) {
     const counts = getTileCounts(allTiles);
     const pairs = Object.entries(counts).filter(([_, c]) => c === 2);
     if (pairs.length === 7) {
-      return { yaku: [{ id: 'chiitoitsu', name: '七对子', han: 2, isYakuman: false, isDoubleYakuman: false }], totalHan: 2, fu: 25, divisions: [] };
+      const yaku: YakuInfo[] = [{ id: 'chiitoitsu', name: '七对子', han: 2, isYakuman: false, isDoubleYakuman: false }];
+      // 七对子叠加役
+      const suits = new Set(allTiles.map(t => t.suit));
+      if (suits.size === 2 && suits.has('z')) yaku.push({ id: 'honiitsu', name: '混一色', han: 3, isYakuman: false, isDoubleYakuman: false });
+      else if (suits.size === 1 && !suits.has('z')) yaku.push({ id: 'chinitsu', name: '清一色', han: 6, isYakuman: false, isDoubleYakuman: false });
+      if (allTiles.every(t => isTerminalHonor(t)) && allTiles.some(t => t.suit === 'z')) yaku.push({ id: 'honroutou', name: '混老头', han: 2, isYakuman: false, isDoubleYakuman: false });
+      if (allTiles.every(t => !isTerminalHonor(t))) yaku.push({ id: 'tanyao', name: '断幺九', han: 1, isYakuman: false, isDoubleYakuman: false });
+      const totalHan = yaku.reduce((s, y) => s + (y.hanOpen ?? y.han), 0);
+      chiitoiResult = { yaku, totalHan, fu: 25, divisions: [] };
     }
   }
 
   const divisions = findMahjongDivisions(allTiles, melds);
-  if (divisions.length === 0) return null;
+  let stdResult: EvaluationResult | null = null;
+  if (divisions.length > 0) {
+    const results = evaluateHand(baseCtx, divisions);
+    if (results.length > 0) stdResult = results[0];
+  }
 
-  const results = evaluateHand(baseCtx, divisions);
-  return results.length > 0 ? results[0] : null;
+  if (chiitoiResult && stdResult) {
+    // 两种都成立时取高分
+    return chiitoiResult.totalHan >= stdResult.totalHan ? chiitoiResult : stdResult;
+  }
+  return chiitoiResult || stdResult;
 }

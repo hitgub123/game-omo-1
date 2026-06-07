@@ -1,7 +1,8 @@
 import type { Tile, Meld, GameState, Player, AvailableActions, ChiOption, HandResult, WinResult } from './types';
 import { Wind, MeldType, GamePhase, TOUHOU_CHARACTERS, INITIAL_SCORE, WINDS } from './types';
 import { createTileDeck, shuffleArray, sortHand, tileKey, findTiles, isTerminalHonor } from './tiles';
-import { checkWin, findTenpaiDiscards, checkTenpai } from './hand';
+import { findTenpaiDiscards, checkTenpai } from './hand';
+import { riichiCheckWin as checkWin } from './riichi-check';
 import { calculateScore, calculatePayouts } from './scoring';
 
 export function createInitialState(): GameState {
@@ -51,6 +52,7 @@ export function createInitialState(): GameState {
     actionsAvailable: WINDS.map(() => emptyActions()),
     turnHistory: [],
     dealerIndex: Wind.EAST,
+    furitenPlayers: [],
   };
 }
 
@@ -61,10 +63,11 @@ export function drawTile(state: GameState): GameState {
   const drawnTile = wall.shift()!;
   const players = state.players.map(p => ({ ...p, hand: [...p.hand] }));
   const player = players[state.currentPlayer];
-  player.hand = sortHand([...player.hand, drawnTile]);
+  player.hand = [...player.hand, drawnTile];
 
-  const actions = getDrawActions(player, state, state.currentPlayer);
+  const actions = getDrawActions(player, state, state.currentPlayer, drawnTile);
   const hasActions = actions.canRiichi || actions.canTsumo || actions.canAnkan || actions.canKakan || actions.canNineOrphans;
+  console.log(`[DRAW] ${player.name}(${state.currentPlayer}) 摸牌 牌山:${wall.length} 手牌:${player.hand.length} 有动作:${hasActions}`);
 
   return {
     ...state,
@@ -75,23 +78,23 @@ export function drawTile(state: GameState): GameState {
     actionsAvailable: WINDS.map((_, i) => i === state.currentPlayer ? actions : emptyActions()),
     turn: state.turn + 1,
     turnHistory: [...state.turnHistory, { type: 'draw' as const, player: state.currentPlayer, tile: drawnTile }],
+    furitenPlayers: state.furitenPlayers.filter(p => p !== state.currentPlayer),
   };
 }
 
-function getDrawActions(player: Player, state: GameState, playerWind: Wind): AvailableActions {
+function getDrawActions(player: Player, state: GameState, playerWind: Wind, drawnTile: Tile): AvailableActions {
   const actions: AvailableActions = {
     canChi: false, chiOptions: [], canPon: false, canKan: false,
     canRon: false, canTsumo: false, canRiichi: false, canAnkan: false,
     canKakan: false, canNineOrphans: false,
   };
 
-  const drawnTile = state.drawnTile;
   if (drawnTile) {
     const winCheck = checkWin(player.hand, player.melds, drawnTile, true, playerWind, state);
     actions.canTsumo = winCheck !== null && winCheck.yaku.length > 0;
   }
 
-  if (!player.hasCalled && !player.isRiichi && state.wall.length > 0) {
+  if (!player.hasCalled && !player.isRiichi && state.wall.length >= 4 && player.score >= 1000) {
     const tenpaiCheck = findTenpaiDiscards(player.hand, player.melds);
     actions.canRiichi = tenpaiCheck.size > 0;
   }
@@ -130,7 +133,10 @@ export function discardTile(state: GameState, tileId: number): GameState {
   if (idx === -1) return state;
 
   const discarded = player.hand.splice(idx, 1)[0];
-  if (player.isRiichi) player.riichiDiscardIndex = player.discards.length;
+  player.hand = sortHand(player.hand);
+  if (player.isRiichi && player.riichiDiscardIndex === -1) {
+    player.riichiDiscardIndex = player.discards.length;
+  }
   player.discards.push(discarded);
 
   // Check responses from other players
@@ -167,6 +173,24 @@ function getResponseActions(
   const testHand = [...player.hand, discarded];
   const winCheck = checkWin(testHand, player.melds, discarded, false, playerWind, state);
   actions.canRon = winCheck !== null && winCheck.yaku.length > 0;
+
+  // 振听检查
+  if (actions.canRon) {
+    // 一般振听：弃牌中有等待牌
+    const tenpai = checkTenpai(player.hand, player.melds);
+    if (tenpai) {
+      const discardKeys = new Set(player.discards.map(d => tileKey(d)));
+      const hasFuritenDiscard = tenpai.waitTiles.some(w => discardKeys.has(tileKey(w)));
+      if (hasFuritenDiscard) actions.canRon = false;
+    }
+    // 临时/永久振听
+    if (state.furitenPlayers.includes(playerWind)) {
+      actions.canRon = false;
+    }
+  }
+
+  // 立直后只能荣和，不能鸣牌
+  if (player.isRiichi) return actions;
 
   const matching = findTiles(player.hand, discarded);
   if (matching.length >= 2) actions.canPon = true;
@@ -274,6 +298,7 @@ export function executeMeld(state: GameState, playerWind: Wind, meldType: MeldTy
     currentPlayer: playerWind,
     phase: GamePhase.DISCARDING,
     actionsAvailable: WINDS.map(() => emptyActions()),
+    furitenPlayers: state.furitenPlayers.filter(p => state.players[p].isRiichi), // 仅保留立直玩家的永久振听
   };
 }
 
@@ -322,6 +347,7 @@ function removeTilesFromHand(hand: Tile[], remove: Tile[]): Tile[] {
 export function executeWin(state: GameState, playerWind: Wind, isTsumo: boolean): GameState {
   const player = state.players[playerWind];
   const winningTile = isTsumo ? state.drawnTile! : state.lastDiscard!;
+  if (!winningTile) return state;
 
   const evalResult = checkWin(
     isTsumo ? player.hand : [...player.hand],
@@ -356,10 +382,6 @@ export function executeWin(state: GameState, playerWind: Wind, isTsumo: boolean)
   if (state.riichiSticks > 0) {
     players[playerWind].score += state.riichiSticks * 1000;
   }
-  for (const p of players) {
-    if (p.isRiichi) p.score -= 1000;
-  }
-  players[playerWind].score += state.riichiSticks * 1000;
 
   const winResult: WinResult = {
     player: playerWind,
@@ -376,10 +398,17 @@ export function executeWin(state: GameState, playerWind: Wind, isTsumo: boolean)
     handTiles: player.hand,
   };
 
+  // 收集所有分数变动
+  const allPayments: { from: Wind; to: Wind; amount: number }[] = [...payouts];
+  if (state.riichiSticks > 0) {
+    allPayments.push({ from: -1 as Wind, to: playerWind, amount: state.riichiSticks * 1000 });
+  }
+
   const result: HandResult = {
     type: isTsumo ? 'tsumo' : 'ron',
     winners: [playerWind],
     winResults: [winResult],
+    payments: allPayments,
   };
 
   return { ...state, players, result, phase: GamePhase.HAND_OVER };
@@ -388,6 +417,7 @@ export function executeWin(state: GameState, playerWind: Wind, isTsumo: boolean)
 // ---- Next turn ----
 export function nextTurn(state: GameState): GameState {
   const currentPlayer = ((state.currentPlayer + 1) % 4) as Wind;
+  console.log(`[TURN] ${state.players[state.currentPlayer].name}(${state.currentPlayer}) → ${state.players[currentPlayer].name}(${currentPlayer})  牌山:${state.wall.length}`);
   return {
     ...state,
     currentPlayer,
@@ -417,16 +447,17 @@ export function executeDraw(state: GameState): GameState {
     else notenPlayers.push(p.wind);
   }
 
-  // 流局结算（ノーテン罰符）
+  // 流局结算（ノーテン罰符）: 総額3000点
   const payments: { from: Wind; to: Wind; amount: number }[] = [];
   if (tenpaiPlayers.length > 0 && tenpaiPlayers.length < 4) {
-    const totalSticks = 1500 + state.honba * 300;
-    // nōten bappu: 听牌人数不等分
-    const payPerNoten = Math.ceil(totalSticks / notenPlayers.length / 100) * 100;
-    for (const t of tenpaiPlayers) {
-      for (const n of notenPlayers) {
-        payments.push({ from: n, to: t, amount: payPerNoten });
-      }
+    const n = Math.max(notenPlayers.length, tenpaiPlayers.length);
+    const perPair = Math.ceil(3000 / n / 100) * 100;
+    for (let i = 0; i < n; i++) {
+      payments.push({
+        from: notenPlayers[i % notenPlayers.length],
+        to: tenpaiPlayers[i % tenpaiPlayers.length],
+        amount: perPair,
+      });
     }
   }
 
@@ -535,5 +566,6 @@ export function createNextHand(prevState: GameState): GameState {
     turnHistory: [],
     dealerIndex: newDealer,
     handCount: newHandCount,
+    furitenPlayers: [],
   };
 }

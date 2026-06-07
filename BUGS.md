@@ -173,7 +173,7 @@ CSS Grid 中 `.discard-east`（自家）放在了 column 3（右边），`.disca
 
 ## BUG-011: 立直宣言时可以选择任何牌 (已修复)
 
-**状态**: ✅ 已修复 (commit `TBD`)
+**状态**: ✅ 已修复 (commit `abb6a83`)
 **发现**: 2025-06-07
 
 ### 现象
@@ -189,7 +189,7 @@ CSS Grid 中 `.discard-east`（自家）放在了 column 3（右边），`.disca
 
 ## BUG-012: 新游戏后手里13张牌无法操作 (已修复)
 
-**状态**: ✅ 已修复 (commit `TBD`)
+**状态**: ✅ 已修复 (commit `57cc692`)
 **发现**: 2025-06-07
 
 ### 现象
@@ -225,12 +225,164 @@ CSS Grid 中 `.discard-east`（自家）放在了 column 3（右边），`.disca
 - `.player-bar`: gap 12→8, margin-bottom 4→1
 - `.tenpai-hint`: 压缩 padding 和 margin
 
+---
+
+## BUG-014: executeWin 立直棒重复加算 (已修复)
+
+**状态**: ✅ 已修复
+**发现**: 2025-06-07
 
 ### 现象
-上家（北）和下家（东/自家）手牌区占用了过多垂直空间，挤压了左右家（西/南）手牌区的高度。
+和牌结算时，立直棒点数被加了两次到赢家身上。
 
 ### 根因
-对手手牌区（上）和自家手牌区（下）使用了固定的 padding 和高度，左右手牌区只能使用中间剩余的空间。
+`gameEngine.ts` `executeWin()` 中两次添加立直棒：
+```javascript
+// 第一次 (line 358)
+players[playerWind].score += state.riichiSticks * 1000;
+// ...
+// 第二次 (line 362) — 重复！
+players[playerWind].score += state.riichiSticks * 1000;
+```
+且 `scoring.ts` `calculateScore()` 中 `winnerGets` 已经包含了 `riichiBonus`，`executeWin` 不应再手动加算。
 
 ### 修复
-减少上家和下家手牌区的padding和间距，让中间区域有更多垂直空间给左右家。
+删除 `executeWin` 中重复的立直棒加算（line 362），保留 `calculateScore`/`calculatePayouts` 统一处理。
+
+---
+
+## BUG-015: 立直棒从未收集 (已修复)
+
+**状态**: ✅ 已修复
+**发现**: 2025-06-08
+
+### 现象
+立直宣言时 `riichiSticks` 没有 +1，玩家分数也没有 -1000。和牌时赢家收不到立直棒，总分漂移（非 100000）。
+
+### 修复
+- 人类立直 (`humanDiscard` riichiMode) 和 AI 立直 (game loop DISCARDING) 两处加 `riichiSticks++` 和 `score -= 1000`
+- `executeWin` 不再对 riichi 玩家二次扣分（已扣过），只让赢家收回 `riichiSticks × 1000`
+
+---
+
+## BUG-016: 自摸按钮在立直后消失 (已修复)
+
+**状态**: ✅ 已修复
+
+### 现象
+立直玩家摸到和了牌，没有自摸按钮，直接自摸切。
+
+### 根因
+`drawTile` 把旧 `state.drawnTile`（上一巡的牌）传给 `getDrawActions` 做和了判定。`checkWin` 收到错误的 winningTile → 判定失败 → `canTsumo=false` → phase 进入 DISCARDING → 自动自摸切。
+
+### 修复
+`getDrawActions` 加 `drawnTile` 参数，`drawTile` 传入本地新摸的牌。
+
+---
+
+## BUG-017: 国士无双含中张牌误判听牌 (已修复)
+
+**状态**: ✅ 已修复
+
+### 现象
+手牌 19m19p1679s 东南西北白发中，系统提示打 6s/7s 可听牌。但 6s 是中张，不是幺九。
+
+### 根因
+`checkTenpaiKokushi` 只数「有多少种幺九」，没验证「所有牌都是幺九」。
+
+### 修复
+加 `hand.every(t => isTerminalHonor(t))` 校验。
+
+---
+
+## BUG-018: 平和误判单骑听牌 (已修复)
+
+**状态**: ✅ 已修复
+
+### 现象
+手牌 345m3459p345789s 别人打 9p 点炮，系统算平胡。但听牌形是单骑（等 9p 成雀头），不满足平和的两面听牌条件。
+
+### 根因
+`checkPinfuShape` 只检查「全顺子+非役牌雀头」，没检查听牌形是否为两面。
+
+### 修复
+加 `isRyanmenWait` 函数，坎张/边张/单骑均不算平和。
+
+---
+
+## BUG-019: 二杯口只算 2 翻 (已修复)
+
+**状态**: ✅ 已修复
+
+### 现象
+手牌 112233m112233p55s，七对子 2 翻和二杯口+门清自摸 4 翻都成立，系统只取了七对子 2 翻。
+
+### 根因
+`checkWin` 检测到七对子就立即 `return`，不再检查标准形（可能翻数更高）。
+
+### 修复
+七对子结果与标准形结果比较，取高分。
+
+---
+
+## BUG-020: 七对子不叠加混一色/混老头 (已修复)
+
+**状态**: ✅ 已修复
+
+### 现象
+七对子和牌时，即使手牌满足混一色/混老头/清一色/断幺，也只显示七对子 2 翻。
+
+### 修复
+七对子检测后追加混一色(3翻)、清一色(6翻)、混老头(2翻)、断幺(1翻)判定。
+
+---
+
+## BUG-021: 役满显示 13翻20符 + 低阶役 (已修复)
+
+**状态**: ✅ 已修复
+
+### 现象
+役满和牌时显示「13翻20符」和所有低阶役（对对和、三暗刻等）。
+
+### 修复
+- `evaluateHand` 役满结果只保留役满役种（`yaku.filter(y => y.isYakuman)`），fu=0
+- `GameOverModal` 役满时只显示「役满」不显示翻符数
+
+---
+
+## BUG-022: 换牌时手牌未放回牌山 (已修复)
+
+**状态**: ✅ 已修复
+
+### 现象
+换 2s 换 2s，牌山 2s 剩余-1；换 2s 换 3s，3s 剩余-1 但 2s 剩余没 +1。
+
+### 根因
+`executeSwap` 从手牌取出旧牌后，没有 `newWall.push(oldTile)` 放回牌山。
+
+### 修复
+加 `newWall.push(oldTile)`。
+
+---
+
+## BUG-023: 流局罚符 1500→3000 (已修复)
+
+**状态**: ✅ 已修复
+
+### 根因
+`executeDraw` 总罚符池用 1500 而非标准 3000。
+
+### 修复
+公式改为 `ceil(3000 / max(不聴人数, 聴牌人数) / 100) × 100`，按索引循环配对。
+
+---
+
+## BUG-024: 本场费未计入支付 (已修复)
+
+**状态**: ✅ 已修复
+
+### 根因
+`calculatePayouts` 的 ron/tsumo 金额不含本场费.
+
+### 修复
+`ronPayment` = 基础分 + 本场×300，自摸每家 + 本场×100。

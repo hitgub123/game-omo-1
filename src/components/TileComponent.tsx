@@ -15,6 +15,8 @@ interface TileProps {
   dimmed?: boolean;
   isNewlyDrawn?: boolean;
   isDora?: boolean;
+  isCalled?: boolean;
+  className?: string;
 }
 
 function getTileClass(tile: Tile): string {
@@ -43,13 +45,13 @@ const TileBack: React.FC<{ small?: boolean }> = ({ small }) => (
 
 const TileComponent: React.FC<TileProps> = ({
   tile, selected, onClick, onDoubleClick, onContextMenu, small, faceDown,
-  isRiichi, highlighted, dimmed, isNewlyDrawn, isDora,
+  isRiichi, highlighted, dimmed, isNewlyDrawn, isDora, isCalled, className,
 }) => {
   if (faceDown) return <TileBack small={small} />;
 
   const displayName = tileDisplayName(tile);
 
-  const className = [
+  const tileClassNames = [
     getTileClass(tile),
     small ? 'tile-small' : '',
     selected ? 'tile-selected' : '',
@@ -58,10 +60,12 @@ const TileComponent: React.FC<TileProps> = ({
     isRiichi ? 'tile-riichi' : '',
     isNewlyDrawn ? 'tile-newly-drawn' : '',
     isDora ? 'tile-dora-indicator' : '',
+    isCalled ? 'tile-called' : '',
+    className || '',
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={className} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} title={displayName}>
+    <div className={tileClassNames} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} title={displayName}>
       <div className="tile-inner">
         {tile.suit === 'z' ? (
           <>

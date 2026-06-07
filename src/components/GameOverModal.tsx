@@ -53,7 +53,11 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ state, onNewGame, onNextH
             </div>
             <div className="win-details">
               <span>和牌：{tileDisplayName(wr.winningTile)}</span>
-              <span>{getManganName(wr.totalHan, wr.fu)} ({wr.totalHan}翻{wr.fu}符)</span>
+              {wr.totalHan >= 13 ? (
+                <span>役满</span>
+              ) : (
+                <span>{getManganName(wr.totalHan, wr.fu)} ({wr.totalHan}翻{wr.fu}符)</span>
+              )}
               <span className="win-points">{wr.winnerGets.toLocaleString()}点</span>
             </div>
             <div className="yaku-list">
@@ -65,6 +69,26 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ state, onNewGame, onNextH
             </div>
           </div>
         ))}
+
+        <div className="score-summary">
+          <h3>分数变动</h3>
+          {result.payments && result.payments.length > 0 ? (
+            result.payments.map((p, i) => (
+              <div key={i} className="payment-row">
+                <span style={{ color: (p.from as number) === -1 ? '#888' : TOUHOU_CHARACTERS[p.from as Wind]?.color }}>
+                  {(p.from as number) === -1 ? '供託' : TOUHOU_CHARACTERS[p.from as Wind]?.name || '?'}
+                </span>
+                <span className="payment-arrow">→</span>
+                <span style={{ color: TOUHOU_CHARACTERS[p.to as Wind].color }}>
+                  {TOUHOU_CHARACTERS[p.to as Wind].name}
+                </span>
+                <span className="payment-amount">{p.amount.toLocaleString()}点</span>
+              </div>
+            ))
+          ) : (
+            <div className="payment-row"><span>无分数变动</span></div>
+          )}
+        </div>
 
         <div className="score-summary">
           <h3>当前分数</h3>

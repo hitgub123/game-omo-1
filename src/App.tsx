@@ -7,7 +7,7 @@ const App: React.FC = () => {
   const {
     state, humanDiscard, humanAction, newGame, nextHand,
     selectedTileId, setSelectedTileId, messages, isAiThinking,
-    swapMode, enterSwapMode, executeSwap,
+    swapMode, enterSwapMode, executeSwap, cancelSwap,
   } = useGame();
 
   const handleTileClick = React.useCallback((tileId: number) => {
@@ -34,8 +34,22 @@ const App: React.FC = () => {
     enterSwapMode(tileId);
   }, [state, enterSwapMode]);
 
+  // 全局右键/点击取消换牌模式
+  const handleContainerContextMenu = React.useCallback((e: React.MouseEvent) => {
+    if (swapMode) {
+      e.preventDefault();
+      cancelSwap();
+    }
+  }, [swapMode, cancelSwap]);
+
+  const handleContainerClick = React.useCallback(() => {
+    if (swapMode) {
+      cancelSwap();
+    }
+  }, [swapMode, cancelSwap]);
+
   return (
-    <div className="app-container">
+    <div className="app-container" onContextMenu={handleContainerContextMenu} onClick={handleContainerClick}>
       <div className="app-header">
         <h1 className="app-title">东方幻想麻雀</h1>
         <div className="app-subtitle">Touhou Gensou Mahjong</div>

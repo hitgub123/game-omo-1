@@ -14,6 +14,7 @@ interface TileProps {
   highlighted?: boolean;
   dimmed?: boolean;
   isNewlyDrawn?: boolean;
+  isDora?: boolean;
 }
 
 function getTileClass(tile: Tile): string {
@@ -41,7 +42,8 @@ const TileBack: React.FC<{ small?: boolean }> = ({ small }) => (
 );
 
 const TileComponent: React.FC<TileProps> = ({
-  tile, selected, onClick, onDoubleClick, onContextMenu, small, faceDown, isRiichi, highlighted, dimmed, isNewlyDrawn,
+  tile, selected, onClick, onDoubleClick, onContextMenu, small, faceDown,
+  isRiichi, highlighted, dimmed, isNewlyDrawn, isDora,
 }) => {
   if (faceDown) return <TileBack small={small} />;
 
@@ -55,6 +57,7 @@ const TileComponent: React.FC<TileProps> = ({
     dimmed ? 'tile-dimmed' : '',
     isRiichi ? 'tile-riichi' : '',
     isNewlyDrawn ? 'tile-newly-drawn' : '',
+    isDora ? 'tile-dora-indicator' : '',
   ].filter(Boolean).join(' ');
 
   return (

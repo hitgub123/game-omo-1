@@ -140,7 +140,11 @@ export function useGame(): GameController {
                 setState(prev2 => discardTile(prev2, tile.id));
               }
             }
+          } else if (cp.isRiichi && current.drawnTile) {
+            // 立直后的自摸切（tsumogiri）
+            setState(prev2 => discardTile(prev2, current.drawnTile!.id));
           }
+          // 非立直人类等待双击出牌
           setIsAiThinking(false); return;
         }
 

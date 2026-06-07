@@ -78,7 +78,7 @@ const WallPulldown: React.FC<WallPulldownProps> = ({ state, swapMode, onSelectTi
             const remaining = 4 - visible;
             if (remaining === 4) return null; // 一张未见的折叠
             const name = tileDisplayName({ id: -1, suit: k[0] as TileSuit, value: parseInt(k[1]) });
-            const suitClass = k[0] === 'z' ? 'honor' : `suit-${k[0]}`;
+            const suitClass = k[0] === 'z' ? 'row-honor' : `row-suit-${k[0]}`;
             const clickable = swapMode && remaining > 0;
             return (
               <div key={k} className={`wall-pulldown-row ${suitClass} ${clickable ? 'clickable' : ''}`}

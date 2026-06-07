@@ -170,7 +170,7 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
             onClick={canAct ? () => onTileClick(tile.id) : undefined}
             onDoubleClick={canAct ? () => onTileDoubleClick(tile.id) : undefined}
             onContextMenu={canAct ? (e) => onTileContextMenu(tile.id, e) : undefined}
-            isRiichi={player.isRiichi} />
+          />
         ))}
       </div>
 
@@ -217,7 +217,7 @@ const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
                 const dora = getDoraFromIndicator(tile);
                 return (
                   <div key={i} className="dora-pair">
-                    <TileComponent tile={tile} small />
+                    <TileComponent tile={tile} small isDora />
                     <span className="dora-arrow">→</span>
                     <span className="dora-tile-name">{tileDisplayName({...tile, id: -1, suit: dora.suit, value: dora.value})}</span>
                   </div>

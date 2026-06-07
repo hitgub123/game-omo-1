@@ -223,6 +223,10 @@ body {
 .wall-pulldown-row.suit-p .wall-tile-name { color: var(--pin-color); }
 .wall-pulldown-row.suit-s .wall-tile-name { color: var(--sou-color); }
 .wall-pulldown-row.honor .wall-tile-name { color: var(--honor-gold); }
+.wall-pulldown-row.row-honor .wall-tile-name { color: var(--honor-gold); }
+.wall-pulldown-row.row-suit-m .wall-tile-name { color: var(--man-color); }
+.wall-pulldown-row.row-suit-p .wall-tile-name { color: var(--pin-color); }
+.wall-pulldown-row.row-suit-s .wall-tile-name { color: var(--sou-color); }
 
 .wall-pulldown-row.clickable {
   cursor: pointer;
@@ -307,12 +311,13 @@ body {
 /* ---- 对手信息 ---- */
 .player-info {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
   padding: 2px 8px;
   border-left: 3px solid;
   border-radius: 2px;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .player-name {
@@ -370,11 +375,11 @@ body {
   min-height: 0;
 }
 
-/* 对家(北) - 上中 | 左家(西) - 左中 | 右家(东) - 右中 | 下家(南) - 下中 */
+/* 对家(北) - 上中 | 左家(西) - 左中 | 右家(南) - 右中 | 自家(东) - 下中 */
 .discard-north { grid-column: 2; grid-row: 1; text-align: center; }
 .discard-west  { grid-column: 1; grid-row: 2; }
-.discard-east  { grid-column: 3; grid-row: 2; }
-.discard-south { grid-column: 2; grid-row: 3; text-align: center; }
+.discard-south { grid-column: 3; grid-row: 2; }
+.discard-east  { grid-column: 2; grid-row: 3; text-align: center; }
 .wall-info     { grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-content: center; gap: 8px; }
 
 .discard-column {
@@ -755,6 +760,12 @@ body {
 @keyframes newly-drawn-glow {
   0%, 100% { box-shadow: 0 0 0 2px #ffd54f, 0 0 12px rgba(255, 213, 79, 0.4); }
   50% { box-shadow: 0 0 0 3px #ffd54f, 0 0 20px rgba(255, 213, 79, 0.7); }
+}
+
+/* 宝牌红色边框 */
+.tile-dora-indicator {
+  box-shadow: 0 0 0 2px #ef5350, 0 0 8px rgba(239, 83, 80, 0.4);
+  z-index: 1;
 }
 
 /* 牌背面 */

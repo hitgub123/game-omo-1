@@ -265,10 +265,10 @@ body {
 .opponent-horizontal {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
+  gap: 4px;
+  padding: 2px 6px;
   background: rgba(0,0,0,0.3);
-  border-radius: 8px;
+  border-radius: 6px;
   flex-shrink: 0;
 }
 
@@ -444,7 +444,7 @@ body {
 .player-section {
   background: rgba(0,0,0,0.4);
   border-radius: 8px;
-  padding: 6px 8px;
+  padding: 3px 6px;
   flex-shrink: 0;
   transition: box-shadow 0.3s;
 }
@@ -484,12 +484,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 4px 8px;
+  gap: 2px;
+  padding: 1px 6px;
   background: rgba(233, 30, 99, 0.15);
   border: 1px solid rgba(233, 30, 99, 0.3);
-  border-radius: 6px;
-  margin: 2px 0;
+  border-radius: 4px;
+  margin: 1px 0;
 }
 
 .tenpai-label {
@@ -537,15 +537,15 @@ body {
 .player-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 4px;
+  gap: 8px;
+  margin-bottom: 1px;
 }
 
 .player-hand {
   display: flex;
   justify-content: center;
-  gap: 2px;
-  padding: 4px 0;
+  gap: 1px;
+  padding: 2px 0;
   min-height: var(--tile-height);
   position: relative;
 }

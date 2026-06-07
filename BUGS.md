@@ -205,8 +205,26 @@ CSS Grid 中 `.discard-east`（自家）放在了 column 3（右边），`.disca
 
 ## BUG-013: 上下家手牌区垂直空间不足 (已修复)
 
-**状态**: ✅ 已修复 (commit `TBD`)
+**状态**: ✅ 已修复
 **发现**: 2025-06-07
+
+### 现象
+上家（北）和下家（东/自家）手牌区占用了过多垂直空间，挤压了左右家（西/南）手牌区的高度。
+
+用户描述：牌桌=10宽×6高，当前上下家=宽10高1(各占1单位)，左右家=宽2高4。
+期望：上下家宽度略减少(宽8高1)，左右家获得更多垂直空间(宽1高6)。
+
+### 根因
+对手手牌区（上）和自家手牌区（下）使用了较大的 padding、gap 和 tile 间距，占用了过多垂直空间，导致 `table-middle` (包含左右家) 可用的高度不足。
+
+### 修复
+压缩上下家手牌区的垂直空间：
+- `.opponent-horizontal`: padding 4px8px→2px6px, gap 8→4
+- `.player-section`: padding 6px8px→3px6px
+- `.player-hand`: gap 2→1, padding 4px0→2px0
+- `.player-bar`: gap 12→8, margin-bottom 4→1
+- `.tenpai-hint`: 压缩 padding 和 margin
+
 
 ### 现象
 上家（北）和下家（东/自家）手牌区占用了过多垂直空间，挤压了左右家（西/南）手牌区的高度。

@@ -3,7 +3,8 @@ import type { Tile, GameState } from '../game/types';
 import { MeldType, GamePhase, TileSuit, Wind, WINDS } from '../game/types';
 import { createInitialState, drawTile, discardTile, executeMeld, executeWin, nextTurn, createNextHand } from '../game/gameEngine';
 import { aiChooseDiscard, aiChooseAction, aiDecideRiichi } from '../game/ai';
-import { sameTile } from '../game/tiles';
+import { sameTile, sortHand } from '../game/tiles';
+import { findTenpaiDiscards } from '../game/hand';
 
 export interface GameController {
   state: GameState;
@@ -313,6 +314,7 @@ export function useGame(): GameController {
         if (s.actionsAvailable[humanWind]?.canRiichi) {
           setState(prev => ({
             ...prev,
+            phase: GamePhase.DISCARDING,
             players: prev.players.map((p, i) =>
               i === prev.currentPlayer ? { ...p, isRiichi: true } : p
             ),
@@ -399,18 +401,27 @@ export function useGame(): GameController {
 
       const newWall = [...prev.wall];
       const newTile = newWall.splice(wallIdx, 1)[0];
+      const sortedHand = sortHand([...newHand, newTile]);
 
       const newPlayers = prev.players.map(p => ({ ...p, hand: [...p.hand] }));
-      newPlayers[Wind.EAST].hand = [...newHand, newTile].sort((a, b) => {
-        const order: TileSuit[] = ['m', 'p', 's', 'z'];
-        const sa = order.indexOf(a.suit), sb = order.indexOf(b.suit);
-        if (sa !== sb) return sa - sb;
-        if (a.value !== b.value) return a.value - b.value;
-        return a.id - b.id;
-      });
+      newPlayers[Wind.EAST].hand = sortedHand;
+
+      // 换牌后检查能否立直
+      const tenpaiCheck = findTenpaiDiscards(sortedHand, []);
+      const newActions = prev.actionsAvailable.map(a => ({ ...a }));
+      newActions[Wind.EAST] = {
+        ...newActions[Wind.EAST],
+        canRiichi: tenpaiCheck.size > 0,
+      };
 
       addMessage('🔄 换牌完成');
-      return { ...prev, wall: newWall, players: newPlayers };
+      return {
+        ...prev,
+        wall: newWall,
+        players: newPlayers,
+        actionsAvailable: newActions,
+        phase: GamePhase.DISCARDING,
+      };
     });
     setSwapMode(false);
     setSwapSourceTileId(null);

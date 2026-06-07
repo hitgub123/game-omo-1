@@ -29,10 +29,12 @@ const App: React.FC = () => {
 
   const handleContextMenu = React.useCallback((tileId: number, e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const cp = state.players[state.currentPlayer];
     if (!cp?.isHuman) return;
+    setSelectedTileId(tileId); // 先选中
     enterSwapMode(tileId);
-  }, [state, enterSwapMode]);
+  }, [state, enterSwapMode, setSelectedTileId]);
 
   // 全局右键/点击取消换牌模式
   const handleContainerContextMenu = React.useCallback((e: React.MouseEvent) => {

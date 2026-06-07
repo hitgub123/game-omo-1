@@ -286,8 +286,9 @@ body {
 }
 
 .side-player {
-  width: 120px;
-  flex-shrink: 0;
+  min-width: 160px;
+  width: auto;
+  flex: 1 1 160px;
 }
 
 .opponent-vertical {

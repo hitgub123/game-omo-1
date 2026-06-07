@@ -4,7 +4,35 @@ import GameTable from './components/GameTable';
 import './styles/global.css';
 
 const App: React.FC = () => {
-  const { state, humanDiscard, humanAction, newGame, nextHand, messages, isAiThinking } = useGame();
+  const {
+    state, humanDiscard, humanAction, newGame, nextHand,
+    selectedTileId, setSelectedTileId, messages, isAiThinking,
+    swapMode, enterSwapMode, executeSwap,
+  } = useGame();
+
+  const handleTileClick = React.useCallback((tileId: number) => {
+    const cp = state.players[state.currentPlayer];
+    if (!cp?.isHuman) return;
+    if (state.phase !== 'discarding' && state.phase !== 'action_prompt') return;
+    if (swapMode) return; // 交换模式不处理点击选择
+    setSelectedTileId(tileId);
+  }, [state, setSelectedTileId, swapMode]);
+
+  const handleTileDoubleClick = React.useCallback((tileId: number) => {
+    const cp = state.players[state.currentPlayer];
+    if (!cp?.isHuman) return;
+    if (state.phase !== 'discarding' && state.phase !== 'action_prompt') return;
+    if (swapMode) return;
+    humanDiscard(tileId);
+    setSelectedTileId(null);
+  }, [state, humanDiscard, setSelectedTileId, swapMode]);
+
+  const handleContextMenu = React.useCallback((tileId: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    const cp = state.players[state.currentPlayer];
+    if (!cp?.isHuman) return;
+    enterSwapMode(tileId);
+  }, [state, enterSwapMode]);
 
   return (
     <div className="app-container">
@@ -15,11 +43,15 @@ const App: React.FC = () => {
 
       <GameTable
         state={state}
-        selectedTileId={null}
-        onTileClick={humanDiscard}
+        selectedTileId={selectedTileId}
+        onTileClick={handleTileClick}
+        onTileDoubleClick={handleTileDoubleClick}
+        onTileContextMenu={handleContextMenu}
         onAction={humanAction}
         onNewGame={newGame}
         onNextHand={nextHand}
+        swapMode={swapMode}
+        onSwapTile={executeSwap}
       />
 
       <div className="status-bar">

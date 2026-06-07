@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Tile, GameState } from '../game/types';
-import { MeldType, GamePhase, WINDS } from '../game/types';
+import { MeldType, GamePhase, TileSuit, Wind, WINDS } from '../game/types';
 import { createInitialState, drawTile, discardTile, executeMeld, executeWin, nextTurn, createNextHand } from '../game/gameEngine';
 import { aiChooseDiscard, aiChooseAction, aiDecideRiichi } from '../game/ai';
 import { sameTile } from '../game/tiles';
@@ -16,6 +16,11 @@ export interface GameController {
   messages: string[];
   isAiThinking: boolean;
   debugInfo: string;
+  swapMode: boolean;
+  swapSourceTileId: number | null;
+  enterSwapMode: (tileId: number) => void;
+  executeSwap: (wallTileKey: string) => void;
+  cancelSwap: () => void;
 }
 
 // 空动作（用于清除）
@@ -34,6 +39,8 @@ export function useGame(): GameController {
   ]);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [debugInfo, setDebugInfo] = useState('');
+  const [swapMode, setSwapMode] = useState(false);
+  const [swapSourceTileId, setSwapSourceTileId] = useState<number | null>(null);
   const stateRef = useRef(state);
   const aiTimerRef = useRef<number | null>(null);
   stateRef.current = state;
@@ -313,16 +320,30 @@ export function useGame(): GameController {
       // ---- 过牌（关键修复：使用函数式更新，从最新状态计算humanWind）----
       case 'pass':
         if (s.lastDiscard) {
-          // 清除人类的所有响应动作，让游戏循环处理AI响应
-          setState(prev => {
-            const hWind = WINDS.find(w => prev.players[w].isHuman) ?? 0;
-            return {
-              ...prev,
-              actionsAvailable: prev.actionsAvailable.map((a, i) =>
-                i === hWind ? { ...EMPTY_ACTIONS } : a
-              ),
-            };
-          });
+          // 检查是否有AI能响应
+          const aiCanAct = WINDS.some(w => 
+            w !== s.currentPlayer && !s.players[w].isHuman &&
+            !!s.actionsAvailable[w] && (
+              s.actionsAvailable[w]!.canRon || 
+              s.actionsAvailable[w]!.canPon ||
+              s.actionsAvailable[w]!.canChi
+            )
+          );
+          if (!aiCanAct) {
+            // 无人可响应，直接进入下一家摸牌
+            setState(prev => nextTurn(prev));
+          } else {
+            // 有AI能响应，清除人类动作让游戏循环处理
+            setState(prev => {
+              const hWind = WINDS.find(w => prev.players[w].isHuman) ?? 0;
+              return {
+                ...prev,
+                actionsAvailable: prev.actionsAvailable.map((a, i) =>
+                  i === hWind ? { ...EMPTY_ACTIONS } : a
+                ),
+              };
+            });
+          }
         } else {
           setState(prev => nextTurn(prev));
         }
@@ -334,6 +355,8 @@ export function useGame(): GameController {
     if (aiTimerRef.current !== null) window.clearTimeout(aiTimerRef.current);
     setState(createInitialState());
     setSelectedTileId(null);
+    setSwapMode(false);
+    setSwapSourceTileId(null);
     setMessages(['🎴 东方幻想麻雀 - 新游戏开始！', '摸牌中...']);
   }, []);
 
@@ -341,8 +364,53 @@ export function useGame(): GameController {
     if (aiTimerRef.current !== null) window.clearTimeout(aiTimerRef.current);
     setState(prev => createNextHand(prev));
     setSelectedTileId(null);
+    setSwapMode(false);
+    setSwapSourceTileId(null);
     setMessages(prev => [...prev.slice(-5), '🔄 下一局...', '摸牌中...']);
   }, []);
+
+  // ---- 换牌功能（右键菜单） ----
+  const enterSwapMode = useCallback((tileId: number) => {
+    setSwapMode(true);
+    setSwapSourceTileId(tileId);
+    addMessage('请从牌山选择一张牌来交换');
+  }, [addMessage]);
+
+  const cancelSwap = useCallback(() => {
+    setSwapMode(false);
+    setSwapSourceTileId(null);
+  }, []);
+
+  const executeSwap = useCallback((wallTileKey: string) => {
+    setState(prev => {
+      if (swapSourceTileId === null) return prev;
+      const suit = wallTileKey[0] as TileSuit;
+      const value = parseInt(wallTileKey[1]);
+
+      const wallIdx = prev.wall.findIndex(t => t.suit === suit && t.value === value);
+      if (wallIdx === -1) return prev;
+
+      const newHand = prev.players[Wind.EAST].hand.filter(t => t.id !== swapSourceTileId);
+      if (newHand.length === prev.players[Wind.EAST].hand.length) return prev;
+
+      const newWall = [...prev.wall];
+      const newTile = newWall.splice(wallIdx, 1)[0];
+
+      const newPlayers = prev.players.map(p => ({ ...p, hand: [...p.hand] }));
+      newPlayers[Wind.EAST].hand = [...newHand, newTile].sort((a, b) => {
+        const order: TileSuit[] = ['m', 'p', 's', 'z'];
+        const sa = order.indexOf(a.suit), sb = order.indexOf(b.suit);
+        if (sa !== sb) return sa - sb;
+        if (a.value !== b.value) return a.value - b.value;
+        return a.id - b.id;
+      });
+
+      addMessage('🔄 换牌完成');
+      return { ...prev, wall: newWall, players: newPlayers };
+    });
+    setSwapMode(false);
+    setSwapSourceTileId(null);
+  }, [swapSourceTileId, addMessage]);
 
   return {
     state,
@@ -355,5 +423,10 @@ export function useGame(): GameController {
     messages,
     isAiThinking,
     debugInfo,
+    swapMode,
+    swapSourceTileId,
+    enterSwapMode,
+    executeSwap,
+    cancelSwap,
   };
 }

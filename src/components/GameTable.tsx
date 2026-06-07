@@ -6,21 +6,26 @@ import { checkTenpai } from '../game/hand';
 import TileComponent from './TileComponent';
 import ActionPanel from './ActionPanel';
 import GameOverModal from './GameOverModal';
+import WallPulldown from './WallPulldown';
 
 interface GameTableProps {
   state: GameState;
   selectedTileId: number | null;
   onTileClick: (tileId: number) => void;
+  onTileDoubleClick: (tileId: number) => void;
+  onTileContextMenu: (tileId: number, e: React.MouseEvent) => void;
   onAction: (action: string) => void;
   onNewGame: () => void;
   onNextHand: () => void;
+  swapMode: boolean;
+  onSwapTile: (tileKey: string) => void;
 }
 
 function fmtScore(score: number): string {
   return score < 0 ? `−${Math.abs(score).toLocaleString()}` : score.toLocaleString();
 }
 
-const GameTable: React.FC<GameTableProps> = ({ state, onTileClick, onAction, onNewGame, onNextHand }) => {
+const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile }) => {
   return (
     <div className="game-table">
       <div className="table-header">
@@ -29,8 +34,13 @@ const GameTable: React.FC<GameTableProps> = ({ state, onTileClick, onAction, onN
           <span className="honba-info">本场 {state.honba}</span>
           {state.riichiSticks > 0 && <span className="riichi-sticks">立直棒 x{state.riichiSticks}</span>}
         </div>
-        <button className="btn-new-game" onClick={onNewGame}>新游戏</button>
+        <div className="header-actions">
+          <WallPulldown state={state} swapMode={swapMode} onSelectTile={onSwapTile} />
+          <button className="btn-new-game" onClick={onNewGame}>新游戏</button>
+        </div>
       </div>
+
+      {swapMode && <div className="swap-banner">🔄 点击牌山中要交换的牌，或右键取消</div>}
 
       <div className="table-area">
         <OpponentSection state={state} wind={Wind.NORTH} />
@@ -43,7 +53,9 @@ const GameTable: React.FC<GameTableProps> = ({ state, onTileClick, onAction, onN
             <OpponentSection state={state} wind={Wind.SOUTH} vertical />
           </div>
         </div>
-        <PlayerSection state={state} playerWind={Wind.EAST} onTileClick={onTileClick} />
+        <PlayerSection state={state} playerWind={Wind.EAST} selectedTileId={selectedTileId}
+          onTileClick={onTileClick} onTileDoubleClick={onTileDoubleClick}
+          onTileContextMenu={onTileContextMenu} />
       </div>
 
       <ActionPanel state={state} onAction={onAction} />
@@ -55,7 +67,7 @@ const GameTable: React.FC<GameTableProps> = ({ state, onTileClick, onAction, onN
   );
 };
 
-// ---- Opponent ----
+// ---- Opponent (no discard river) ----
 interface OpponentProps {
   state: GameState;
   wind: Wind;
@@ -95,44 +107,35 @@ const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical }) => 
           ))}
         </div>
       )}
-
-      <div className="discard-river">
-        {player.discards.map((tile, i) => (
-          <TileComponent key={`d${i}`} tile={tile} small dimmed
-            isRiichi={player.isRiichi && player.riichiDiscardIndex === i} />
-        ))}
-      </div>
     </div>
   );
 };
 
-// ---- Human Player ----
+// ---- Human Player (click=select, double-click=discard) ----
 interface PlayerSectionProps {
   state: GameState;
   playerWind: Wind;
+  selectedTileId: number | null;
   onTileClick: (tileId: number) => void;
+  onTileDoubleClick: (tileId: number) => void;
+  onTileContextMenu: (tileId: number, e: React.MouseEvent) => void;
 }
 
-const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, onTileClick }) => {
+const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu }) => {
   const player = state.players[playerWind];
   const ch = TOUHOU_CHARACTERS[playerWind];
-  const canAct = state.phase === GamePhase.DISCARDING || state.phase === GamePhase.ACTION_PROMPT;
   const isActive = state.currentPlayer === playerWind && state.phase !== GamePhase.HAND_OVER;
+  const canAct = state.phase === GamePhase.DISCARDING || state.phase === GamePhase.ACTION_PROMPT;
 
-  // 计算听牌提示
   const tenpai = React.useMemo(() => {
-    if (player.hand.length === 14) {
-      // 刚摸牌，检查14张牌是否为和牌
-      return null;
-    }
-    // 13张时检查听牌
     if (player.hand.length === 13 && player.melds.length <= 4 && !player.isRiichi) {
-      try {
-        return checkTenpai(player.hand, player.melds);
-      } catch { return null; }
+      try { return checkTenpai(player.hand, player.melds); } catch { return null; }
     }
     return null;
   }, [player.hand, player.melds, player.isRiichi]);
+
+  // 新摸的牌ID
+  const drawnTileId = state.drawnTile?.id;
 
   return (
     <div className={`player-section ${isActive ? 'player-active' : ''}`}>
@@ -162,12 +165,15 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, onTile
       <div className="hand-tiles player-hand">
         {player.hand.map(tile => (
           <TileComponent key={tile.id} tile={tile}
+            selected={selectedTileId === tile.id}
+            isNewlyDrawn={drawnTileId === tile.id}
             onClick={canAct ? () => onTileClick(tile.id) : undefined}
+            onDoubleClick={canAct ? () => onTileDoubleClick(tile.id) : undefined}
+            onContextMenu={canAct ? (e) => onTileContextMenu(tile.id, e) : undefined}
             isRiichi={player.isRiichi} />
         ))}
       </div>
 
-      {/* 听牌提示 */}
       {tenpai && tenpai.waitTiles.length > 0 && !player.isRiichi && (
         <div className="tenpai-hint">
           <span className="tenpai-label">听牌：</span>
@@ -177,18 +183,11 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, onTile
           <span className="tenpai-count">共{tenpai.waitTiles.length}种</span>
         </div>
       )}
-
-      <div className="discard-river player-river">
-        {player.discards.map((tile, i) => (
-          <TileComponent key={`d${i}`} tile={tile} small dimmed
-            isRiichi={player.isRiichi && player.riichiDiscardIndex === i} />
-        ))}
-      </div>
     </div>
   );
 };
 
-// ---- Discard Area ----
+// ---- Discard Area (center, all players) ----
 const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
   return (
     <div className="discard-area">
@@ -213,7 +212,7 @@ const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
         <div className="dora-section">
           {state.doraIndicators.length > 0 && (
             <>
-              <span className="dora-label">宝牌指示牌</span>
+              <span className="dora-label">宝牌</span>
               {state.doraIndicators.map((tile, i) => {
                 const dora = getDoraFromIndicator(tile);
                 return (

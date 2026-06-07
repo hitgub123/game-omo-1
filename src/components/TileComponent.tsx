@@ -6,11 +6,14 @@ interface TileProps {
   tile: Tile;
   selected?: boolean;
   onClick?: () => void;
+  onDoubleClick?: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
   small?: boolean;
   faceDown?: boolean;
   isRiichi?: boolean;
   highlighted?: boolean;
   dimmed?: boolean;
+  isNewlyDrawn?: boolean;
 }
 
 function getTileClass(tile: Tile): string {
@@ -38,7 +41,7 @@ const TileBack: React.FC<{ small?: boolean }> = ({ small }) => (
 );
 
 const TileComponent: React.FC<TileProps> = ({
-  tile, selected, onClick, small, faceDown, isRiichi, highlighted, dimmed,
+  tile, selected, onClick, onDoubleClick, onContextMenu, small, faceDown, isRiichi, highlighted, dimmed, isNewlyDrawn,
 }) => {
   if (faceDown) return <TileBack small={small} />;
 
@@ -51,10 +54,11 @@ const TileComponent: React.FC<TileProps> = ({
     highlighted ? 'tile-highlighted' : '',
     dimmed ? 'tile-dimmed' : '',
     isRiichi ? 'tile-riichi' : '',
+    isNewlyDrawn ? 'tile-newly-drawn' : '',
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={className} onClick={onClick} title={displayName}>
+    <div className={className} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} title={displayName}>
       <div className="tile-inner">
         {tile.suit === 'z' ? (
           <>

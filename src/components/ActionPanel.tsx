@@ -5,9 +5,11 @@ import { GamePhase, WINDS } from '../game/types';
 interface ActionPanelProps {
   state: GameState;
   onAction: (action: string) => void;
+  riichiMode?: boolean;
+  onCancelRiichi?: () => void;
 }
 
-const ActionPanel: React.FC<ActionPanelProps> = ({ state, onAction }) => {
+const ActionPanel: React.FC<ActionPanelProps> = ({ state, onAction, riichiMode, onCancelRiichi }) => {
   if (state.phase === GamePhase.HAND_OVER || state.phase === GamePhase.GAME_OVER) return null;
 
   const humanWind = WINDS.find(w => state.players[w].isHuman);
@@ -15,15 +17,24 @@ const ActionPanel: React.FC<ActionPanelProps> = ({ state, onAction }) => {
 
   const humanPlayer = state.players[humanWind];
   const actions = state.actionsAvailable[humanWind];
+
+  // 立直模式：显示取消立直按钮 + 提示
+  if (riichiMode) {
+    return (
+      <div className="action-panel">
+        <span className="action-hint">⚡ 请双击高亮的牌来立直</span>
+        {onCancelRiichi && <button className="btn-action btn-pass" onClick={onCancelRiichi}>取消立直</button>}
+      </div>
+    );
+  }
+
   if (humanPlayer.isRiichi) return null;
 
   const isResponsePhase = state.lastDiscard !== undefined;
 
-  // 响应阶段：荣和/碰/吃/杠
   if (isResponsePhase && actions) {
     const hasResponse = actions.canRon || actions.canPon || actions.canChi || actions.canKan;
     if (!hasResponse) return null;
-
     return (
       <div className="action-panel">
         {actions.canRon && <button className="btn-action btn-ron" onClick={() => onAction('ron')}>荣和</button>}
@@ -35,7 +46,6 @@ const ActionPanel: React.FC<ActionPanelProps> = ({ state, onAction }) => {
     );
   }
 
-  // 摸牌后动作：自摸/立直/暗杠
   if (!isResponsePhase && actions) {
     const hasDrawActions = actions.canTsumo || actions.canRiichi || actions.canAnkan || actions.canKakan;
     if (hasDrawActions) {
@@ -50,7 +60,6 @@ const ActionPanel: React.FC<ActionPanelProps> = ({ state, onAction }) => {
     }
   }
 
-  // 人类回合打牌提示
   if (state.currentPlayer === humanWind && state.phase === GamePhase.DISCARDING) {
     return (
       <div className="action-panel">

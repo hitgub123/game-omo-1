@@ -19,13 +19,16 @@ interface GameTableProps {
   onNextHand: () => void;
   swapMode: boolean;
   onSwapTile: (tileKey: string) => void;
+  riichiMode: boolean;
+  riichiValidTileIds: Set<number>;
+  onCancelRiichi: () => void;
 }
 
 function fmtScore(score: number): string {
   return score < 0 ? `−${Math.abs(score).toLocaleString()}` : score.toLocaleString();
 }
 
-const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile }) => {
+const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi }) => {
   return (
     <div className="game-table">
       <div className="table-header">
@@ -55,10 +58,11 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
         </div>
         <PlayerSection state={state} playerWind={Wind.EAST} selectedTileId={selectedTileId}
           onTileClick={onTileClick} onTileDoubleClick={onTileDoubleClick}
-          onTileContextMenu={onTileContextMenu} />
+          onTileContextMenu={onTileContextMenu}
+          riichiMode={riichiMode} riichiValidTileIds={riichiValidTileIds} />
       </div>
 
-      <ActionPanel state={state} onAction={onAction} />
+      <ActionPanel state={state} onAction={onAction} riichiMode={riichiMode} onCancelRiichi={onCancelRiichi} />
 
       {state.phase === GamePhase.HAND_OVER && state.result && (
         <GameOverModal state={state} onNewGame={onNewGame} onNextHand={onNextHand} />
@@ -119,9 +123,11 @@ interface PlayerSectionProps {
   onTileClick: (tileId: number) => void;
   onTileDoubleClick: (tileId: number) => void;
   onTileContextMenu: (tileId: number, e: React.MouseEvent) => void;
+  riichiMode: boolean;
+  riichiValidTileIds: Set<number>;
 }
 
-const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu }) => {
+const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, riichiMode, riichiValidTileIds }) => {
   const player = state.players[playerWind];
   const ch = TOUHOU_CHARACTERS[playerWind];
   const isActive = state.currentPlayer === playerWind && state.phase !== GamePhase.HAND_OVER;
@@ -167,7 +173,9 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
           <TileComponent key={tile.id} tile={tile}
             selected={selectedTileId === tile.id}
             isNewlyDrawn={drawnTileId === tile.id}
-            onClick={canAct ? () => onTileClick(tile.id) : undefined}
+            highlighted={riichiMode && riichiValidTileIds.has(tile.id)}
+            dimmed={riichiMode && !riichiValidTileIds.has(tile.id)}
+            onClick={canAct && !riichiMode ? () => onTileClick(tile.id) : undefined}
             onDoubleClick={canAct ? () => onTileDoubleClick(tile.id) : undefined}
             onContextMenu={canAct ? (e) => onTileContextMenu(tile.id, e) : undefined}
           />

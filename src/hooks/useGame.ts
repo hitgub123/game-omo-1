@@ -22,6 +22,9 @@ export interface GameController {
   enterSwapMode: (tileId: number) => void;
   executeSwap: (wallTileKey: string) => void;
   cancelSwap: () => void;
+  riichiMode: boolean;
+  riichiValidTileIds: Set<number>;
+  cancelRiichi: () => void;
 }
 
 // 空动作（用于清除）
@@ -42,6 +45,8 @@ export function useGame(): GameController {
   const [debugInfo, setDebugInfo] = useState('');
   const [swapMode, setSwapMode] = useState(false);
   const [swapSourceTileId, setSwapSourceTileId] = useState<number | null>(null);
+  const [riichiMode, setRiichiMode] = useState(false);
+  const [riichiValidTileIds, setRiichiValidTileIds] = useState<Set<number>>(new Set());
   const stateRef = useRef(state);
   const aiTimerRef = useRef<number | null>(null);
   stateRef.current = state;
@@ -220,12 +225,36 @@ export function useGame(): GameController {
       console.warn('[DISCARD] Wrong phase', s.phase);
       return;
     }
+
+    // 立直模式：只允许打出能听牌的牌
+    if (riichiMode) {
+      if (!riichiValidTileIds.has(tileId)) {
+        addMessage('该牌打出后不能听牌，请选择高亮的牌');
+        return;
+      }
+      // 设置立直状态并打出
+      setState(prev => {
+        const marked = {
+          ...prev,
+          phase: GamePhase.DISCARDING,
+          players: prev.players.map((p, i) =>
+            i === prev.currentPlayer ? { ...p, isRiichi: true } : p
+          ),
+        };
+        return discardTile(marked, tileId);
+      });
+      setRiichiMode(false);
+      setRiichiValidTileIds(new Set());
+      setSelectedTileId(null);
+      return;
+    }
+
     const newState = discardTile(s, tileId);
     if (newState !== s) {
       setState(newState);
       setSelectedTileId(null);
     }
-  }, []);
+  }, [riichiMode, riichiValidTileIds, addMessage]);
 
   // Human action
   const humanAction = useCallback((action: string, _tiles?: Tile[]) => {
@@ -312,14 +341,14 @@ export function useGame(): GameController {
 
       case 'riichi':
         if (s.actionsAvailable[humanWind]?.canRiichi) {
-          setState(prev => ({
-            ...prev,
-            phase: GamePhase.DISCARDING,
-            players: prev.players.map((p, i) =>
-              i === prev.currentPlayer ? { ...p, isRiichi: true } : p
-            ),
-          }));
-          addMessage('⚡ 立直！');
+          // 进入立直选牌模式：计算哪些牌打出后能听牌
+          const humanHand = s.players[humanWind].hand;
+          const tenpaiMap = findTenpaiDiscards(humanHand, s.players[humanWind].melds);
+          const validIds = new Set<number>();
+          for (const [tileId] of tenpaiMap) validIds.add(Number(tileId));
+          setRiichiMode(true);
+          setRiichiValidTileIds(validIds);
+          addMessage(`⚡ 请选择要立直打出的牌（高亮牌可打）`);
         }
         break;
 
@@ -427,6 +456,12 @@ export function useGame(): GameController {
     setSwapSourceTileId(null);
   }, [swapSourceTileId, addMessage]);
 
+  const cancelRiichi = useCallback(() => {
+    setRiichiMode(false);
+    setRiichiValidTileIds(new Set());
+    addMessage('取消立直');
+  }, [addMessage]);
+
   return {
     state,
     humanDiscard,
@@ -443,5 +478,8 @@ export function useGame(): GameController {
     enterSwapMode,
     executeSwap,
     cancelSwap,
+    riichiMode,
+    riichiValidTileIds,
+    cancelRiichi,
   };
 }

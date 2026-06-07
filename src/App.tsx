@@ -8,6 +8,7 @@ const App: React.FC = () => {
     state, humanDiscard, humanAction, newGame, nextHand,
     selectedTileId, setSelectedTileId, messages, isAiThinking,
     swapMode, enterSwapMode, executeSwap, cancelSwap,
+    riichiMode, riichiValidTileIds, cancelRiichi,
   } = useGame();
 
   const handleTileClick = React.useCallback((tileId: number) => {
@@ -68,6 +69,9 @@ const App: React.FC = () => {
         onNextHand={nextHand}
         swapMode={swapMode}
         onSwapTile={executeSwap}
+        riichiMode={riichiMode}
+        riichiValidTileIds={riichiValidTileIds}
+        onCancelRiichi={cancelRiichi}
       />
 
       <div className="status-bar">

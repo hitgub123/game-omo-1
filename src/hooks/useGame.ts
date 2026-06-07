@@ -111,7 +111,7 @@ export function useGame(): GameController {
     updateDebug(s, 'LOOP');
     if (aiTimerRef.current !== null) window.clearTimeout(aiTimerRef.current);
 
-    const delay = s.lastDiscard ? 400 : 600;
+    const delay = s.lastDiscard ? 400 : (s.players[s.currentPlayer]?.isHuman ? 10 : 600);
     aiTimerRef.current = window.setTimeout(() => {
       const current = stateRef.current;
       if (!current || current.phase === GamePhase.HAND_OVER || current.phase === GamePhase.GAME_OVER) {

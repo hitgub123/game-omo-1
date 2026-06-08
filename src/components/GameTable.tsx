@@ -201,11 +201,16 @@ const TenpaiFloat: React.FC<{ state: GameState; riichiWaitTiles: Tile[] | null }
   const humanWind = WINDS.find(w => state.players[w].isHuman) ?? Wind.EAST;
   const player = state.players[humanWind];
   const tenpai = React.useMemo(() => {
-    if (player.hand.length === 13 && player.melds.length <= 4 && !player.isRiichi) {
-      try { return checkTenpai(player.hand, player.melds); } catch { return null; }
+    if (player.melds.length > 4) return null;
+    // 14张时去掉摸到的牌再判断
+    const h = player.hand.length === 14 && state.drawnTile
+      ? player.hand.filter(t => t.id !== state.drawnTile!.id)
+      : player.hand;
+    if (h.length === 13) {
+      try { return checkTenpai(h, player.melds); } catch { return null; }
     }
     return null;
-  }, [player.hand, player.melds, player.isRiichi]);
+  }, [player.hand, player.melds, state.drawnTile]);
 
   const tiles = riichiWaitTiles && riichiWaitTiles.length > 0 ? riichiWaitTiles
     : (tenpai && tenpai.waitTiles.length > 0 ? tenpai.waitTiles : null);

@@ -4,9 +4,10 @@ import { MeldType, GamePhase, TileSuit, Wind, WINDS } from '../game/types';
 import { createInitialState, drawTile, discardTile, executeMeld, executeWin, nextTurn, createNextHand } from '../game/gameEngine';
 import { aiChooseDiscard, aiChooseAction, aiDecideRiichi } from '../game/ai';
 import { sameTile, sortHand } from '../game/tiles';
-import { findTenpaiDiscards } from '../game/hand';
+import { findTenpaiDiscards, tilesToHai } from '../game/hand';
+import syantenLib from 'syanten';
+const syantenFastLib = syantenLib;
 import { isWinningHand } from '../game/hand';
-import { syantenRiichiHints } from '../game/syanten-wrapper';
 import type { TenpaiInfo } from '../game/hand';
 
 export interface GameController {
@@ -27,7 +28,6 @@ export interface GameController {
   cancelSwap: () => void;
   riichiMode: boolean;
   riichiValidTileIds: Map<number, TenpaiInfo>;
-  riichiHint: string;
   cancelRiichi: () => void;
 }
 
@@ -51,7 +51,6 @@ export function useGame(): GameController {
   const [swapSourceTileId, setSwapSourceTileId] = useState<number | null>(null);
   const [riichiMode, setRiichiMode] = useState(false);
   const [riichiValidTileIds, setRiichiValidTileIds] = useState<Map<number, TenpaiInfo>>(new Map());
-  const [riichiHint, setRiichiHint] = useState('');
   const stateRef = useRef(state);
   const aiTimerRef = useRef<number | null>(null);
   stateRef.current = state;
@@ -251,7 +250,7 @@ export function useGame(): GameController {
       return;
     }
 
-    // 立直模式：只允许打出能听牌的牌
+    // 立直模式：检查预计算的有效牌
     if (riichiMode) {
       if (!riichiValidTileIds.has(tileId)) {
         addMessage('该牌打出后不能听牌，请选择高亮的牌');
@@ -374,18 +373,21 @@ export function useGame(): GameController {
       case 'riichi':
         if (s.actionsAvailable[humanWind]?.canRiichi) {
           const humanHand = s.players[humanWind].hand;
-          const tenpaiMap = findTenpaiDiscards(humanHand, s.players[humanWind].melds);
-          setRiichiMode(true);
-          setRiichiValidTileIds(tenpaiMap);
-          // 用 syanten 获取每张牌打出后的等待牌名称
-          const hints = syantenRiichiHints(humanHand);
-          if (hints.size > 0) {
-            const sample = [...hints.values()][0];
-            setRiichiHint(`高亮牌可打 → 点击看能听哪些牌（例：${sample.join('、')}）`);
-          } else {
-            setRiichiHint('高亮牌打出后可听牌');
+          const hai = tilesToHai(humanHand);
+          const validMap = new Map<number, import('../game/hand').TenpaiInfo>();
+          // 第一阶段：只判断哪些牌可打（不计算等待牌）
+          for (const t of humanHand) {
+            const si = t.suit === 'm' ? 0 : t.suit === 'p' ? 1 : t.suit === 's' ? 2 : 3;
+            if (hai[si][t.value - 1] <= 0) continue;
+            hai[si][t.value - 1]--;
+            if ((syantenFastLib as any).syanten(hai) === 0) {
+              validMap.set(t.id, { waitTiles: [], divisions: [] });
+            }
+            hai[si][t.value - 1]++;
           }
-          addMessage(`⚡ 请选择要立直打出的牌（高亮牌可打）`);
+          setRiichiMode(true);
+          setRiichiValidTileIds(validMap);
+          addMessage(`⚡ 双击高亮牌立直（共${validMap.size}张可打）`);
         }
         break;
 
@@ -499,11 +501,10 @@ export function useGame(): GameController {
       newPlayers[Wind.EAST].hand = sortedHand;
 
       const newActions = prev.actionsAvailable.map(a => ({ ...a }));
-      const tenpaiCheck = findTenpaiDiscards(sortedHand, []);
       const canWinNow = isWinningHand(sortedHand);
       newActions[Wind.EAST] = {
         ...newActions[Wind.EAST],
-        canRiichi: !canWinNow && tenpaiCheck.size > 0,
+        canRiichi: canWinNow ? false : findTenpaiDiscards(sortedHand, []).size > 0,
         canTsumo: canWinNow,
       };
 
@@ -545,7 +546,6 @@ export function useGame(): GameController {
     cancelSwap,
     riichiMode,
     riichiValidTileIds,
-    riichiHint,
     cancelRiichi,
   };
 }

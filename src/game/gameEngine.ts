@@ -1,7 +1,8 @@
 import type { Tile, Meld, GameState, Player, AvailableActions, ChiOption, HandResult, WinResult } from './types';
 import { Wind, MeldType, GamePhase, TOUHOU_CHARACTERS, INITIAL_SCORE, WINDS } from './types';
 import { createTileDeck, shuffleArray, sortHand, tileKey, findTiles, isTerminalHonor } from './tiles';
-import { findTenpaiDiscards, checkTenpai } from './hand';
+import { checkTenpai, isWinningHand, tilesToHai } from './hand';
+import syantenLib from 'syanten';
 import { riichiCheckWin as checkWin } from './riichi-check';
 import { calculateScore, calculatePayouts } from './scoring';
 
@@ -90,13 +91,18 @@ function getDrawActions(player: Player, state: GameState, playerWind: Wind, draw
   };
 
   if (drawnTile) {
-    const winCheck = checkWin(player.hand, player.melds, drawnTile, true, playerWind, state);
-    actions.canTsumo = winCheck !== null && winCheck.yaku.length > 0;
+    if (isWinningHand(player.hand, player.melds)) {
+      if (player.isRiichi) {
+        actions.canTsumo = true;
+      } else {
+        const winCheck = checkWin(player.hand, player.melds, drawnTile, true, playerWind, state);
+        actions.canTsumo = winCheck !== null && winCheck.yaku.length > 0;
+      }
+    }
   }
 
   if (!player.hasCalled && !player.isRiichi && state.wall.length >= 4 && player.score >= 1000) {
-    const tenpaiCheck = findTenpaiDiscards(player.hand, player.melds);
-    actions.canRiichi = tenpaiCheck.size > 0;
+    actions.canRiichi = (syantenLib as any).syantenAll(tilesToHai(player.hand)) <= 1;
   }
 
   if (!player.hasCalled && state.turn === 0) {
@@ -197,8 +203,15 @@ function getResponseActions(
   };
 
   const testHand = [...player.hand, discarded];
-  const winCheck = checkWin(testHand, player.melds, discarded, false, playerWind, state);
-  actions.canRon = winCheck !== null && winCheck.yaku.length > 0;
+  if (isWinningHand(testHand, player.melds)) {
+    // 立直玩家有役（立直本身就是役），直接判定
+    if (player.isRiichi) {
+      actions.canRon = true;
+    } else {
+      const winCheck = checkWin(player.hand, player.melds, discarded, false, playerWind, state);
+      actions.canRon = winCheck !== null && winCheck.yaku.length > 0;
+    }
+  }
 
   // 振听检查
   if (actions.canRon) {

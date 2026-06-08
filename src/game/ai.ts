@@ -1,6 +1,7 @@
 import type { Tile, GameState, Wind, MeldType } from './types';
 import { sameTile, isTerminalHonor, isMiddleTile, isDragonTile } from './tiles';
-import { findTenpaiDiscards, getTileCounts } from './hand';
+import { getTileCounts, tilesToHai } from './hand';
+import syantenLib from 'syanten';
 
 // ---- Discard strategy ----
 function scoreDiscardTile(tile: Tile, hand: Tile[]): number {
@@ -122,16 +123,11 @@ function aiDecideAnkan(hand: Tile[]): boolean {
   return false;
 }
 
-function aiDecideRiichi(hand: Tile[], state: GameState, playerWind: Wind): boolean {
-  const tenpaiOptions = findTenpaiDiscards(hand, state.players[playerWind].melds);
-  if (tenpaiOptions.size === 0) return false;
-
-  for (const [, tenpai] of tenpaiOptions) {
-    if (tenpai.waitTiles.length >= 6) return true;
-    if (tenpai.waitTiles.length >= 3) return Math.random() < 0.7;
-    if (tenpai.waitTiles.length >= 1) return Math.random() < 0.4;
-  }
-  return false;
+function aiDecideRiichi(hand: Tile[], _state: GameState, _playerWind: Wind): boolean {
+  // 快速判定：syanten≤1 说明可以立直
+  if ((syantenLib as any).syantenAll(tilesToHai(hand)) > 1) return false;
+  // 随机决定（简化，不遍历所有可能弃牌）
+  return Math.random() < 0.6;
 }
 
 export { aiDecideRiichi };

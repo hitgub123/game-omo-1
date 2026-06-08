@@ -43,6 +43,12 @@
  *   - 行1: 1p-9p (筒子)
  *   - 行2: 1s-9s (索子)
  *   - 行3: 1z-7z (字牌: 东南西北白发中)
+ *   比如: [
+            [1, 2, 2, 2, 2, 2, 2, 1, 0], 
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0]
+        ],
  * @returns {number|Object} 详见上方 Sample
  */
 function checkMahjongStatus(hai2D) {
@@ -241,3 +247,6 @@ function getShanten(hand34) {
     backtrack(workingTiles, 0, 0, 0);
     return minShanten;
 }
+
+export { checkMahjongStatus, getShanten };
+export default { checkMahjongStatus, getShanten };

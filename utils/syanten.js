@@ -250,4 +250,5 @@ function getShantenKokushi(hand34) {
 }
 
 export { checkMahjongStatus };
+export { getGlobalShanten as getShanten };
 export default { checkMahjongStatus };

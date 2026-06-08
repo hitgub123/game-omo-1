@@ -9,6 +9,7 @@ const App: React.FC = () => {
     selectedTileId, setSelectedTileId, messages, isAiThinking,
     swapMode, enterSwapMode, executeSwap, cancelSwap,
     riichiMode, riichiValidTileIds, cancelRiichi,
+    difficulty, setDifficulty,
   } = useGame();
 
   const handleTileClick = React.useCallback((tileId: number) => {
@@ -72,6 +73,8 @@ const App: React.FC = () => {
         riichiMode={riichiMode}
         riichiValidTileIds={riichiValidTileIds}
         onCancelRiichi={cancelRiichi}
+        difficulty={difficulty}
+        onDifficultyChange={setDifficulty}
       />
 
       <div className="status-bar">

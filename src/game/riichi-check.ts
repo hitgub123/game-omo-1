@@ -1,26 +1,44 @@
 /**
  * riichi 库封装 — 替代手写的 checkWin / evaluateHand
+ * v2: 支持两立直、一发、宝牌/赤宝牌、里宝牌
  */
 import Riichi from 'riichi';
 import type { Tile, Meld, GameState, YakuInfo, Wind } from '../game/types';
 import { MeldType } from '../game/types';
 import type { EvaluationResult } from '../game/hand';
 
-function tileStr(t: Tile): string { return `${t.value}${t.suit}`; }
+/** 转 riichi 库牌面：赤5用 '0' 表示，自动计赤宝牌 */
+function tileStr(t: Tile): string {
+  return `${t.isAkadora ? '0' : t.value}${t.suit}`;
+}
 
 function meldStr(m: Meld): string {
   const tiles = m.tiles.map(tileStr).join('');
   if (m.type === MeldType.ANKAN) {
-    // Ankan: front two tiles face down → [XX..XX]
     return `[${tileStr(m.tiles[0])}${tileStr(m.tiles[0])}${tileStr(m.tiles[2])}${tileStr(m.tiles[3])}]`;
   }
   return `[${tiles}]`;
 }
 
+/** 构建附加选项字符串 */
 function optsStr(state: GameState, playerWind: Wind): string {
   const ops: string[] = [];
-  if (state.players[playerWind].isRiichi) ops.push('r');
-  // jikaze-tens, bakaze-ones: 1=E,2=S,3=W,4=N
+  const player = state.players[playerWind];
+
+  // 立直类型: w = 两立直, r = 通常立直, 无 = 非立直
+  if (player.isDoubleRiichi) {
+    ops.push('w');
+  } else if (player.isRiichi) {
+    ops.push('r');
+  }
+
+  // 一发判定：立直后 2 回合内和牌（未被鸣牌打断时有效）
+  if (player.isRiichi && player.riichiTurnStart > 0 &&
+      state.turn - player.riichiTurnStart <= 2) {
+    ops.push('i');
+  }
+
+  // 自风+场风: 1=E,2=S,3=W,4=N
   ops.push(`${playerWind + 1}${state.roundWind + 1}`);
   return ops.join('');
 }
@@ -53,7 +71,7 @@ export function riichiCheckWin(
 ): EvaluationResult | null {
   try {
     const parts: string[] = [];
-    // 荣和牌去重（调用方可能已包含在 handTiles 中）
+    // 荣和牌去重
     const allHandTiles = handTiles.filter(t => t.id !== winningTile.id);
     if (isTsumo) allHandTiles.push(winningTile);
     // 暗杠直接混入手牌（riichi 库不认识 [xxxx] 格式）
@@ -65,10 +83,9 @@ export function riichiCheckWin(
     }
     const handStr = allHandTiles.map(tileStr).join('');
     parts.push(handStr);
-    // 副露: 用 + 前缀格式（riichi 库原生命令）
+    // 副露
     for (const m of melds) {
       if (m.type === MeldType.ANKAN) {
-        // 暗杠: +XX 格式（重复 tile 值两次表示杠子面）
         parts.push('+' + tileStr(m.tiles[0]) + tileStr(m.tiles[0]));
       } else if (m.type === MeldType.KAKAN) {
         parts.push('+' + tileStr(m.tiles[0]) + tileStr(m.tiles[0]));
@@ -78,6 +95,19 @@ export function riichiCheckWin(
     }
     // 荣和牌（自摸时已在手牌中）
     if (!isTsumo) parts.push('+' + tileStr(winningTile));
+
+    // ---- 添加宝牌指示牌 ----
+    if (gameState.doraIndicators.length > 0) {
+      const doraStr = gameState.doraIndicators.map(tileStr).join('');
+      parts.push('+d' + doraStr);
+    }
+    // ---- 添加里宝牌指示牌（立直和牌时） ----
+    const winner = gameState.players[playerWind];
+    if (winner.isRiichi && gameState.uraDoraIndicators.length > 0) {
+      const uraStr = gameState.uraDoraIndicators.map(tileStr).join('');
+      parts.push('+d' + uraStr);
+    }
+
     // 选项
     parts.push('+' + optsStr(gameState, playerWind));
 

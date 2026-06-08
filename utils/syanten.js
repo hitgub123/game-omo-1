@@ -1,8 +1,8 @@
 /**
+ * /**
  * =========================================================================
- * 工业级日本麻将状态决策与智能听牌分析引擎（自适应张数完全体版）
+ * 终极完全体：日本麻将状态决策与智能听牌分析引擎（支持全牌型：一般形、七对子、国士无双）
  * =========================================================================
- * 
  * 【功能特性】：
  * 1. 零依赖、纯 JS 编写，完美契合 React 状态管理。
  * 2. 自适应手牌张数：完美支持门清形态（13/14张）及任意副露（吃碰杠）后的少张状态（11/8/5/2张等）。
@@ -63,7 +63,7 @@ function checkMahjongStatus(hai2D) {
     let totalTiles = 0;
     for (let i = 0; i < 34; i++) totalTiles += hand34[i];
 
-    const baseShanten = getShanten(hand34);
+    const baseShanten = getGlobalShanten(hand34);
 
     // ----------------- 分流 A：自摸/切牌阶段 (总张数模3余2) -----------------
     if (totalTiles % 3 === 2) {
@@ -73,15 +73,15 @@ function checkMahjongStatus(hai2D) {
         for (let discardIdx = 0; discardIdx < 34; discardIdx++) {
             if (hand34[discardIdx] === 0) continue;
 
-            hand34[discardIdx]--; // 模拟切牌 (3k+2 -> 3k+1)
+            hand34[discardIdx]--; // 模拟切牌
 
-            if (getShanten(hand34) === 0) {
+            if (getGlobalShanten(hand34) === 0) {
                 const tempWaits = [];
                 for (let drawIdx = 0; drawIdx < 34; drawIdx++) {
                     if (hand34[drawIdx] >= 4) continue;
 
-                    hand34[drawIdx]++; // 模拟摸牌 (3k+1 -> 3k+2)
-                    if (getShanten(hand34) === -1) {
+                    hand34[drawIdx]++; // 模拟摸牌
+                    if (getGlobalShanten(hand34) === -1) {
                         let sIdx = Math.floor(drawIdx / 9);
                         let num = (drawIdx % 9) + 1;
                         if (drawIdx >= 27) { sIdx = 3; num = drawIdx - 27 + 1; }
@@ -117,7 +117,7 @@ function checkMahjongStatus(hai2D) {
             for (let drawIdx = 0; drawIdx < 34; drawIdx++) {
                 if (hand34[drawIdx] >= 4) continue;
                 hand34[drawIdx]++;
-                if (getShanten(hand34) === -1) {
+                if (getGlobalShanten(hand34) === -1) {
                     let sIdx = Math.floor(drawIdx / 9);
                     let num = (drawIdx % 9) + 1;
                     if (drawIdx >= 27) { sIdx = 3; num = drawIdx - 27 + 1; }
@@ -125,10 +125,7 @@ function checkMahjongStatus(hai2D) {
                 }
                 hand34[drawIdx]--;
             }
-            return {
-                status: 0,
-                info: [{ discard: "none", waits: tempWaits }]
-            };
+            return { status: 0, info: [{ discard: "none", waits: tempWaits }] };
         }
         return baseShanten;
     }
@@ -136,20 +133,27 @@ function checkMahjongStatus(hai2D) {
     return baseShanten;
 }
 
+/**
+ * 综合向听数计算：取一般形、七对子、国士无双三者向听数的最小值
+ */
+function getGlobalShanten(hand34) {
+    let shantenNormal = getShantenNormal(hand34);
+    let shantenChiitoi = getShantenChiitoi(hand34);
+    let shantenKokushi = getShantenKokushi(hand34);
+
+    return Math.min(shantenNormal, shantenChiitoi, shantenKokushi);
+}
 
 /**
- * 底层核心算法：向听数计算器
- * @param {Array<number>} hand34 - 34位一维数组
- * @returns {number} 
+ * 1. 一般形向听数（包含 89m 搭子 Bug 修复）
  */
-function getShanten(hand34) {
+function getShantenNormal(hand34) {
     let totalTiles = 0;
     for (let i = 0; i < 34; i++) totalTiles += hand34[i];
     if (totalTiles === 0) return 8;
 
     let maxMentsuGroups = Math.floor(totalTiles / 3);
     if (totalTiles % 3 === 0) maxMentsuGroups--;
-    
     let minShanten = maxMentsuGroups * 2;
 
     function backtrack(tiles, index, mentsu, taatsu) {
@@ -172,44 +176,26 @@ function getShanten(hand34) {
             return;
         }
 
-        // 分支 1：孤张跳过
         backtrack(tiles, index + 1, mentsu, taatsu);
 
-        // 分支 2：拆刻子 (AAA)
         if (tiles[index] >= 3) {
-            tiles[index] -= 3;
-            backtrack(tiles, index, mentsu + 1, taatsu);
-            tiles[index] += 3;
+            tiles[index] -= 3; backtrack(tiles, index, mentsu + 1, taatsu); tiles[index] += 3;
         }
-
-        // 分支 3：拆对子 (AA)
         if (tiles[index] >= 2) {
-            tiles[index] -= 2;
-            backtrack(tiles, index, mentsu, taatsu + 1);
-            tiles[index] += 2;
+            tiles[index] -= 2; backtrack(tiles, index, mentsu, taatsu + 1); tiles[index] += 2;
         }
-
-        // 分支 4：数牌序列判定 (仅限万筒索 0-26)
         if (index < 27) {
             let remainder = index % 9;
-
-            // 4.1：拆标准顺子 (ABC) -> 最高支持到 7m/7p/7s (remainder < 7)
             if (remainder < 7 && tiles[index] > 0 && tiles[index + 1] > 0 && tiles[index + 2] > 0) {
                 tiles[index]--; tiles[index + 1]--; tiles[index + 2]--;
                 backtrack(tiles, index, mentsu + 1, taatsu);
                 tiles[index]++; tiles[index + 1]++; tiles[index + 2]++;
             }
-            // 4.2：拆连张搭子 (AB) -> 【核心修复】：最高支持到 8m/8p/8s (remainder < 8)
             if (remainder < 8 && tiles[index] > 0 && tiles[index + 1] > 0) {
-                tiles[index]--; tiles[index + 1]--;
-                backtrack(tiles, index, mentsu, taatsu + 1);
-                tiles[index]++; tiles[index + 1]++;
+                tiles[index]--; tiles[index + 1]--; backtrack(tiles, index, mentsu, taatsu + 1); tiles[index]++; tiles[index + 1]++;
             }
-            // 4.3：拆嵌张搭子 (AC) -> 最高支持到 7m/7p/7s (remainder < 7)
             if (remainder < 7 && tiles[index] > 0 && tiles[index + 2] > 0) {
-                tiles[index]--; tiles[index + 2]--;
-                backtrack(tiles, index, mentsu, taatsu + 1);
-                tiles[index]++; tiles[index + 2]++;
+                tiles[index]--; tiles[index + 2]--; backtrack(tiles, index, mentsu, taatsu + 1); tiles[index]++; tiles[index + 2]++;
             }
         }
     }
@@ -217,6 +203,50 @@ function getShanten(hand34) {
     let workingTiles = [...hand34];
     backtrack(workingTiles, 0, 0, 0);
     return minShanten;
+}
+
+/**
+ * 2. 七对子向听数计算 (必须满13张牌或以上且门清才能做，副露后直接失效返回极大值)
+ */
+function getShantenChiitoi(hand34) {
+    let totalTiles = 0;
+    let pairs = 0;
+    let kinds = 0;
+    for (let i = 0; i < 34; i++) {
+        totalTiles += hand34[i];
+        if (hand34[i] >= 2) pairs++;
+        if (hand34[i] > 0) kinds++;
+    }
+    // 门清判定：如果总张数不满13张（说明已经吃碰了），七对子直接失效
+    if (totalTiles < 13) return 8;
+
+    let shanten = 6 - pairs;
+    // 补正：手里不同的牌种类太少，导致无法凑出7个“不同”的对子（比如手里存了4个一样的牌，只能算1个对子）
+    if (kinds < 7) {
+        shanten += (7 - kinds);
+    }
+    return shanten;
+}
+
+/**
+ * 3. 国士无双向听数计算 (必须门清才能做，副露后返回极大值)
+ */
+function getShantenKokushi(hand34) {
+    let totalTiles = 0;
+    for (let i = 0; i < 34; i++) totalTiles += hand34[i];
+    if (totalTiles < 13) return 13;
+
+    // 13张幺九牌的索引列表
+    const kokushiIndices = [0, 8, 9, 17, 18, 26, 27, 28, 29, 30, 31, 32, 33];
+    let kinds = 0;
+    let hasPair = 0;
+
+    for (let idx of kokushiIndices) {
+        if (hand34[idx] > 0) kinds++;
+        if (hand34[idx] >= 2) hasPair = 1;
+    }
+
+    return 13 - kinds - hasPair;
 }
 
 module.exports = { checkMahjongStatus };

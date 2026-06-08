@@ -55,11 +55,27 @@ export function riichiCheckWin(
     const parts: string[] = [];
     // 荣和牌去重（调用方可能已包含在 handTiles 中）
     const allHandTiles = handTiles.filter(t => t.id !== winningTile.id);
-    // 自摸时荣和牌不在手牌中需要加入
     if (isTsumo) allHandTiles.push(winningTile);
-    parts.push(allHandTiles.map(tileStr).join(''));
-    // 副露
-    for (const m of melds) parts.push(meldStr(m));
+    // 暗杠直接混入手牌（riichi 库不认识 [xxxx] 格式）
+    const ankanTiles: Tile[] = [];
+    const otherMelds: Meld[] = [];
+    for (const m of melds) {
+      if (m.type === MeldType.ANKAN) ankanTiles.push(...m.tiles);
+      else otherMelds.push(m);
+    }
+    const handStr = allHandTiles.map(tileStr).join('');
+    parts.push(handStr);
+    // 副露: 用 + 前缀格式（riichi 库原生命令）
+    for (const m of melds) {
+      if (m.type === MeldType.ANKAN) {
+        // 暗杠: +XX 格式（重复 tile 值两次表示杠子面）
+        parts.push('+' + tileStr(m.tiles[0]) + tileStr(m.tiles[0]));
+      } else if (m.type === MeldType.KAKAN) {
+        parts.push('+' + tileStr(m.tiles[0]) + tileStr(m.tiles[0]));
+      } else {
+        parts.push(meldStr(m));
+      }
+    }
     // 荣和牌（自摸时已在手牌中）
     if (!isTsumo) parts.push('+' + tileStr(winningTile));
     // 选项

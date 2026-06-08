@@ -409,8 +409,16 @@ export function executeWin(state: GameState, playerWind: Wind, isTsumo: boolean)
     state,
   );
 
-  if (!evalResult) return state;
+  if (!evalResult) {
+    console.log('[executeWin] checkWin returned null — 和了不成立', { isTsumo, hand: player.hand.length, melds: player.melds.length, tile: winningTile?.suit + winningTile?.value });
+    return state;
+  }
 
+  return finishWin(state, playerWind, isTsumo, winningTile, evalResult);
+}
+
+function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winningTile: Tile, evalResult: any): GameState {
+  const player = state.players[playerWind];
   const isDealerWin = player.isDealer;
   const score = calculateScore(
     evalResult.fu, evalResult.totalHan, isDealerWin, isTsumo,

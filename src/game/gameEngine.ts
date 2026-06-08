@@ -111,7 +111,33 @@ function getDrawActions(player: Player, state: GameState, playerWind: Wind, draw
     tileCounts.get(k)!.push(t);
   }
   for (const [, tiles] of tileCounts) {
-    if (tiles.length >= 4) { actions.canAnkan = true; break; }
+    if (tiles.length >= 4) {
+      actions.canAnkan = true;
+      if (player.isRiichi) {
+        // 立直后暗杠：杠材不能参与其他面子
+        const hand13 = player.hand.filter(t => t.id !== state.drawnTile?.id);
+        const beforeTenpai = checkTenpai(hand13);
+        const withoutKan = player.hand.filter(t => !tiles.some(k => k.id === t.id));
+        const dummy = [
+          { id: -1, suit: tiles[0].suit, value: tiles[0].value },
+          { id: -2, suit: tiles[0].suit, value: tiles[0].value },
+          { id: -3, suit: tiles[0].suit, value: tiles[0].value },
+        ];
+        const afterKan = [...withoutKan, ...dummy];
+        const afterTenpai = checkTenpai(afterKan);
+        // 杠后不听牌 或 等待牌变了 → 不能杠
+        if (!afterTenpai || !beforeTenpai) {
+          actions.canAnkan = false;
+        } else {
+          const beforeWaits = new Set(beforeTenpai.waitTiles.map(t => t.suit + t.value));
+          const afterWaits = new Set(afterTenpai.waitTiles.map(t => t.suit + t.value));
+          if (beforeWaits.size !== afterWaits.size || [...beforeWaits].some(w => !afterWaits.has(w))) {
+            actions.canAnkan = false;
+          }
+        }
+      }
+      break;
+    }
   }
   for (const meld of player.melds) {
     if (meld.type === MeldType.PON) {

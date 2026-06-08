@@ -1,5 +1,5 @@
 import React from 'react';
-import type { GameState } from '../game/types';
+import type { GameState, Tile } from '../game/types';
 import { Wind, GamePhase, TOUHOU_CHARACTERS, WINDS } from '../game/types';
 import { getDoraFromIndicator, tileDisplayName } from '../game/tiles';
 import { checkTenpai } from '../game/hand';
@@ -30,6 +30,11 @@ function fmtScore(score: number): string {
 }
 
 const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi }) => {
+  const riichiWaitFloat = React.useMemo(() => {
+    if (!riichiMode || selectedTileId === null) return null;
+    const info = riichiValidTileIds.get(selectedTileId);
+    return info?.waitTiles || null;
+  }, [riichiMode, selectedTileId, riichiValidTileIds]);
   return (
     <div className="game-table">
       <div className="table-header">
@@ -58,6 +63,8 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
       </div>
 
       <ActionPanel state={state} onAction={onAction} riichiMode={riichiMode} onCancelRiichi={onCancelRiichi} />
+
+      <TenpaiFloat state={state} riichiWaitTiles={riichiWaitFloat} />
 
       {state.phase === GamePhase.HAND_OVER && state.result && (
         <GameOverModal state={state} onNewGame={onNewGame} onNextHand={onNextHand} />
@@ -128,13 +135,6 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
   const isActive = state.currentPlayer === playerWind && state.phase !== GamePhase.HAND_OVER;
   const canAct = state.phase === GamePhase.DISCARDING || state.phase === GamePhase.ACTION_PROMPT;
 
-  const tenpai = React.useMemo(() => {
-    if (player.hand.length === 13 && player.melds.length <= 4 && !player.isRiichi) {
-      try { return checkTenpai(player.hand, player.melds); } catch { return null; }
-    }
-    return null;
-  }, [player.hand, player.melds, player.isRiichi]);
-
   const riichiWaitInfo = React.useMemo(() => {
     if (!riichiMode || selectedTileId === null) return null;
     const info = riichiValidTileIds.get(selectedTileId);
@@ -168,31 +168,20 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
             ))}
           </div>
         )}
-      </div>
-
-      <div className="hand-tiles player-hand">
-        {player.hand.map(tile => (
-          <TileComponent key={tile.id} tile={tile}
-            selected={selectedTileId === tile.id}
-            isNewlyDrawn={drawnTileId === tile.id}
-            highlighted={riichiMode && riichiValidTileIds.has(tile.id)}
-            dimmed={riichiMode && !riichiValidTileIds.has(tile.id)}
-            onClick={canAct && !riichiMode ? () => onTileClick(tile.id) : undefined}
-            onDoubleClick={canAct ? () => onTileDoubleClick(tile.id) : undefined}
-            onContextMenu={canAct ? (e) => onTileContextMenu(tile.id, e) : undefined}
-          />
-        ))}
-      </div>
-
-      {tenpai && tenpai.waitTiles.length > 0 && !player.isRiichi && (
-        <div className="tenpai-hint">
-          <span className="tenpai-label">听牌：</span>
-          {tenpai.waitTiles.map((tile, i) => (
-            <TileComponent key={i} tile={tile} small highlighted />
+        <div className="hand-tiles player-hand">
+          {player.hand.map(tile => (
+            <TileComponent key={tile.id} tile={tile}
+              selected={selectedTileId === tile.id}
+              className={drawnTileId === tile.id ? 'tile-drawn-gap' : undefined}
+              highlighted={riichiMode && riichiValidTileIds.has(tile.id)}
+              dimmed={riichiMode && !riichiValidTileIds.has(tile.id)}
+              onClick={canAct ? () => onTileClick(tile.id) : undefined}
+              onDoubleClick={canAct ? () => onTileDoubleClick(tile.id) : undefined}
+              onContextMenu={canAct ? (e) => onTileContextMenu(tile.id, e) : undefined}
+            />
           ))}
-          <span className="tenpai-count">共{tenpai.waitTiles.length}种</span>
         </div>
-      )}
+      </div>
 
       {riichiWaitInfo && riichiWaitInfo.length > 0 && (
         <div className="riichi-wait-hint">
@@ -203,6 +192,32 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
           <span className="tenpai-count">共{riichiWaitInfo.length}种</span>
         </div>
       )}
+    </div>
+  );
+};
+
+// 听牌悬浮提示
+const TenpaiFloat: React.FC<{ state: GameState; riichiWaitTiles: Tile[] | null }> = ({ state, riichiWaitTiles }) => {
+  const humanWind = WINDS.find(w => state.players[w].isHuman) ?? Wind.EAST;
+  const player = state.players[humanWind];
+  const tenpai = React.useMemo(() => {
+    if (player.hand.length === 13 && player.melds.length <= 4 && !player.isRiichi) {
+      try { return checkTenpai(player.hand, player.melds); } catch { return null; }
+    }
+    return null;
+  }, [player.hand, player.melds, player.isRiichi]);
+
+  const tiles = riichiWaitTiles && riichiWaitTiles.length > 0 ? riichiWaitTiles
+    : (tenpai && tenpai.waitTiles.length > 0 ? tenpai.waitTiles : null);
+
+  if (!tiles || tiles.length === 0) return null;
+  return (
+    <div className="riichi-wait-hint">
+      {riichiWaitTiles && riichiWaitTiles.length > 0 ? '打出此牌可听：' : '听牌：'}
+      {tiles.map((tile, i) => (
+        <TileComponent key={i} tile={tile} small highlighted />
+      ))}
+      <span className="tenpai-count">共{tiles.length}种</span>
     </div>
   );
 };

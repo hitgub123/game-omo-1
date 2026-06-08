@@ -266,7 +266,7 @@ body {
   flex: 1;
   display: grid;
   grid-template-columns: 1fr 4fr 1fr;
-  grid-template-rows: 1fr 4fr 4fr 2fr;
+  grid-template-rows: 1fr 5fr 5fr 2fr;
   gap: 2px;
   min-height: 0;
   position: relative;
@@ -462,9 +462,10 @@ body {
 .player-section {
   background: rgba(0,0,0,0.4);
   border-radius: 8px;
-  padding: 6px 4px 8px;
+  padding: 4px 4px 6px;
   transition: box-shadow 0.3s;
   position: relative;
+  margin-top: 4px;
 }
 
 .tile-drawn-gap {
@@ -1154,10 +1155,27 @@ body {
 
 .payment-row {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
   color: var(--text-secondary);
   padding: 2px 0;
+}
+
+.payment-row span:first-child {
+  width: 90px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.payment-row span:last-child {
+  margin-left: auto;
+}
+
+.payment-arrow {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
 }
 
 .payment-amount {

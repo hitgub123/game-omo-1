@@ -53,8 +53,11 @@ export function riichiCheckWin(
 ): EvaluationResult | null {
   try {
     const parts: string[] = [];
-    // 手牌
-    parts.push(handTiles.map(tileStr).join(''));
+    // 荣和牌去重（调用方可能已包含在 handTiles 中）
+    const allHandTiles = handTiles.filter(t => t.id !== winningTile.id);
+    // 自摸时荣和牌不在手牌中需要加入
+    if (isTsumo) allHandTiles.push(winningTile);
+    parts.push(allHandTiles.map(tileStr).join(''));
     // 副露
     for (const m of melds) parts.push(meldStr(m));
     // 荣和牌（自摸时已在手牌中）
@@ -69,14 +72,16 @@ export function riichiCheckWin(
     if (result.error || !result.isAgari) return null;
 
     const yaku: YakuInfo[] = [];
+    const isYakuman = result.yakuman > 0;
     if (result.yaku) {
       for (const [name, hanStr] of Object.entries(result.yaku)) {
-        const han = parseInt((hanStr as string).replace('飜', ''));
+        const str = hanStr as string;
+        const han = isYakuman ? 0 : (parseInt(str.replace('飜', '')) || 0);
         const id = YAKU_ID_MAP[name] || name.replace(/[ ・]/g, '_').toLowerCase();
         yaku.push({
           id, name, han,
-          isYakuman: YAKUMAN_NAMES.has(name),
-          isDoubleYakuman: false,
+          isYakuman: isYakuman || YAKUMAN_NAMES.has(name),
+          isDoubleYakuman: (str.includes('ダブル') || str.includes('W')),
           hanOpen: undefined,
         });
       }
@@ -84,8 +89,8 @@ export function riichiCheckWin(
 
     return {
       yaku,
-      totalHan: result.yakuman > 0 ? result.yakuman * 13 : result.han,
-      fu: result.yakuman > 0 ? 0 : result.fu,
+      totalHan: isYakuman ? result.yakuman * 13 : (result.han || 0),
+      fu: isYakuman ? 0 : (result.fu || 0),
       divisions: [],
     };
   } catch (e) {

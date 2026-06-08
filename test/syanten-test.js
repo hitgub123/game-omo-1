@@ -1,6 +1,8 @@
 'use strict'
-const assert = require('assert')
-const test = require('./index')
+// const assert = require('assert')
+// const test = require('./index')
+import assert from 'assert';
+import syanten from 'syanten';
 const arr = [
     [3,4,9,10,15,15,16,20,24,27,28,29,31,33,5],
     [1,4,10,18,18,21,22,25,26,26,28,29,31,32,5],

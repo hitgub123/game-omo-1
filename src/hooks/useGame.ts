@@ -5,7 +5,7 @@ import { createInitialState, drawTile, discardTile, executeMeld, executeWin, nex
 import { aiChooseDiscard, aiChooseAction, aiDecideRiichi } from '../game/ai';
 import { sameTile, sortHand } from '../game/tiles';
 import { findTenpaiDiscards } from '../game/hand';
-import { riichiCheckWin as checkWin } from '../game/riichi-check';
+import { isWinningHand } from '../game/hand';
 import { syantenRiichiHints } from '../game/syanten-wrapper';
 import type { TenpaiInfo } from '../game/hand';
 
@@ -499,25 +499,22 @@ export function useGame(): GameController {
       newPlayers[Wind.EAST].hand = sortedHand;
 
       const newActions = prev.actionsAvailable.map(a => ({ ...a }));
-      // 换牌后检查能否和牌（天和/换牌即和）
-      const winCheck = checkWin(sortedHand, [], newTile, true, Wind.EAST, prev);
-      const canTsumoNow = winCheck !== null && winCheck.yaku.length > 0;
-      // 换牌后检查能否立直
       const tenpaiCheck = findTenpaiDiscards(sortedHand, []);
+      const canWinNow = isWinningHand(sortedHand);
       newActions[Wind.EAST] = {
         ...newActions[Wind.EAST],
-        canRiichi: tenpaiCheck.size > 0,
-        canTsumo: canTsumoNow,
+        canRiichi: !canWinNow && tenpaiCheck.size > 0,
+        canTsumo: canWinNow,
       };
 
-      addMessage(canTsumoNow ? '🔄 换牌完成 — 和牌！' : '🔄 换牌完成');
+      addMessage(canWinNow ? '🔄 换牌完成 — 和牌！' : '🔄 换牌完成');
       return {
         ...prev,
         wall: newWall,
         players: newPlayers,
         actionsAvailable: newActions,
         drawnTile: newTile,
-        phase: canTsumoNow ? GamePhase.ACTION_PROMPT : GamePhase.DISCARDING,
+        phase: canWinNow ? GamePhase.ACTION_PROMPT : GamePhase.DISCARDING,
       };
     });
     setSwapMode(false);

@@ -16,8 +16,8 @@ const App: React.FC = () => {
     if (!cp?.isHuman) return;
     if (state.phase !== 'discarding' && state.phase !== 'action_prompt') return;
     if (swapMode) return; // 交换模式不处理点击选择
-    setSelectedTileId(tileId);
-  }, [state, setSelectedTileId, swapMode]);
+    setSelectedTileId(selectedTileId === tileId ? null : tileId);
+  }, [state, setSelectedTileId, swapMode, selectedTileId]);
 
   const handleTileDoubleClick = React.useCallback((tileId: number) => {
     const cp = state.players[state.currentPlayer];

@@ -1,10 +1,10 @@
 import React from 'react';
-import type { GameState } from '../game/types';
+import type { GameState, Tile } from '../game/types';
 import { GamePhase, WINDS } from '../game/types';
 
 interface ActionPanelProps {
   state: GameState;
-  onAction: (action: string) => void;
+  onAction: (action: string, tiles?: Tile[]) => void;
   riichiMode?: boolean;
   onCancelRiichi?: () => void;
 }
@@ -65,7 +65,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({ state, onAction, riichiMode, 
         <div className="action-buttons">
           {actions.canRon && <button className="btn-action btn-ron" onClick={() => onAction('ron')}>荣和</button>}
           {actions.canPon && <button className="btn-action btn-pon" onClick={() => onAction('pon')}>碰</button>}
-          {actions.canChi && <button className="btn-action btn-chi" onClick={() => onAction('chi')}>吃</button>}
+          {actions.canChi && renderChiOptions(actions, onAction)}
           {actions.canKan && <button className="btn-action btn-kan" onClick={() => onAction('kan')}>杠</button>}
         </div>
         <button className="btn-action btn-pass" onClick={() => onAction('pass')}>过</button>
@@ -80,6 +80,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({ state, onAction, riichiMode, 
         <div className="action-panel">
           {actions.canTsumo && <button className="btn-action btn-tsumo" onClick={() => onAction('tsumo')}>自摸</button>}
           {actions.canRiichi && <button className="btn-action btn-riichi" onClick={() => onAction('riichi')}>立直</button>}
+          {actions.canNineOrphans && <button className="btn-action btn-nine-orphans" onClick={() => onAction('nine_orphans')}>九种九牌</button>}
           {actions.canAnkan && <button className="btn-action btn-kan" onClick={() => onAction('ankan')}>暗杠</button>}
           {actions.canKakan && <button className="btn-action btn-kan" onClick={() => onAction('kakan')}>加杠</button>}
         </div>
@@ -97,5 +98,35 @@ const ActionPanel: React.FC<ActionPanelProps> = ({ state, onAction, riichiMode, 
 
   return null;
 };
+
+/** 渲染吃牌选项（支持多选） */
+function renderChiOptions(
+  actions: { chiOptions?: import('../game/types').ChiOption[][]; },
+  onAction: (action: string, tiles?: Tile[]) => void,
+): React.ReactNode {
+  const chiOpts = actions.chiOptions?.[0];
+  if (!chiOpts || chiOpts.length <= 1) {
+    // 只有一种或零种吃法 → 普通按钮
+    return <button className="btn-action btn-chi" onClick={() => onAction('chi')}>吃</button>;
+  }
+  // 多种吃法 → 显示子选项
+  return (
+    <span className="chi-submenu">
+      {chiOpts.map((opt, i) => {
+        const tileNames = opt.tiles.map(t => `${t.value}${t.suit}`).join('');
+        return (
+          <button key={i} className="btn-action btn-chi-sub" onClick={() => onAction('chi', opt.tiles)}>
+            吃{tileNames}
+          </button>
+        );
+      })}
+    </span>
+  );
+}
+
+/** 获取人类玩家的可用动作（辅助函数） */
+function getActions(state: GameState, humanWind: number) {
+  return state.actionsAvailable[humanWind];
+}
 
 export default ActionPanel;

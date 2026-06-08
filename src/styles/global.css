@@ -163,6 +163,26 @@ body {
   box-shadow: 0 2px 8px rgba(232, 64, 87, 0.4);
 }
 
+/* ---- 难度选择 ---- */
+.difficulty-selector {
+  display: flex;
+  align-items: center;
+}
+
+.difficulty-pulldown {
+  padding: 3px 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.difficulty-pulldown:hover {
+  border-color: var(--border-gold);
+}
+
 /* ---- 牌山Pulldown ---- */
 .wall-pulldown {
   position: relative;
@@ -400,6 +420,7 @@ body {
 .discard-south { grid-column: 3; grid-row: 2; }
 .discard-east  { grid-column: 2; grid-row: 3; text-align: center; }
 .wall-info     { grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.dora-section  { position: absolute; bottom: 6px; right: 8px; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; background: rgba(0,0,0,0.55); padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(255,215,0,0.25); backdrop-filter: blur(4px); z-index: 10; }
 
 .discard-column {
   display: flex;
@@ -550,13 +571,6 @@ body {
   margin-left: 2px;
 }
 
-.dora-section {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
 .dora-label {
   font-size: 10px;
   color: var(--border-gold);
@@ -567,6 +581,21 @@ body {
   display: flex;
   align-items: center;
   gap: 2px;
+}
+
+.ura-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+  padding-left: 6px;
+  border-left: 1px solid rgba(255,215,0,0.2);
+}
+
+.ura-tile-name {
+  font-size: 10px;
+  color: #ff9800;
+  font-weight: 500;
 }
 
 .dora-arrow {
@@ -740,6 +769,19 @@ body {
 .suit-sou .tile-suit { color: var(--sou-color); }
 .suit-sou { border-bottom: 2px solid var(--sou-color); }
 
+/* 赤宝牌（红五） */
+.tile-akadora .tile-number,
+.tile-akadora .tile-suit { color: #e53935 !important; }
+.tile-akadora { border-bottom: 2px solid #e53935 !important; }
+.tile-akadora .tile-inner::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: 3px;
+  background: radial-gradient(ellipse at 50% 60%, rgba(229,57,53,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
 /* 字牌 */
 .honor {
   background: linear-gradient(180deg, #fafafa 0%, #e8e4d8 100%);
@@ -899,6 +941,30 @@ body {
   transform: translateY(0);
 }
 
+/* 吃牌子菜单 */
+.chi-submenu {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.btn-chi-sub {
+  padding: 4px 10px;
+  border: 1px solid var(--border-gold);
+  border-radius: 4px;
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-weight: 600;
+}
+
+.btn-chi-sub:hover {
+  background: rgba(34, 197, 94, 0.35);
+  transform: translateY(-1px);
+}
+
 .btn-ron {
   background: linear-gradient(135deg, #ff1744, #d50000);
   color: white;
@@ -930,6 +996,11 @@ body {
   background: linear-gradient(135deg, var(--marisa), #f57f17);
   color: #1a1a2e;
   animation: glow-riichi 1.5s infinite;
+}
+
+.btn-nine-orphans {
+  background: linear-gradient(135deg, #e65100, #ff6f00);
+  color: #fff;
 }
 
 @keyframes glow-riichi {

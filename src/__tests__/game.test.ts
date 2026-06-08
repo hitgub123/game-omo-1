@@ -481,8 +481,8 @@ describe('gameEngine.ts - executeWin', () => {
 });
 
 describe('gameEngine.ts - executeMeld', () => {
-  it('不抛异常', () => {
-    const state = createInitialState();
+  it('不抛异常（已设 lastDiscard）', () => {
+    const state = { ...createInitialState(), lastDiscard: { id: 999, suit: 'm' as TileSuit, value: 1 } };
     expect(() => executeMeld(state, 0, MeldType.PON, [])).not.toThrow();
   });
 });

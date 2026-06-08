@@ -20,12 +20,15 @@ export function createInitialState(): GameState {
     discards: [],
     discardsSize: 0,
     isRiichi: false,
+    isDoubleRiichi: false,
     riichiDiscardIndex: -1,
+    riichiTurnStart: -1,
     score: INITIAL_SCORE,
     isDealer: wind === Wind.EAST,
     isHuman: wind === Wind.EAST,
     tenpai: false,
     hasCalled: false,
+    restrictedDiscardKeys: [],
   }));
 
   // 配牌：每人13张，庄家先摸第14张
@@ -40,7 +43,7 @@ export function createInitialState(): GameState {
     wall: remainingWall,
     deadWall,
     doraIndicators,
-    uraDoraIndicators: [],
+    uraDoraIndicators: [deadWall[5]],
     players,
     currentPlayer: Wind.EAST,
     turn: 0,
@@ -83,7 +86,7 @@ export function drawTile(state: GameState): GameState {
   };
 }
 
-function getDrawActions(player: Player, state: GameState, playerWind: Wind, drawnTile: Tile): AvailableActions {
+export function getDrawActions(player: Player, state: GameState, playerWind: Wind, drawnTile: Tile): AvailableActions {
   const actions: AvailableActions = {
     canChi: false, chiOptions: [], canPon: false, canKan: false,
     canRon: false, canTsumo: false, canRiichi: false, canAnkan: false,
@@ -168,6 +171,14 @@ export function discardTile(state: GameState, tileId: number): GameState {
 
   const discarded = player.hand.splice(idx, 1)[0];
   player.hand = sortHand(player.hand);
+
+  // 食替检查：不能打出鸣牌所关联的牌
+  const tileKey_ = `${discarded.value}${discarded.suit}`;
+  if (player.restrictedDiscardKeys.length > 0 && player.restrictedDiscardKeys.includes(tileKey_)) {
+    player.hand.push(discarded);
+    player.hand = sortHand(player.hand);
+    return state; // 拒绝弃牌，状态不变
+  }
   if (player.isRiichi && player.riichiDiscardIndex === -1) {
     player.riichiDiscardIndex = player.discards.length;
   }
@@ -191,7 +202,12 @@ export function discardTile(state: GameState, tileId: number): GameState {
     turnHistory: [...state.turnHistory, { type: 'discard' as const, player: state.currentPlayer, tile: discarded }],
   };
 
-  if (!hasActions) return nextTurn(newState);
+  if (!hasActions) {
+    // 四风连打检查（无响应时）
+    const fourWindResult = checkFourWindDraw(newState, discarded);
+    if (fourWindResult) return fourWindResult;
+    return nextTurn(newState);
+  }
   return newState;
 }
 
@@ -283,6 +299,31 @@ export function executeMeld(state: GameState, playerWind: Wind, meldType: MeldTy
 
   let meld: Meld;
 
+  // 食替限制：计算鸣牌后不能打出的牌（key 集合）
+  function getRestrictedKeys(): string[] {
+    const keys: string[] = [`${discarded.value}${discarded.suit}`];
+    if (meldType === MeldType.CHI) {
+      // 顺子两端补充：如果叫的是边张，对面类型也锁
+      const handVals = tiles.map(t => t.value).sort((a, b) => a - b);
+      const minVal = Math.min(...handVals, discarded.value);
+      const maxVal = Math.max(...handVals, discarded.value);
+      if (discarded.value === minVal && maxVal - minVal === 2) {
+        // 叫了低端，高端+1也被锁（如 45 叫 3 → 6 也不能打）
+        keys.push(`${maxVal + 1}${discarded.suit}`);
+      } else if (discarded.value === maxVal && maxVal - minVal === 2) {
+        // 叫了高端，低端-1也被锁（如 45 叫 6 → 3 也不能打）
+        keys.push(`${minVal - 1}${discarded.suit}`);
+      }
+    }
+    return keys.filter(k => {
+      const v = parseInt(k[0]);
+      const s = k[1];
+      // 过滤掉不合法值（字牌/超出1-9范围）
+      if (s === 'z' || v < 1 || v > 9) return false;
+      return true;
+    });
+  }
+
   switch (meldType) {
     case MeldType.PON: {
       const handTiles = tiles.slice(0, 2);
@@ -311,6 +352,29 @@ export function executeMeld(state: GameState, playerWind: Wind, meldType: MeldTy
     }
     case MeldType.KAKAN: {
       const extra = tiles[0];
+      // 抢杠检查：加杠时其他玩家可荣和
+      const ronResponses = WINDS.map((wind) => {
+        if (wind === playerWind) return null;
+        const p = players[wind];
+        const responseActions = getResponseActions(p, extra, state, wind, playerWind);
+        // 荣和时 lastDiscard 指向加杠的牌
+        if (responseActions.canRon) {
+          return wind;
+        }
+        return null;
+      }).filter(w => w !== null) as Wind[];
+
+      if (ronResponses.length > 0) {
+        // 抢杠：按「抢杠者右方优先」排序
+        const sorted = [...ronResponses].sort((a, b) => {
+          const distA = (a - playerWind + 4) % 4;
+          const distB = (b - playerWind + 4) % 4;
+          return distA - distB;
+        });
+        // 加杠牌作为荣和牌
+        return executeWin({ ...state, lastDiscard: extra, lastDiscardPlayer: playerWind }, sorted[0], false);
+      }
+
       player.hand = removeTilesFromHand(player.hand, [extra]);
       const existingIdx = player.melds.findIndex(m => m.type === MeldType.PON && tileKey(m.tiles[0]) === tileKey(extra));
       if (existingIdx >= 0) {
@@ -327,6 +391,12 @@ export function executeMeld(state: GameState, playerWind: Wind, meldType: MeldTy
 
   player.melds.push(meld);
   player.hasCalled = true;
+
+  // 食替：设置限制弃牌
+  const restrictedKeys = getRestrictedKeys();
+  if (restrictedKeys.length > 0) {
+    player.restrictedDiscardKeys = restrictedKeys;
+  }
 
   // Cancel ippatsu status for riichi players
   // (simplified - no ippatsu tracking)
@@ -352,9 +422,10 @@ function drawAfterKan(state: GameState, playerWind: Wind, meld: Meld): GameState
   const rinshanTile = deadWall.shift()!;
   player.hand = sortHand([...player.hand, rinshanTile]);
 
-  // Update dora
+  // Update dora & ura dora
   const newDoraIdx = state.kanCount + 1;
   const newDora = newDoraIdx + 4 < deadWall.length ? deadWall[newDoraIdx + 4] : null;
+  const newUra = newDoraIdx + 5 < deadWall.length ? deadWall[newDoraIdx + 5] : null;
 
   const winCheck = checkWin(player.hand, player.melds, rinshanTile, true, playerWind, state);
   const engResult = checkMahjongStatus(tilesToHai(player.hand));
@@ -366,12 +437,20 @@ function drawAfterKan(state: GameState, playerWind: Wind, meld: Meld): GameState
   for (const t of player.hand) { const k = `${t.suit}${t.value}`; tileCounts.set(k, (tileCounts.get(k)||0)+1); }
   for (const [, c] of tileCounts) { if (c >= 4) { canAnkanNow = true; break; } }
 
-  return {
+  // 四杠散了检查
+  const afterKanState: GameState = {
     ...state,
     players,
     deadWall,
     doraIndicators: newDora ? [...state.doraIndicators, newDora] : state.doraIndicators,
+    uraDoraIndicators: newUra ? [...state.uraDoraIndicators, newUra] : state.uraDoraIndicators,
     kanCount: state.kanCount + 1,
+  };
+  const fourKanDraw = checkFourKanDraw(afterKanState);
+  if (fourKanDraw) return fourKanDraw;
+
+  return {
+    ...afterKanState,
     currentPlayer: playerWind,
     phase: (winCheck || canRiichiNow || canAnkanNow) ? GamePhase.ACTION_PROMPT : GamePhase.DISCARDING,
     actionsAvailable: WINDS.map((_, i) => i === playerWind ? {
@@ -484,10 +563,11 @@ export function nextTurn(state: GameState): GameState {
     actionsAvailable: WINDS.map(() => emptyActions()),
     lastDiscard: undefined,
     lastDiscardPlayer: undefined,
+    players: state.players.map(p => ({ ...p, restrictedDiscardKeys: [] })),
   };
 }
 
-function emptyActions(): AvailableActions {
+export function emptyActions(): AvailableActions {
   return {
     canChi: false, chiOptions: [], canPon: false, canKan: false,
     canRon: false, canTsumo: false, canRiichi: false, canAnkan: false,
@@ -535,6 +615,55 @@ export function executeDraw(state: GameState): GameState {
   };
 
   return { ...state, players, result, phase: GamePhase.HAND_OVER };
+}
+
+// ---- Special Draws ----
+
+/** 九种九牌 */
+export function executeNineOrphans(state: GameState, _playerWind: Wind): GameState {
+  const result: HandResult = { type: 'draw', drawReason: '九种九牌', tenpaiPlayers: [] };
+  return { ...state, phase: GamePhase.HAND_OVER, result, furitenPlayers: [] };
+}
+
+/** 四杠散了：合计4杠且无人独做4杠 → 流局 */
+export function checkFourKanDraw(state: GameState): GameState | null {
+  if (state.kanCount < 4) return null;
+  let totalKan = 0;
+  for (const p of state.players) {
+    totalKan += p.melds.filter(m =>
+      m.type === MeldType.KAN || m.type === MeldType.ANKAN || m.type === MeldType.KAKAN
+    ).length;
+  }
+  if (totalKan < 4) return null;
+  // 有人独立4杠子 → 役满，非流局
+  if (Math.max(...state.players.map(p =>
+    p.melds.filter(m => m.type === MeldType.KAN || m.type === MeldType.ANKAN || m.type === MeldType.KAKAN).length
+  )) >= 4) return null;
+  return { ...state, phase: GamePhase.HAND_OVER, result: { type: 'draw' as const, drawReason: '四杠散了', tenpaiPlayers: [] } };
+}
+
+/** 四风连打：第一巡4人弃同一风牌 */
+export function checkFourWindDraw(state: GameState, discarded: Tile): GameState | null {
+  if (state.turn >= 4 || state.handCount > 0) return null;
+  if (discarded.suit !== 'z' || discarded.value > 4) return null;
+  for (let i = 1; i <= 3; i++) {
+    const prevWind = ((state.currentPlayer - i + 4) % 4) as Wind;
+    const prevDiscards = state.players[prevWind].discards;
+    if (prevDiscards.length !== 1) return null;
+    if (prevDiscards[0].suit !== discarded.suit || prevDiscards[0].value !== discarded.value) return null;
+  }
+  return { ...state, phase: GamePhase.HAND_OVER, result: { type: 'draw' as const, drawReason: '四风连打', tenpaiPlayers: [] } };
+}
+
+/** 流局满贯 */
+export function checkNagashiMangan(state: GameState): GameState | null {
+  const nagashi: Wind[] = [];
+  for (const p of state.players) {
+    if (p.discards.length === 0 || p.isRiichi || p.melds.length > 0) continue;
+    if (p.discards.every(t => isTerminalHonor(t))) nagashi.push(p.wind);
+  }
+  if (nagashi.length === 0) return null;
+  return { ...state, phase: GamePhase.HAND_OVER, result: { type: 'nagashi' as const, drawReason: '流局满贯', tenpaiPlayers: nagashi } };
 }
 
 // ---- Next hand (下一局) ----
@@ -592,12 +721,15 @@ export function createNextHand(prevState: GameState): GameState {
     discards: [],
     discardsSize: 0,
     isRiichi: false,
+    isDoubleRiichi: false,
     riichiDiscardIndex: -1,
+    riichiTurnStart: -1,
     score: prevState.players[wind].score,
     isDealer: wind === newDealer,
     isHuman: wind === Wind.EAST,
     tenpai: false,
     hasCalled: false,
+    restrictedDiscardKeys: [],
   }));
 
   // 配牌
@@ -612,7 +744,7 @@ export function createNextHand(prevState: GameState): GameState {
     wall: remainingWall,
     deadWall,
     doraIndicators,
-    uraDoraIndicators: [],
+    uraDoraIndicators: [deadWall[5]],
     players,
     currentPlayer: newDealer,
     turn: 0,

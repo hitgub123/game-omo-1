@@ -55,12 +55,16 @@ export interface Player {
   discards: Tile[];
   discardsSize: number;
   isRiichi: boolean;
+  isDoubleRiichi: boolean;
   riichiDiscardIndex: number;
+  riichiTurnStart: number;
   score: number;
   isDealer: boolean;
   isHuman: boolean;
   tenpai: boolean;
   hasCalled: boolean;
+  /** 食替限制：不能打出的牌的 tileKey 列表（鸣牌后下巡生效） */
+  restrictedDiscardKeys: string[];
 }
 
 /** 牌局阶段 */

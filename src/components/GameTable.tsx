@@ -8,6 +8,7 @@ import TileComponent from './TileComponent';
 import ActionPanel from './ActionPanel';
 import GameOverModal from './GameOverModal';
 import WallPulldown from './WallPulldown';
+import type { DifficultyLevel } from '../game/difficulty';
 
 interface GameTableProps {
   state: GameState;
@@ -23,13 +24,15 @@ interface GameTableProps {
   riichiMode: boolean;
   riichiValidTileIds: Map<number, TenpaiInfo>;
   onCancelRiichi: () => void;
+  difficulty: DifficultyLevel;
+  onDifficultyChange: (level: DifficultyLevel) => void;
 }
 
 function fmtScore(score: number): string {
   return score < 0 ? `−${Math.abs(score).toLocaleString()}` : score.toLocaleString();
 }
 
-const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi }) => {
+const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi, difficulty, onDifficultyChange }) => {
   const riichiWaitFloat = React.useMemo(() => {
     if (!riichiMode || selectedTileId === null) return null;
     const info = riichiValidTileIds.get(selectedTileId);
@@ -45,6 +48,19 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
         </div>
         <div className="header-actions">
           <WallPulldown state={state} swapMode={swapMode} onSelectTile={onSwapTile} />
+          <div className="difficulty-selector">
+            <select
+              value={difficulty}
+              onChange={e => onDifficultyChange(e.target.value as DifficultyLevel)}
+              className="difficulty-pulldown"
+              title="电脑AI难度"
+            >
+              <option value="easy">Easy</option>
+              <option value="normal">Normal</option>
+              <option value="hard">Hard</option>
+              <option value="lunatic">Lunatic</option>
+            </select>
+          </div>
           <button className="btn-new-game" onClick={onNewGame}>新游戏</button>
         </div>
       </div>
@@ -90,7 +106,7 @@ const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical }) => 
       <div className="player-info" style={{ borderColor: ch.color }}>
         <span className="player-name" style={{ color: ch.color }}>{player.name}</span>
         <span className="player-score" style={{ color: ch.colorLight }}>{fmtScore(player.score)}</span>
-        {player.isRiichi && <span className="riichi-badge">立直</span>}
+        {player.isRiichi && <span className="riichi-badge">{player.isDoubleRiichi ? '两立直' : '立直'}</span>}
         {player.isDealer && <span className="dealer-badge">庄</span>}
         {isActive && <span className="turn-arrow">◀</span>}
       </div>
@@ -153,7 +169,7 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
           <span className="player-name" style={{ color: ch.color }}>{player.name}</span>
           <span className="player-title">{ch.title}</span>
           <span className="player-score" style={{ color: ch.colorLight }}>{fmtScore(player.score)}</span>
-          {player.isRiichi && <span className="riichi-badge">立直</span>}
+          {player.isRiichi && <span className="riichi-badge">{player.isDoubleRiichi ? '两立直' : '立直'}</span>}
           {player.isDealer && <span className="dealer-badge">庄</span>}
         </div>
         {player.melds.length > 0 && (
@@ -254,24 +270,26 @@ const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
         </div>
       ))}
       <div className="wall-info">
-        <div className="dora-section">
-          {state.doraIndicators.length > 0 && (
-            <>
-              <span className="dora-label">宝牌</span>
-              {state.doraIndicators.map((tile, i) => {
-                const dora = getDoraFromIndicator(tile);
-                return (
-                  <div key={i} className="dora-pair">
-                    <TileComponent tile={tile} small isDora />
-                    <span className="dora-arrow">→</span>
-                    <span className="dora-tile-name">{tileDisplayName({...tile, id: -1, suit: dora.suit, value: dora.value})}</span>
-                  </div>
-                );
-              })}
-            </>
-          )}
-        </div>
         <span className="wall-count">残 {state.wall.length} 枚</span>
+      </div>
+      <div className="dora-section">
+        {state.doraIndicators.map((tile, i) => {
+          const dora = getDoraFromIndicator(tile);
+          const ura = state.uraDoraIndicators[i];
+          return (
+            <div key={i} className="dora-pair">
+              <TileComponent tile={tile} small isDora />
+              <span className="dora-arrow">→</span>
+              <span className="dora-tile-name">{tileDisplayName({...tile, id: -1, suit: dora.suit, value: dora.value})}</span>
+              {state.phase === GamePhase.HAND_OVER && ura && (
+                <span className="ura-indicator">
+                  <TileComponent tile={ura} small isDora />
+                  <span className="ura-tile-name">{tileDisplayName({...ura, id: -1, suit: getDoraFromIndicator(ura).suit, value: getDoraFromIndicator(ura).value})}</span>
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

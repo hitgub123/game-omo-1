@@ -54,6 +54,7 @@ const TileComponent: React.FC<TileProps> = ({
   const tileClassNames = [
     getTileClass(tile),
     small ? 'tile-small' : '',
+    tile.isAkadora ? 'tile-akadora' : '',
     selected ? 'tile-selected' : '',
     highlighted ? 'tile-highlighted' : '',
     dimmed ? 'tile-dimmed' : '',

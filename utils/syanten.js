@@ -249,4 +249,5 @@ function getShantenKokushi(hand34) {
     return 13 - kinds - hasPair;
 }
 
-module.exports = { checkMahjongStatus };
+export { checkMahjongStatus };
+export default { checkMahjongStatus };

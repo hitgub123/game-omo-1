@@ -5,8 +5,7 @@ import { createInitialState, drawTile, discardTile, executeMeld, executeWin, nex
 import { aiChooseDiscard, aiChooseAction, aiDecideRiichi } from '../game/ai';
 import { sameTile, sortHand } from '../game/tiles';
 import { findTenpaiDiscards, tilesToHai } from '../game/hand';
-import syantenLib from 'syanten';
-const syantenFastLib = syantenLib;
+import { checkMahjongStatus } from '../../utils/syanten.js';
 import { isWinningHand } from '../game/hand';
 import type { TenpaiInfo } from '../game/hand';
 
@@ -301,10 +300,20 @@ export function useGame(): GameController {
         }
         break;
 
-      case 'ron':
-        setState(prev => executeWin(prev, humanWind, false));
-        addMessage('💥 荣和！');
+      case 'ron': {
+        const hWind = humanWind;
+        setState(prev => {
+          const next = executeWin(prev, hWind, false);
+          return next;
+        });
+        // Check result after state update via stateRef
+        setTimeout(() => {
+          if (stateRef.current?.phase === GamePhase.HAND_OVER) {
+            addMessage('💥 荣和！');
+          }
+        }, 0);
         break;
+      }
 
       case 'pon':
         if (s.lastDiscard) {
@@ -375,15 +384,21 @@ export function useGame(): GameController {
           const humanHand = s.players[humanWind].hand;
           const hai = tilesToHai(humanHand);
           const validMap = new Map<number, import('../game/hand').TenpaiInfo>();
-          // 第一阶段：只判断哪些牌可打（不计算等待牌）
-          for (const t of humanHand) {
-            const si = t.suit === 'm' ? 0 : t.suit === 'p' ? 1 : t.suit === 's' ? 2 : 3;
-            if (hai[si][t.value - 1] <= 0) continue;
-            hai[si][t.value - 1]--;
-            if ((syantenFastLib as any).syanten(hai) === 0) {
-              validMap.set(t.id, { waitTiles: [], divisions: [] });
+          // checkMahjongStatus(14张) 直接返回所有可打牌和等待牌
+          const engResult = checkMahjongStatus(hai);
+          if (typeof engResult === 'object' && engResult.status === 0) {
+            for (const sol of engResult.info || []) {
+              if (sol.discard === 'none') continue;
+              const tile = humanHand.find(t => `${t.value}${t.suit}` === sol.discard);
+              if (!tile || validMap.has(tile.id)) continue;
+              validMap.set(tile.id, {
+                waitTiles: (sol.waits || []).map((k: string) => {
+                  const s = k.slice(-1) as import('../game/types').TileSuit;
+                  return { id: -1, suit: s, value: parseInt(k.slice(0,-1)) };
+                }),
+                divisions: [],
+              });
             }
-            hai[si][t.value - 1]++;
           }
           setRiichiMode(true);
           setRiichiValidTileIds(validMap);
@@ -506,6 +521,7 @@ export function useGame(): GameController {
         ...newActions[Wind.EAST],
         canRiichi: canWinNow ? false : findTenpaiDiscards(sortedHand, []).size > 0,
         canTsumo: canWinNow,
+        canAnkan: sortedHand.some((t, _, arr) => arr.filter(x => x.suit === t.suit && x.value === t.value).length >= 4),
       };
 
       addMessage(canWinNow ? '🔄 换牌完成 — 和牌！' : '🔄 换牌完成');

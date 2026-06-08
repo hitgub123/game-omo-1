@@ -1,7 +1,7 @@
 import type { Tile, GameState, Wind, MeldType } from './types';
 import { sameTile, isTerminalHonor, isMiddleTile, isDragonTile } from './tiles';
 import { getTileCounts, tilesToHai } from './hand';
-import syantenLib from 'syanten';
+import { checkMahjongStatus } from '../../utils/syanten.js';
 
 // ---- Discard strategy ----
 function scoreDiscardTile(tile: Tile, hand: Tile[]): number {
@@ -124,10 +124,11 @@ function aiDecideAnkan(hand: Tile[]): boolean {
 }
 
 function aiDecideRiichi(hand: Tile[], _state: GameState, _playerWind: Wind): boolean {
-  // 快速判定：syanten≤1 说明可以立直
-  if ((syantenLib as any).syantenAll(tilesToHai(hand)) > 1) return false;
-  // 随机决定（简化，不遍历所有可能弃牌）
-  return Math.random() < 0.6;
+  const s = checkMahjongStatus(tilesToHai(hand));
+  // s === -1 已和, typeof s === 'number' 向听数, typeof s === 'object' 可立直
+  if (typeof s === 'object') return Math.random() < 0.6;
+  if (typeof s === 'number') return s <= 1 && Math.random() < 0.6;
+  return false;
 }
 
 export { aiDecideRiichi };

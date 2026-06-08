@@ -1,6 +1,6 @@
 import React from 'react';
 import type { GameState, Tile } from '../game/types';
-import { Wind, GamePhase, TOUHOU_CHARACTERS, WINDS } from '../game/types';
+import { Wind, GamePhase, TOUHOU_CHARACTERS, WINDS, MeldType } from '../game/types';
 import { getDoraFromIndicator, tileDisplayName } from '../game/tiles';
 import { checkTenpai } from '../game/hand';
 import type { TenpaiInfo } from '../game/hand';
@@ -162,6 +162,7 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
               <div key={mi} className={`meld-group meld-${meld.type}`}>
                 {meld.tiles.map((tile, ti) => (
                   <TileComponent key={`${mi}-${ti}`} tile={tile} small
+                    faceDown={meld.type === MeldType.ANKAN && (ti === 1 || ti === 2)}
                     highlighted={meld.calledTile.id === tile.id} />
                 ))}
               </div>

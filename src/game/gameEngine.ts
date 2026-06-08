@@ -2,7 +2,7 @@ import type { Tile, Meld, GameState, Player, AvailableActions, ChiOption, HandRe
 import { Wind, MeldType, GamePhase, TOUHOU_CHARACTERS, INITIAL_SCORE, WINDS } from './types';
 import { createTileDeck, shuffleArray, sortHand, tileKey, findTiles, isTerminalHonor } from './tiles';
 import { checkTenpai, isWinningHand, tilesToHai } from './hand';
-import syantenLib from 'syanten';
+import { checkMahjongStatus } from '../../utils/syanten.js';
 import { riichiCheckWin as checkWin } from './riichi-check';
 import { calculateScore, calculatePayouts } from './scoring';
 
@@ -102,7 +102,9 @@ function getDrawActions(player: Player, state: GameState, playerWind: Wind, draw
   }
 
   if (!player.hasCalled && !player.isRiichi && state.wall.length >= 4 && player.score >= 1000) {
-    actions.canRiichi = (syantenLib as any).syantenAll(tilesToHai(player.hand)) <= 1;
+    const engResult = checkMahjongStatus(tilesToHai(player.hand));
+    // -1=和了, object=可立直, number>0=向听数
+    actions.canRiichi = typeof engResult === 'object';
   }
 
   if (!player.hasCalled && state.turn === 0) {
@@ -355,6 +357,14 @@ function drawAfterKan(state: GameState, playerWind: Wind, meld: Meld): GameState
   const newDora = newDoraIdx + 4 < deadWall.length ? deadWall[newDoraIdx + 4] : null;
 
   const winCheck = checkWin(player.hand, player.melds, rinshanTile, true, playerWind, state);
+  const engResult = checkMahjongStatus(tilesToHai(player.hand));
+  const canRiichiNow = !player.hasCalled && !player.isRiichi && state.wall.length >= 4 && player.score >= 1000 && typeof engResult === 'object';
+
+  // 暗杠判定
+  let canAnkanNow = false;
+  const tileCounts = new Map<string, number>();
+  for (const t of player.hand) { const k = `${t.suit}${t.value}`; tileCounts.set(k, (tileCounts.get(k)||0)+1); }
+  for (const [, c] of tileCounts) { if (c >= 4) { canAnkanNow = true; break; } }
 
   return {
     ...state,
@@ -363,10 +373,12 @@ function drawAfterKan(state: GameState, playerWind: Wind, meld: Meld): GameState
     doraIndicators: newDora ? [...state.doraIndicators, newDora] : state.doraIndicators,
     kanCount: state.kanCount + 1,
     currentPlayer: playerWind,
-    phase: winCheck ? GamePhase.ACTION_PROMPT : GamePhase.DISCARDING,
+    phase: (winCheck || canRiichiNow || canAnkanNow) ? GamePhase.ACTION_PROMPT : GamePhase.DISCARDING,
     actionsAvailable: WINDS.map((_, i) => i === playerWind ? {
       ...emptyActions(),
       canTsumo: winCheck !== null && winCheck.yaku.length > 0,
+      canRiichi: canRiichiNow,
+      canAnkan: canAnkanNow,
     } : emptyActions()),
     drawnTile: rinshanTile,
     turn: state.turn + 1,

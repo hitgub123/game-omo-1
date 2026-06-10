@@ -106,13 +106,8 @@ export class GameController {
         this._state = s;
         this.emit();
         this.schedule(s.phase === GamePhase.ACTION_PROMPT ? 400 : 50);
-      } else if (cp.isRiichi && s.drawnTile) {
-        // 立直自摸切：自动打出刚摸到的牌
-        this._state = discardTile(s, s.drawnTile.id);
-        this.emit();
-        this.schedule(50);
       }
-      // 人类(非立直): 等待点击
+      // 人类: 等待点击（自摸切由 App 层的 autoSelfDiscard 控制）
       return;
     }
 
@@ -251,6 +246,7 @@ export class GameController {
     if (!cp?.isHuman) return false;
     if (s.phase !== GamePhase.DISCARDING && s.phase !== GamePhase.ACTION_PROMPT) return false;
 
+    // 立直后只能弃摸牌（自摸切），自动模式走 useEffect，手动模式由用户点
     if (cp.isRiichi && s.drawnTile && tileId !== s.drawnTile.id) {
       this.log('立直后只能打刚摸到的牌（自摸切）');
       return false;
@@ -307,6 +303,13 @@ export class GameController {
         break;
 
       case 'ron':
+        if (!s.actionsAvailable[humanWind]?.canRon) {
+          console.warn('[AUTO-RON] blocked: canRon is false', {
+            phase: s.phase, humanWind, lastDiscard: s.lastDiscard?.suit + s.lastDiscard?.value,
+            actions: s.actionsAvailable[humanWind],
+          });
+          break;
+        }
         this._state = executeWin(s, humanWind, false);
         setTimeout(() => {
           if (this._state.phase === GamePhase.HAND_OVER) this.log('💥 荣和！');
@@ -463,7 +466,7 @@ export class GameController {
     if (wallIdx >= 0) newWall.splice(wallIdx, 1);
     newWall.push(oldTile);
 
-    this._state = { ...s, players, wall: newWall };
+    this._state = { ...s, players, wall: newWall, drawnTile: wallTile };
     this.emit();
     // 换牌后整理手牌顺序
     this._state = {

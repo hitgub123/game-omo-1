@@ -2,10 +2,25 @@
  * riichi 库封装 — 替代手写的 checkWin / evaluateHand
  * v2: 支持两立直、一发、宝牌/赤宝牌、里宝牌
  */
-import Riichi from 'riichi';
+import Riichi from '../../utils/riichi-lib/index.js';
 import type { Tile, Meld, GameState, YakuInfo, Wind } from '../game/types';
 import { MeldType } from '../game/types';
 import type { EvaluationResult } from '../game/hand';
+import { checkMahjongStatus } from '../../utils/syanten.js';
+import { tilesToHai } from './hand';
+
+const LOG_SERVER = 'http://localhost:12345/log';
+
+/** 发送调试信息到日志文件（静默失败） */
+function logDebug(type: string, data: Record<string, unknown>): void {
+  try {
+    fetch(LOG_SERVER, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify([{ time: '', type, data }]),
+    }).catch(() => {});
+  } catch {}
+}
 
 /** 转 riichi 库牌面：赤5用 '0' 表示，自动计赤宝牌 */
 function tileStr(t: Tile): string {
@@ -13,8 +28,6 @@ function tileStr(t: Tile): string {
 }
 
 function meldStr(m: Meld): string {
-  // riichi 库要求副露格式为"数字+花色"，如 123m、111p
-  // 不能带括号 []，否则库无法识别为副露
   const suit = m.tiles[0].suit;
   const nums = m.tiles.map(t => tileStr(t).slice(0, -1)).join('');
   return nums + suit;
@@ -25,20 +38,25 @@ function optsStr(state: GameState, playerWind: Wind): string {
   const ops: string[] = [];
   const player = state.players[playerWind];
 
-  // 立直类型: w = 两立直, r = 通常立直, 无 = 非立直
   if (player.isDoubleRiichi) {
     ops.push('w');
   } else if (player.isRiichi) {
     ops.push('r');
   }
 
-  // 一发判定：立直后 2 回合内和牌（未被鸣牌打断时有效）
   if (player.isRiichi && player.riichiTurnStart > 0 &&
       state.turn - player.riichiTurnStart <= 2) {
     ops.push('i');
   }
 
-  // 自风+场风: 格式 "bakaze jikaze"（riichi库要求场风在前）
+  if (state.isRinshan) {
+    ops.push('k');
+  }
+
+  if (state.isLastDraw) {
+    ops.push('h');
+  }
+
   ops.push(`${state.roundWind + 1}${playerWind + 1}`);
   return ops.join('');
 }
@@ -61,6 +79,20 @@ const YAKUMAN_NAMES = new Set([
   '国士無双', '四暗刻', '大三元', '字一色', '緑一色', '清老頭', '九蓮宝燈', '天和', '地和',
 ]);
 
+/** syanten 快速判断是否能和（不调 riichi 库算分，用于亮按钮） */
+export function canWinBySyanten(
+  handTiles: Tile[],
+  _melds: Meld[],
+  winningTile: Tile,
+  isTsumo: boolean,
+): boolean {
+  const allTiles = handTiles.filter(t => t.id !== winningTile.id);
+  if (isTsumo) allTiles.push(winningTile);
+  const validationTiles = [...allTiles];
+  if (!isTsumo) validationTiles.push(winningTile);
+  return checkMahjongStatus(tilesToHai(validationTiles)) === -1;
+}
+
 export function riichiCheckWin(
   handTiles: Tile[],
   melds: Meld[],
@@ -74,48 +106,58 @@ export function riichiCheckWin(
     // 荣和牌去重
     const allHandTiles = handTiles.filter(t => t.id !== winningTile.id);
     if (isTsumo) allHandTiles.push(winningTile);
-    // 暗杠直接混入手牌（riichi 库不认识 [xxxx] 格式）
-    const ankanTiles: Tile[] = [];
-    const otherMelds: Meld[] = [];
-    for (const m of melds) {
-      if (m.type === MeldType.ANKAN) ankanTiles.push(...m.tiles);
-      else otherMelds.push(m);
-    }
     const handStr = allHandTiles.map(tileStr).join('');
     parts.push(handStr);
-    // 副露
+
+    // 副露 — 全部带 + 前缀
     for (const m of melds) {
       if (m.type === MeldType.ANKAN) {
-        parts.push('+' + tileStr(m.tiles[0]) + tileStr(m.tiles[0]));
-      } else if (m.type === MeldType.KAKAN) {
-        parts.push('+' + tileStr(m.tiles[0]) + tileStr(m.tiles[0]));
+        // 暗杠: +44p (数字重复2次+花色1次)
+        const val = tileStr(m.tiles[0]).slice(0, -1);
+        parts.push('+' + val.repeat(2) + m.tiles[0].suit);
+      } else if (m.type === MeldType.KAKAN || m.type === MeldType.KAN) {
+        // 明杠/加杠: +7777z (数字重复4次+花色1次)
+        const val = tileStr(m.tiles[0]).slice(0, -1);
+        parts.push('+' + val.repeat(4) + m.tiles[0].suit);
       } else {
-        parts.push(meldStr(m));
+        parts.push('+' + meldStr(m));
       }
     }
     // 荣和牌（自摸时已在手牌中）
     if (!isTsumo) parts.push('+' + tileStr(winningTile));
 
-    // ---- 添加宝牌指示牌 ----
+    // syanten 检查牌型（只传手牌+和牌，不传副露。syanten自能处理暗杠）
+    const validationTiles = [...allHandTiles];
+    if (!isTsumo) validationTiles.push(winningTile);
+    const syantenHai = tilesToHai(validationTiles);
+    const syantenResult = checkMahjongStatus(syantenHai);
+    logDebug('SYANTEN_INPUT', { tiles: validationTiles.map(tileStr).join(' ') });
+    logDebug('SYANTEN_RESULT', { result: JSON.stringify(syantenResult) });
+    if (syantenResult !== -1) return null;
+
+    // syanten 说能和 → 调 riichi 库算翻/符/役
+    // 选项放dora前面，riichi库按顺序解析
+    parts.push('+' + optsStr(gameState, playerWind));
+
     if (gameState.doraIndicators.length > 0) {
-      const doraStr = gameState.doraIndicators.map(tileStr).join('');
-      parts.push('+d' + doraStr);
+      parts.push('+d' + gameState.doraIndicators.map(tileStr).join(''));
     }
-    // ---- 添加里宝牌指示牌（立直和牌时） ----
     const winner = gameState.players[playerWind];
     if (winner.isRiichi && gameState.uraDoraIndicators.length > 0) {
-      const uraStr = gameState.uraDoraIndicators.map(tileStr).join('');
-      parts.push('+d' + uraStr);
+      parts.push('+d' + gameState.uraDoraIndicators.map(tileStr).join(''));
     }
-
-    // 选项
-    parts.push('+' + optsStr(gameState, playerWind));
 
     const str = parts.join('');
     const r = new Riichi(str);
     const result = r.calc();
+    logDebug('RIICHI_INPUT', { str });
+    logDebug('RIICHI_RESULT', { isAgari: result.isAgari, yaku: JSON.stringify(result.yaku), han: result.han, fu: result.fu });
 
-    if (result.error || !result.isAgari) return null;
+    if (result.error) return null;
+    if (!result.yakuman && (!result.yaku || Object.keys(result.yaku).length === 0)) {
+      logDebug('RIICHI_NO_YAKU', { str });
+      return null;
+    }
 
     const yaku: YakuInfo[] = [];
     const isYakuman = result.yakuman > 0;

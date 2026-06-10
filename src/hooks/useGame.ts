@@ -14,6 +14,7 @@ import { checkMahjongStatus } from '../../utils/syanten.js';
 import { GameController } from '../game/GameController';
 import type { TenpaiInfo } from '../game/hand';
 import type { DifficultyLevel } from '../game/difficulty';
+import { GameLogger } from '../debug/GameLogger';
 
 export interface GameControllerAPI {
   state: GameState;
@@ -38,6 +39,8 @@ export interface GameControllerAPI {
   difficulty: DifficultyLevel;
   /** 设置难度 */
   setDifficulty: (level: DifficultyLevel) => void;
+  /** 下载游戏日志 (Ctrl+L) */
+  downloadLog: () => void;
 }
 
 export function useGame(): GameControllerAPI {
@@ -55,6 +58,7 @@ export function useGame(): GameControllerAPI {
   const [riichiValidTileIds, setRiichiValidTileIds] = useState<Map<number, TenpaiInfo>>(new Map());
   const [difficulty, setDifficultyState] = useState<DifficultyLevel>('easy');
   const ctrlRef = useRef<GameController | null>(null);
+  const loggerRef = useRef<GameLogger | null>(null);
   const lastStateRef = useRef(state);
   lastStateRef.current = state;
 
@@ -62,9 +66,12 @@ export function useGame(): GameControllerAPI {
   useEffect(() => {
     const ctrl = new GameController();
     ctrlRef.current = ctrl;
+    const logger = new GameLogger();
+    loggerRef.current = logger;
 
     const unsubState = ctrl.subscribe((s) => {
       setState(s);
+      logger.onStateChange(s);
     });
     const unsubMsg = ctrl.onMessage((msg) => {
       setMessages(prev => [...prev.slice(-99), msg]);
@@ -200,6 +207,7 @@ export function useGame(): GameControllerAPI {
     const ctrl = ctrlRef.current;
     if (!ctrl) return;
     ctrl.newGame();
+    loggerRef.current?.reset();
     setSelectedTileId(null);
     setSwapMode(false);
     setSwapSourceTileId(null);
@@ -261,6 +269,10 @@ export function useGame(): GameControllerAPI {
     setDifficultyState(level);
   }, []);
 
+  const downloadLog = useCallback(() => {
+    loggerRef.current?.download();
+  }, []);
+
   return {
     state, humanDiscard, humanAction, newGame,
     nextHand: nextHandFn,
@@ -269,6 +281,7 @@ export function useGame(): GameControllerAPI {
     swapMode, swapSourceTileId, enterSwapMode, executeSwap, cancelSwap,
     riichiMode, riichiValidTileIds, cancelRiichi,
     difficulty, setDifficulty,
+    downloadLog,
   };
 }
 

@@ -82,7 +82,12 @@ export function drawTile(state: GameState): GameState {
     actionsAvailable: WINDS.map((_, i) => i === state.currentPlayer ? actions : emptyActions()),
     turn: state.turn + 1,
     turnHistory: [...state.turnHistory, { type: 'draw' as const, player: state.currentPlayer, tile: drawnTile }],
-    furitenPlayers: state.furitenPlayers.filter(p => p !== state.currentPlayer),
+    furitenPlayers: state.furitenPlayers.filter(p => {
+      // 立直玩家的永久振听不因摸牌解除（见逃后整局不能荣和）
+      // 非立直玩家轮到自己摸牌时临时振听解除
+      if (p === state.currentPlayer && !state.players[p].isRiichi) return false;
+      return true;
+    }),
   };
 }
 

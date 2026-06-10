@@ -5,12 +5,7 @@
 
 /* ---- CSS变量 ---- */
 :root {
-  /* 麻将桌色 */
-  --table-green: #1b5e20;
-  --table-green-dark: #0d3b0f;
-  --table-green-light: #2e7d32;
-
-  /* 东方角色色 */
+  /* 东方角色色（主题不变） */
   --reimu: #e84057;
   --marisa: #f5d442;
   --sakuya: #4a90d9;
@@ -22,19 +17,104 @@
   --sou-color: #1565c0;
   --honor-gold: #f9a825;
 
-  /* UI色 */
-  --bg-dark: #1a1a2e;
-  --bg-panel: rgba(0, 0, 0, 0.7);
-  --text-primary: #f0e6d3;
-  --text-secondary: #a0a0a0;
-  --border-gold: #c9a84c;
-
   /* 牌尺寸 */
   --tile-width: 52px;
   --tile-height: 70px;
   --tile-small-width: 36px;
   --tile-small-height: 48px;
   --tile-radius: 6px;
+}
+
+/* ============================================================
+   桌面主题（通过 .theme-xxx 切换，性能零开销）
+   ============================================================ */
+
+/* ── 标准（默认） ── */
+.app-container.theme-default {
+  --bg-dark: #1a1a2e;
+  --bg-panel: rgba(0, 0, 0, 0.7);
+  --bg-surface: rgba(0, 0, 0, 0.4);
+  --text-primary: #f0e6d3;
+  --text-secondary: #a0a0a0;
+  --border-gold: #c9a84c;
+  --table-green: #1b5e20;
+  --table-green-dark: #0d3b0f;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(232, 64, 87, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(155, 89, 182, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 0%, rgba(245, 212, 66, 0.05) 0%, transparent 50%),
+    linear-gradient(180deg, #16213e 0%, #1a1a2e 100%);
+}
+
+/* ── 雀卓（经典绿色绒布） ── */
+.app-container.theme-green {
+  --bg-dark: #1b5e20;
+  --bg-panel: rgba(0, 0, 0, 0.55);
+  --bg-surface: rgba(0, 0, 0, 0.3);
+  --text-primary: #f5f0e1;
+  --text-secondary: #a8d5a2;
+  --border-gold: #ffd54f;
+  --table-green: #2e7d32;
+  --table-green-dark: #1b5e20;
+  background:
+    radial-gradient(ellipse at 50% 50%, #2e7d32 0%, #1b5e20 60%, #0d3b0f 100%);
+}
+.app-container.theme-green .app-header {
+  background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%);
+}
+
+/* ── 和风（暖色木纹） ── */
+.app-container.theme-warm {
+  --bg-dark: #3e2723;
+  --bg-panel: rgba(0, 0, 0, 0.5);
+  --bg-surface: rgba(0, 0, 0, 0.25);
+  --text-primary: #f5f0e1;
+  --text-secondary: #bcaaa4;
+  --border-gold: #d4a574;
+  --table-green: #5d4037;
+  --table-green-dark: #3e2723;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px, transparent 60px,
+      rgba(255,255,255,0.02) 60px, rgba(255,255,255,0.02) 61px
+    ),
+    linear-gradient(180deg, #5d4037 0%, #3e2723 50%, #2c1a12 100%);
+}
+.app-container.theme-warm .app-header {
+  background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%);
+}
+
+/* ── 淡色（明亮简洁） ── */
+.app-container.theme-light {
+  --bg-dark: #eceff1;
+  --bg-panel: rgba(255, 255, 255, 0.85);
+  --bg-surface: rgba(255, 255, 255, 0.5);
+  --text-primary: #37474f;
+  --text-secondary: #78909c;
+  --border-gold: #ff8f00;
+  --table-green: #c8e6c9;
+  --table-green-dark: #a5d6a7;
+  background:
+    radial-gradient(ellipse at 50% 50%, #eceff1 0%, #cfd8dc 100%);
+}
+.app-container.theme-light .app-title {
+  -webkit-text-fill-color: #37474f;
+  background: none;
+  filter: none;
+  color: #37474f;
+}
+.app-container.theme-light .app-subtitle {
+  color: #78909c;
+}
+.app-container.theme-light .app-header {
+  background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, transparent 100%);
+}
+.app-container.theme-light .tile {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+.app-container.theme-light .action-panel {
+  border-color: rgba(0,0,0,0.1);
 }
 
 /* ---- 基础重置 ---- */
@@ -121,6 +201,29 @@ body {
 }
 .skin-pulldown:hover { border-color: var(--border-gold); }
 .skin-pulldown option { background: #1a1a2e; color: #f0e6d3; }
+
+/* 桌面主题下拉 */
+.theme-pulldown {
+  position: absolute;
+  right: 104px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(201,168,76,0.3);
+  color: var(--text-primary);
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M0 0l4 5 4-5' fill='%23a0a0a0'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+}
+.theme-pulldown:hover { border-color: var(--border-gold); }
+.theme-pulldown option { background: #1a1a2e; color: #f0e6d3; }
 .app-header { position: relative; }
 
 /* ---- 牌面色调切换（CSS filter, GPU加速） ---- */

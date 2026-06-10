@@ -16,6 +16,13 @@ const SKINS = [
   { id: 'dark', label: '漆黒' },
 ] as const;
 
+const THEMES = [
+  { id: 'default', label: '标准' },
+  { id: 'green', label: '雀卓' },
+  { id: 'warm', label: '和风' },
+  { id: 'light', label: '淡色' },
+] as const;
+
 const App: React.FC = () => {
   const {
     state, humanDiscard, humanAction, newGame, nextHand,
@@ -26,6 +33,7 @@ const App: React.FC = () => {
   } = useGame();
 
   const [skinIdx, setSkinIdx] = React.useState(0);
+  const [themeIdx, setThemeIdx] = React.useState(0);
   const [gameKey, setGameKey] = React.useState(0);
   const [autoSelfDiscard, setAutoSelfDiscard] = React.useState(false);
   const [noCall, setNoCall] = React.useState(false);
@@ -138,13 +146,18 @@ const App: React.FC = () => {
 
   return (
     <TileBackContext.Provider value={backSvg}>
-    <div className={`app-container skin-${currentSkin.id}`} onContextMenu={handleContainerContextMenu} onClick={handleContainerClick}>
+    <div className={`app-container skin-${currentSkin.id} theme-${THEMES[themeIdx % THEMES.length].id}`} onContextMenu={handleContainerContextMenu} onClick={handleContainerClick}>
       <div className="app-header">
         <h1 className="app-title">东方幻想麻雀</h1>
         <div className="app-subtitle">Touhou Gensou Mahjong</div>
         <select className="skin-pulldown" value={skinIdx} onChange={handleSkinChange}>
           {SKINS.map((s, i) => (
             <option key={s.id} value={i}>{s.label}</option>
+          ))}
+        </select>
+        <select className="theme-pulldown" value={themeIdx} onChange={e => setThemeIdx(Number(e.target.value))}>
+          {THEMES.map((t, i) => (
+            <option key={t.id} value={i}>{t.label}</option>
           ))}
         </select>
       </div>

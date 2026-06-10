@@ -169,7 +169,7 @@ export interface GameState {
   furitenPlayers: Wind[];   // 当前振听中的玩家
   isRinshan?: boolean;      // 当前摸牌是否为杠后岭上牌
   isLastDraw?: boolean;     // 当前是否为最后一张牌（海底/河底用）
-  gameLength?: number;      // 游戏长度: 1=东风战 2=东南战(默认) 3=东西战 4=东北战
+  gameLength: number;        // 游戏长度: 1=东风 2=东南 3=东西 4=东北
 }
 
 /** 角色定义 */

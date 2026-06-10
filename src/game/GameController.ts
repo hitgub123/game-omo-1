@@ -27,10 +27,12 @@ export class GameController {
   private timerId: ReturnType<typeof setTimeout> | null = null;
   private _difficulty: DifficultyConfig = DIFFICULTY_NORMAL;
   private _characters?: { name: string }[];
+  private _gameLength: number;
 
-  constructor(characters?: { name: string }[]) {
+  constructor(characters?: { name: string }[], gameLength = 2) {
     this._characters = characters;
-    this._state = createInitialState(characters);
+    this._gameLength = gameLength;
+    this._state = createInitialState(characters, undefined, gameLength);
   }
 
   /** 设置 AI 难度 */
@@ -225,7 +227,7 @@ export class GameController {
 
   newGame() {
     this.clearTimer();
-    this._state = createInitialState(this._characters);
+    this._state = createInitialState(this._characters, undefined, this._gameLength);
     this.emit();
     this.schedule(50);
   }
@@ -233,8 +235,8 @@ export class GameController {
   nextHand() {
     this.clearTimer();
     const s = this._state;
-    if (s.players.some(p => p.score < 0) || s.handCount >= 7) {
-      this._state = createInitialState(this._characters);
+    if (s.players.some(p => p.score < 0) || s.handCount >= s.gameLength * 4) {
+      this._state = createInitialState(this._characters, undefined, this._gameLength);
     } else {
       this._state = createNextHand(s);
     }

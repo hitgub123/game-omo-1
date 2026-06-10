@@ -39,6 +39,9 @@ const THEMES = [
 
 const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
   const charNames = characters.map(c => ({ name: c.nameCN }));
+  const [gameLength, setGameLength] = React.useState(2);
+  const [noCall, setNoCall] = React.useState(true);
+  const [autoWin, setAutoWin] = React.useState(true);
   const {
     state, humanDiscard, humanAction, newGame, nextHand,
     selectedTileId, setSelectedTileId, messages, isAiThinking,
@@ -46,15 +49,12 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
     riichiMode, riichiValidTileIds, cancelRiichi,
     difficulty, setDifficulty,
     downloadLog,
-  } = useGame(charNames);
+  } = useGame(charNames, gameLength);
 
   const [skinIdx, setSkinIdx] = React.useState(0);
   const [themeIdx, setThemeIdx] = React.useState(0);
   const [gameKey, setGameKey] = React.useState(0);
   const [autoSelfDiscard, setAutoSelfDiscard] = React.useState(false);
-  const [noCall, setNoCall] = React.useState(false);
-  const [autoWin, setAutoWin] = React.useState(false);
-  const [gameLength, setGameLength] = React.useState(2); // 默认东南战
   const currentSkin = SKINS[skinIdx % SKINS.length];
 
   const handleSkinChange = React.useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -86,16 +86,16 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
   const handleNewGame = React.useCallback(() => {
     setGameKey(k => k + 1);
     setAutoSelfDiscard(false);
-    setNoCall(false);
-    setAutoWin(false);
+    setNoCall(true);
+    setAutoWin(true);
     newGame();
   }, [newGame]);
 
   const handleNextHand = React.useCallback(() => {
     setGameKey(k => k + 1);
     setAutoSelfDiscard(false);
-    setNoCall(false);
-    setAutoWin(false);
+    setNoCall(true);
+    setAutoWin(true);
     nextHand();
   }, [nextHand]);
 
@@ -186,7 +186,7 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
         <select className="theme-pulldown" value={themeIdx} onChange={e => setThemeIdx(Number(e.target.value))}>
           {THEMES.map((t, i) => (<option key={t.id} value={i}>{t.label}</option>))}
         </select>
-        <button className="btn-back" onClick={onExit} style={{ fontSize: 12, padding: '4px 12px' }}>← 返回</button>
+        <button className="btn-back" onClick={() => { if (window.confirm('确定要返回主页吗？当前游戏进度将丢失。')) onExit(); }} style={{ fontSize: 12, padding: '4px 12px' }}>← 返回</button>
       </div>
       <GameTable key={gameKey}
         state={state}

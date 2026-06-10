@@ -6,7 +6,7 @@ import { checkMahjongStatus } from '../../utils/syanten.js';
 import { riichiCheckWin as checkWin, canWinBySyanten } from './riichi-check';
 import { calculateScore, calculatePayouts } from './scoring';
 
-export function createInitialState(characters?: { name: string }[], dealerWind?: Wind): GameState {
+export function createInitialState(characters?: { name: string }[], dealerWind?: Wind, gameLength = 2): GameState {
   const deck = shuffleArray(createTileDeck());
   const deadWall = deck.slice(0, 14);
   const wall = deck.slice(14);
@@ -60,6 +60,7 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     turnHistory: [],
     dealerIndex: actualDealer,
     furitenPlayers: [],
+    gameLength,
   };
 }
 
@@ -75,7 +76,7 @@ export function drawTile(state: GameState): GameState {
 
   const actions = getDrawActions(player, state, state.currentPlayer, drawnTile);
   const hasActions = actions.canRiichi || actions.canTsumo || actions.canAnkan || actions.canKakan || actions.canNineOrphans;
-  console.log(`[DRAW] ${player.name}(${state.currentPlayer}) 摸牌 牌山:${wall.length} 手牌:${player.hand.length} 有动作:${hasActions}`);
+  // console.log(`[DRAW] ${player.name}(${state.currentPlayer}) 摸牌 牌山:${wall.length} 手牌:${player.hand.length} 有动作:${hasActions}`);
 
   return {
     ...state,
@@ -573,7 +574,7 @@ function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winning
 // ---- Next turn ----
 export function nextTurn(state: GameState): GameState {
   const currentPlayer = ((state.currentPlayer + 1) % 4) as Wind;
-  console.log(`[TURN] ${state.players[state.currentPlayer].name}(${state.currentPlayer}) → ${state.players[currentPlayer].name}(${currentPlayer})  牌山:${state.wall.length}`);
+  // console.log(`[TURN] ${state.players[state.currentPlayer].name}(${state.currentPlayer}) → ${state.players[currentPlayer].name}(${currentPlayer})  牌山:${state.wall.length}`);
   return {
     ...state,
     currentPlayer,
@@ -711,12 +712,13 @@ export function createNextHand(prevState: GameState): GameState {
   }
 
   // 判断场风
-  const roundWind: Wind = newHandCount < 4 ? Wind.EAST : Wind.SOUTH;
+  const maxRounds = prevState.gameLength * 4;
+  const roundWind: Wind = newHandCount < maxRounds ? (Math.floor(newHandCount / 4) as Wind) : Wind.EAST;
 
   // 判断游戏是否结束：
-  // handCount = 非连庄的轮庄次数 → 0-3东场, 4-7南场
+  // handCount = 非连庄的轮庄次数 → 0-3东场, 4-7南场 etc.
   const anyNegative = prevState.players.some(p => p.score < 0);
-  if (anyNegative || newHandCount >= 8) {
+  if (anyNegative || newHandCount >= maxRounds) {
     return {
       ...prevState,
       phase: GamePhase.GAME_OVER,
@@ -776,5 +778,6 @@ export function createNextHand(prevState: GameState): GameState {
     dealerIndex: newDealer,
     handCount: newHandCount,
     furitenPlayers: [],
+    gameLength: prevState.gameLength,
   };
 }

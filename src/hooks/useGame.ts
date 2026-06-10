@@ -43,8 +43,8 @@ export interface GameControllerAPI {
   downloadLog: () => void;
 }
 
-export function useGame(characters?: { name: string }[]): GameControllerAPI {
-  const [state, setState] = useState<GameState>(() => createInitialState(characters));
+export function useGame(characters?: { name: string }[], gameLength = 2): GameControllerAPI {
+  const [state, setState] = useState<GameState>(() => createInitialState(characters, undefined, gameLength));
   const [selectedTileId, setSelectedTileId] = useState<number | null>(null);
   const [messages, setMessages] = useState<string[]>([
     '🎴 东方幻想麻雀 - 新游戏开始！',
@@ -59,13 +59,15 @@ export function useGame(characters?: { name: string }[]): GameControllerAPI {
   const [difficulty, setDifficultyState] = useState<DifficultyLevel>('easy');
   const ctrlRef = useRef<GameController | null>(null);
   const charsRef = useRef(characters);
+  const gameLengthRef = useRef(gameLength);
+  gameLengthRef.current = gameLength;
   const loggerRef = useRef<GameLogger | null>(null);
   const lastStateRef = useRef(state);
   lastStateRef.current = state;
 
   // 首次挂载：创建控制器并订阅
   useEffect(() => {
-    const ctrl = new GameController(charsRef.current);
+    const ctrl = new GameController(charsRef.current, gameLengthRef.current);
     ctrlRef.current = ctrl;
     const logger = new GameLogger();
     loggerRef.current = logger;
@@ -93,11 +95,11 @@ export function useGame(characters?: { name: string }[]): GameControllerAPI {
 
     return () => {
       clearTimeout(t);
-      ctrl.destroy();
       unsubState();
       unsubMsg();
+      ctrl.destroy();
     };
-  }, []);
+  }, [gameLength]);
 
   // 更新 debug 信息
   useEffect(() => {
@@ -224,6 +226,7 @@ export function useGame(characters?: { name: string }[]): GameControllerAPI {
     setSwapSourceTileId(null);
     setRiichiMode(false);
     setRiichiValidTileIds(new Map());
+    setMessages(['下一局开始...']);
   }, []);
 
   const enterSwapMode = useCallback((tileId: number) => {
@@ -309,6 +312,6 @@ function createInitialState(): GameState {
     phase: 'waiting' as GamePhase, roundWind: 0 as Wind,
     honba: 0, riichiSticks: 0, kanCount: 0,
     actionsAvailable: [], turnHistory: [], dealerIndex: 0 as Wind,
-    handCount: 0, furitenPlayers: [],
+    handCount: 0, furitenPlayers: [], gameLength: 2,
   };
 }

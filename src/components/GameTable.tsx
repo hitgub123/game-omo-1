@@ -50,7 +50,7 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
     <div className="game-table">
       <div className="table-header">
         <div className="game-info">
-          <span className="round-info">{state.roundWind === Wind.EAST ? '东' : '南'}{(state.handCount % 4) + 1}局</span>
+          <span className="round-info">{['东','南','西','北'][state.roundWind]}{(state.handCount % 4) + 1}局</span>
           <span className="honba-info">本场 {state.honba}</span>
           {state.riichiSticks > 0 && <span className="riichi-sticks">立直棒 x{state.riichiSticks}</span>}
         </div>

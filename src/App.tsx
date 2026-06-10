@@ -1,11 +1,25 @@
 import React from 'react';
 import { useGame } from './hooks/useGame';
 import GameTable from './components/GameTable';
+import StartPage from './components/StartPage';
+import CharacterSelect from './components/CharacterSelect';
 import { TileBackContext } from './components/TileBackContext';
 import { pickGameBackSvg } from './game/tileAssets';
-import { GamePhase } from './game/types';
-import { WINDS } from './game/types';
+import { GamePhase, Wind, WINDS } from './game/types';
 import './styles/global.css';
+import './styles/title-screen.css';
+
+interface Character {
+  id: string; nameCN: string; nameJP: string; nameEN: string;
+}
+
+type Page = 'title' | 'select' | 'game';
+
+// ── In-game wrapper (mounts useGame + GameTable) ──
+interface GamePageProps {
+  characters: Character[];
+  onExit: () => void;
+}
 
 const SKINS = [
   { id: 'default', label: '標準' },
@@ -23,7 +37,8 @@ const THEMES = [
   { id: 'light', label: '淡色' },
 ] as const;
 
-const App: React.FC = () => {
+const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
+  const charNames = characters.map(c => ({ name: c.nameCN }));
   const {
     state, humanDiscard, humanAction, newGame, nextHand,
     selectedTileId, setSelectedTileId, messages, isAiThinking,
@@ -31,7 +46,7 @@ const App: React.FC = () => {
     riichiMode, riichiValidTileIds, cancelRiichi,
     difficulty, setDifficulty,
     downloadLog,
-  } = useGame();
+  } = useGame(charNames);
 
   const [skinIdx, setSkinIdx] = React.useState(0);
   const [themeIdx, setThemeIdx] = React.useState(0);
@@ -61,7 +76,6 @@ const App: React.FC = () => {
   React.useEffect(() => {
     if (humanWind === undefined) return;
     const isRiichi = state.players[humanWind].isRiichi;
-    // 仅在 false → true 转变时勾上，用户取消勾后不覆盖
     if (isRiichi && !prevRiichiRef.current) {
       setAutoSelfDiscard(true);
     }
@@ -87,13 +101,11 @@ const App: React.FC = () => {
   // ── 不鸣牌：自动跳过吃碰杠 ──
   React.useEffect(() => {
     if (!noCall) return;
-    // Only applies in response phase (someone else discarded)
     if (!state.lastDiscard) return;
     const hWind = WINDS.find(w => state.players[w].isHuman);
     if (hWind === undefined) return;
     const actions = state.actionsAvailable[hWind];
     if (!actions) return;
-    // Auto-pass if only chi/pon/kan are available (no ron)
     const hasRon = actions.canRon;
     const hasCall = actions.canPon || actions.canChi || actions.canKan;
     if (!hasRon && hasCall) {
@@ -109,25 +121,18 @@ const App: React.FC = () => {
     const actions = state.actionsAvailable[hWind];
     if (!actions) return;
     if (state.lastDiscard && actions.canRon) {
-      console.log('[AUTO-WIN] ron triggered', { phase: state.phase, tile: state.lastDiscard?.suit + state.lastDiscard?.value });
       humanAction('ron');
     } else if (!state.lastDiscard && actions.canTsumo) {
-      console.log('[AUTO-WIN] tsumo triggered');
       humanAction('tsumo');
     }
   }, [autoWin, state.phase, state.lastDiscard?.id, state.drawnTile?.id, state.actionsAvailable, humanAction]);
 
-  const backSvg = React.useMemo(() => pickGameBackSvg(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [gameKey]);
+  const backSvg = React.useMemo(() => pickGameBackSvg(), [gameKey]);
 
   // ── Ctrl+L 下载游戏日志 ──
   React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 'l') {
-        e.preventDefault();
-        downloadLog();
-      }
+      if (e.ctrlKey && e.key === 'l') { e.preventDefault(); downloadLog(); }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -151,8 +156,7 @@ const App: React.FC = () => {
   }, [state, humanDiscard, setSelectedTileId, swapMode]);
 
   const handleContextMenu = React.useCallback((tileId: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     const cp = state.players[state.currentPlayer];
     if (!cp?.isHuman) return;
     setSelectedTileId(tileId);
@@ -160,37 +164,29 @@ const App: React.FC = () => {
   }, [state, enterSwapMode, setSelectedTileId]);
 
   const handleContainerContextMenu = React.useCallback((e: React.MouseEvent) => {
-    if (swapMode) {
-      e.preventDefault();
-      cancelSwap();
-    }
+    if (swapMode) { e.preventDefault(); cancelSwap(); }
   }, [swapMode, cancelSwap]);
 
   const handleContainerClick = React.useCallback(() => {
-    if (swapMode) {
-      cancelSwap();
-    }
+    if (swapMode) cancelSwap();
   }, [swapMode, cancelSwap]);
 
   return (
     <TileBackContext.Provider value={backSvg}>
-    <div className={`app-container skin-${currentSkin.id} theme-${THEMES[themeIdx % THEMES.length].id}`} onContextMenu={handleContainerContextMenu} onClick={handleContainerClick}>
+    <div className={`app-container skin-${currentSkin.id} theme-${THEMES[themeIdx % THEMES.length].id}`}
+      onContextMenu={handleContainerContextMenu} onClick={handleContainerClick}>
       <div className="app-header">
+        <button className="btn-back" onClick={onExit} style={{ marginRight: 12, fontSize: 12, padding: '4px 12px' }}>← 返回</button>
         <h1 className="app-title">东方幻想麻雀</h1>
         <div className="app-subtitle">Touhou Gensou Mahjong</div>
         <select className="skin-pulldown" value={skinIdx} onChange={handleSkinChange}>
-          {SKINS.map((s, i) => (
-            <option key={s.id} value={i}>{s.label}</option>
-          ))}
+          {SKINS.map((s, i) => (<option key={s.id} value={i}>{s.label}</option>))}
         </select>
         <select className="theme-pulldown" value={themeIdx} onChange={e => setThemeIdx(Number(e.target.value))}>
-          {THEMES.map((t, i) => (
-            <option key={t.id} value={i}>{t.label}</option>
-          ))}
+          {THEMES.map((t, i) => (<option key={t.id} value={i}>{t.label}</option>))}
         </select>
       </div>
-
-      <GameTable
+      <GameTable key={gameKey}
         state={state}
         selectedTileId={selectedTileId}
         onTileClick={handleTileClick}
@@ -213,12 +209,9 @@ const App: React.FC = () => {
         onToggleNoCall={() => setNoCall(v => !v)}
         onToggleAutoWin={() => setAutoWin(v => !v)}
       />
-
       <div className="status-bar">
         <div className="status-messages">
-          {messages.slice(-5).map((msg, i) => (
-            <div key={i} className="status-message">{msg}</div>
-          ))}
+          {messages.slice(-5).map((msg, i) => (<div key={i} className="status-message">{msg}</div>))}
         </div>
         {isAiThinking && (
           <div className="thinking-indicator">
@@ -231,6 +224,33 @@ const App: React.FC = () => {
     </div>
     </TileBackContext.Provider>
   );
+};
+
+// ── App Root ──
+const App: React.FC = () => {
+  const [page, setPage] = React.useState<Page>('title');
+  const [selectedChars, setSelectedChars] = React.useState<Character[] | null>(null);
+
+  const handleStartSolo = () => setPage('select');
+  const handleBack = () => setPage('title');
+  const handleSelectDone = (chars: Character[]) => {
+    setSelectedChars(chars);
+    setPage('game');
+  };
+  const handleExitGame = () => {
+    setSelectedChars(null);
+    setPage('title');
+  };
+
+  if (page === 'game' && selectedChars) {
+    return <GamePage key={selectedChars.map(c => c.id).join(',')} characters={selectedChars} onExit={handleExitGame} />;
+  }
+
+  if (page === 'select') {
+    return <CharacterSelect onStart={handleSelectDone} onBack={handleBack} />;
+  }
+
+  return <StartPage onStartSolo={handleStartSolo} />;
 };
 
 export default App;

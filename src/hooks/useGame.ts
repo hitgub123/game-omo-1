@@ -43,8 +43,8 @@ export interface GameControllerAPI {
   downloadLog: () => void;
 }
 
-export function useGame(): GameControllerAPI {
-  const [state, setState] = useState<GameState>(() => createInitialState());
+export function useGame(characters?: { name: string }[]): GameControllerAPI {
+  const [state, setState] = useState<GameState>(() => createInitialState(characters));
   const [selectedTileId, setSelectedTileId] = useState<number | null>(null);
   const [messages, setMessages] = useState<string[]>([
     '🎴 东方幻想麻雀 - 新游戏开始！',
@@ -58,13 +58,14 @@ export function useGame(): GameControllerAPI {
   const [riichiValidTileIds, setRiichiValidTileIds] = useState<Map<number, TenpaiInfo>>(new Map());
   const [difficulty, setDifficultyState] = useState<DifficultyLevel>('easy');
   const ctrlRef = useRef<GameController | null>(null);
+  const charsRef = useRef(characters);
   const loggerRef = useRef<GameLogger | null>(null);
   const lastStateRef = useRef(state);
   lastStateRef.current = state;
 
   // 首次挂载：创建控制器并订阅
   useEffect(() => {
-    const ctrl = new GameController();
+    const ctrl = new GameController(charsRef.current);
     ctrlRef.current = ctrl;
     const logger = new GameLogger();
     loggerRef.current = logger;
@@ -200,7 +201,7 @@ export function useGame(): GameControllerAPI {
       return;
     }
 
-    ctrl.humanAction(action);
+    ctrl.humanAction(action, _tiles);
   }, []);
 
   const newGame = useCallback(() => {

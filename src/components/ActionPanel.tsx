@@ -7,18 +7,10 @@ interface ActionPanelProps {
   onAction: (action: string, tiles?: Tile[]) => void;
   riichiMode?: boolean;
   onCancelRiichi?: () => void;
-  autoSelfDiscard: boolean;
-  noCall: boolean;
-  autoWin: boolean;
-  onToggleSelfDiscard: () => void;
-  onToggleNoCall: () => void;
-  onToggleAutoWin: () => void;
 }
 
 const ActionPanel: React.FC<ActionPanelProps> = ({
   state, onAction, riichiMode, onCancelRiichi,
-  autoSelfDiscard, noCall, autoWin,
-  onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin,
 }) => {
   const humanWind = WINDS.find(w => state.players[w].isHuman);
   if (humanWind === undefined) return null;
@@ -26,18 +18,6 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   const actions = state.actionsAvailable[humanWind];
   const humanPlayer = state.players[humanWind];
   const isResponsePhase = state.lastDiscard !== undefined;
-
-  // ── Toggle 组（始终显示在左侧） ──
-  const toggles = (
-    <div className="panel-toggles">
-      <button className={`toggle-btn ${autoSelfDiscard ? 'toggle-on' : ''}`}
-        onClick={onToggleSelfDiscard} title="自动打出摸到的牌（有动作时暂停）">自摸切</button>
-      <button className={`toggle-btn ${noCall ? 'toggle-on' : ''}`}
-        onClick={onToggleNoCall} title="不提示吃碰杠，只提示和牌与暗杠">不鸣牌</button>
-      <button className={`toggle-btn ${autoWin ? 'toggle-on' : ''}`}
-        onClick={onToggleAutoWin} title="可荣和或自摸时自动和牌">自动和</button>
-    </div>
-  );
 
   // ── 操作按钮组 ──
   let actionButtons: React.ReactNode = null;
@@ -87,7 +67,6 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
 
   return (
     <div className="action-panel">
-      {toggles}
       {actionButtons}
     </div>
   );
@@ -99,14 +78,22 @@ function renderChiOptions(
 ): React.ReactNode {
   const chiOpts = actions.chiOptions?.[0];
   if (!chiOpts || chiOpts.length <= 1) {
+    if (chiOpts?.length === 1) {
+      const names = chiOpts[0].tiles.map(t => `${t.value}${t.suit}`).join('');
+      console.log(`[CHI] single option: ${names}`);
+    }
     return <button className="btn-action btn-chi" onClick={() => onAction('chi')}>吃</button>;
   }
   return (
     <span className="chi-submenu">
       {chiOpts.map((opt, i) => {
         const tileNames = opt.tiles.map(t => `${t.value}${t.suit}`).join('');
+        console.log(`[CHI] btn #${i}: tiles=${tileNames} ids=${opt.tiles.map(t=>t.id).join(',')}`);
         return (
-          <button key={i} className="btn-action btn-chi-sub" onClick={() => onAction('chi', opt.tiles)}>
+          <button key={i} className="btn-action btn-chi-sub" onClick={() => {
+            console.log(`[CHI] CLICKED btn #${i}: tiles=${tileNames} ids=${opt.tiles.map(t=>t.id).join(',')}`);
+            onAction('chi', opt.tiles);
+          }}>
             吃{tileNames}
           </button>
         );

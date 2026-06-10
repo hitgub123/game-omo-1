@@ -6,14 +6,14 @@ import { checkMahjongStatus } from '../../utils/syanten.js';
 import { riichiCheckWin as checkWin, canWinBySyanten } from './riichi-check';
 import { calculateScore, calculatePayouts } from './scoring';
 
-export function createInitialState(): GameState {
+export function createInitialState(characters?: { name: string }[]): GameState {
   const deck = shuffleArray(createTileDeck());
   const deadWall = deck.slice(0, 14);
   const wall = deck.slice(14);
   const doraIndicators = [deadWall[4]];
 
   const players: Player[] = WINDS.map((wind) => ({
-    name: TOUHOU_CHARACTERS[wind].name,
+    name: characters ? characters[wind].name : TOUHOU_CHARACTERS[wind].name,
     wind,
     hand: [],
     melds: [],
@@ -278,6 +278,7 @@ function getChiOptions(hand: Tile[], discarded: Tile): ChiOption[] {
   const options: ChiOption[] = [];
   const v = discarded.value;
   const suit = discarded.suit;
+  console.log(`[CHI_OPTIONS] hand=${hand.map(t=>`${t.value}${t.suit}`).join('')} discard=${discarded.value}${discarded.suit}(id=${discarded.id})`);
 
   for (const start of [v - 2, v - 1, v]) {
     if (start < 1 || start > 7) continue;
@@ -344,7 +345,10 @@ export function executeMeld(state: GameState, playerWind: Wind, meldType: MeldTy
       break;
     }
     case MeldType.CHI: {
+      console.log(`[CHI_EXEC] remove tiles: ${tiles.map(t=>`${t.value}${t.suit}(id=${t.id})`).join(',')} discard: ${discarded.value}${discarded.suit}(id=${discarded.id})`);
+      console.log(`[CHI_EXEC] hand before: ${player.hand.map(t=>`${t.value}${t.suit}(id=${t.id})`).join(',')}`);
       player.hand = removeTilesFromHand(player.hand, tiles);
+      console.log(`[CHI_EXEC] hand after: ${player.hand.map(t=>`${t.value}${t.suit}(id=${t.id})`).join(',')}`);
       meld = { type: MeldType.CHI, tiles: [...tiles, discarded], from: state.lastDiscardPlayer, calledTile: discarded };
       break;
     }

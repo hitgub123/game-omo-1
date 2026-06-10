@@ -80,12 +80,12 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
         <PlayerSection state={state} playerWind={Wind.EAST} selectedTileId={selectedTileId}
           onTileClick={onTileClick} onTileDoubleClick={onTileDoubleClick}
           onTileContextMenu={onTileContextMenu}
-          riichiMode={riichiMode} riichiValidTileIds={riichiValidTileIds} />
+          riichiMode={riichiMode} riichiValidTileIds={riichiValidTileIds}
+          autoSelfDiscard={autoSelfDiscard} noCall={noCall} autoWin={autoWin}
+          onToggleSelfDiscard={onToggleSelfDiscard} onToggleNoCall={onToggleNoCall} onToggleAutoWin={onToggleAutoWin} />
       </div>
 
-      <ActionPanel state={state} onAction={onAction} riichiMode={riichiMode} onCancelRiichi={onCancelRiichi}
-        autoSelfDiscard={autoSelfDiscard} noCall={noCall} autoWin={autoWin}
-        onToggleSelfDiscard={onToggleSelfDiscard} onToggleNoCall={onToggleNoCall} onToggleAutoWin={onToggleAutoWin} />
+      <ActionPanel state={state} onAction={onAction} riichiMode={riichiMode} onCancelRiichi={onCancelRiichi} />
 
       <TenpaiFloat state={state} riichiWaitTiles={riichiWaitFloat} />
 
@@ -155,9 +155,15 @@ interface PlayerSectionProps {
   onTileContextMenu: (tileId: number, e: React.MouseEvent) => void;
   riichiMode: boolean;
   riichiValidTileIds: Map<number, TenpaiInfo>;
+  autoSelfDiscard: boolean;
+  noCall: boolean;
+  autoWin: boolean;
+  onToggleSelfDiscard: () => void;
+  onToggleNoCall: () => void;
+  onToggleAutoWin: () => void;
 }
 
-const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, riichiMode, riichiValidTileIds }) => {
+const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, riichiMode, riichiValidTileIds, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin }) => {
   const player = state.players[playerWind];
   const ch = TOUHOU_CHARACTERS[playerWind];
   const isActive = state.currentPlayer === playerWind && state.phase !== GamePhase.HAND_OVER;
@@ -182,6 +188,14 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
           <span className="player-score" style={{ color: ch.colorLight }}>{fmtScore(player.score)}</span>
           {player.isRiichi && <span className="riichi-badge">{player.isDoubleRiichi ? '两立直' : '立直'}</span>}
           {player.isDealer && <span className="dealer-badge">庄</span>}
+          <div className="player-toggles">
+            <button className={`toggle-btn-sm ${autoSelfDiscard ? 'toggle-on' : ''}`}
+              onClick={onToggleSelfDiscard} title="自动打出摸到的牌（有动作时暂停）">自摸切</button>
+            <button className={`toggle-btn-sm ${noCall ? 'toggle-on' : ''}`}
+              onClick={onToggleNoCall} title="不提示吃碰杠，只提示和牌与暗杠">不鸣牌</button>
+            <button className={`toggle-btn-sm ${autoWin ? 'toggle-on' : ''}`}
+              onClick={onToggleAutoWin} title="可荣和或自摸时自动和牌">自动和</button>
+          </div>
         </div>
         {player.melds.length > 0 && (
           <div className="meld-area">

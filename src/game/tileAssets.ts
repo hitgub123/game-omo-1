@@ -34,6 +34,9 @@ export function getTileInnerHtml(suit: string, value: number, isAkadora?: boolea
     const raw = loadTileSvg(key);
     cached = { __html: sanitizeSvg(raw || '') };
     htmlCache.set(key, cached);
+    if (!raw) {
+      console.warn(`[TILE] SVG not found for key=${key} suit=${suit} value=${value}`);
+    }
   }
   return cached;
 }

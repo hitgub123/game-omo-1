@@ -30,11 +30,11 @@
   --border-gold: #c9a84c;
 
   /* 牌尺寸 */
-  --tile-width: 46px;
-  --tile-height: 62px;
-  --tile-small-width: 30px;
-  --tile-small-height: 40px;
-  --tile-radius: 5px;
+  --tile-width: 52px;
+  --tile-height: 70px;
+  --tile-small-width: 36px;
+  --tile-small-height: 48px;
+  --tile-radius: 6px;
 }
 
 /* ---- 基础重置 ---- */
@@ -97,6 +97,49 @@ body {
   letter-spacing: 4px;
   margin-top: 2px;
   text-transform: uppercase;
+}
+
+/* 牌面切换下拉 */
+.skin-pulldown {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(201,168,76,0.3);
+  color: var(--text-primary);
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M0 0l4 5 4-5' fill='%23a0a0a0'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+}
+.skin-pulldown:hover { border-color: var(--border-gold); }
+.skin-pulldown option { background: #1a1a2e; color: #f0e6d3; }
+.app-header { position: relative; }
+
+/* ---- 牌面色调切换（CSS filter, GPU加速） ---- */
+.skin-default .tile-svg svg { filter: none; }
+.skin-warm .tile-svg svg {
+  filter: sepia(0.25) saturate(1.3) hue-rotate(-8deg);
+}
+.skin-cool .tile-svg svg {
+  filter: sepia(0.1) saturate(0.85) hue-rotate(175deg) brightness(1.08);
+}
+.skin-gold .tile-svg svg {
+  filter: sepia(0.35) saturate(1.5) hue-rotate(-35deg) brightness(1.1);
+}
+.skin-sakura .tile-svg svg {
+  filter: hue-rotate(-55deg) saturate(1.2) brightness(1.05);
+}
+.skin-dark .tile-svg svg {
+  filter: brightness(0.75) saturate(0.65) contrast(1.1);
+  opacity: 0.9;
 }
 
 /* ---- 游戏桌 ---- */
@@ -171,12 +214,22 @@ body {
 
 .difficulty-pulldown {
   padding: 3px 8px;
-  background: var(--surface);
+  background: rgba(255,255,255,0.08);
   color: var(--text-primary);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(201,168,76,0.3);
   border-radius: 4px;
   font-size: 11px;
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M0 0l4 5 4-5' fill='%23a0a0a0'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+}
+.difficulty-pulldown option {
+  background: #1a1a2e;
+  color: #f0e6d3;
 }
 
 .difficulty-pulldown:hover {
@@ -694,6 +747,10 @@ body {
   border-radius: 4px;
   font-size: 10px;
 }
+.tile-small .tile-svg svg {
+  width: 100%;
+  height: 100%;
+}
 
 .tile-small:hover {
   transform: translateY(-2px);
@@ -709,25 +766,60 @@ body {
   padding: 2px;
 }
 
-/* 数牌 - 数字 */
-.tile-number {
-  font-size: 17px;
-  font-weight: 700;
+/* SVG牌面 — 撑满牌面区域 */
+.tile-svg {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 牌面光泽效果 */
+.tile::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: 4px;
+  background: linear-gradient(
+    160deg,
+    rgba(255,255,255,0.25) 0%,
+    rgba(255,255,255,0.08) 30%,
+    transparent 50%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+.tile-svg svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+/* 赤宝牌红光 */
+.tile-akadora-glow {
+  position: absolute;
+  inset: 1px;
+  border-radius: 3px;
+  background: radial-gradient(ellipse at 50% 60%, rgba(229,57,53,0.2) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+.tile-akadora-glow::after {
+  content: '●';
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  font-size: 9px;
+  color: #e53935;
+  text-shadow: 0 0 4px rgba(229,57,53,0.6);
   line-height: 1;
 }
-
-.tile-small .tile-number {
-  font-size: 11px;
-}
-
-.tile-suit {
-  font-size: 12px;
-  line-height: 1;
-  margin-top: 1px;
-}
-
-.tile-small .tile-suit {
-  font-size: 8px;
+.tile-small .tile-akadora-glow::after {
+  font-size: 6px;
+  top: 0;
+  right: 1px;
 }
 
 /* 字牌 */
@@ -754,33 +846,13 @@ body {
 
 /* ---- 花色着色 ---- */
 
-/* 萬子 */
-.suit-man .tile-number,
-.suit-man .tile-suit { color: var(--man-color); }
+/* ---- 花色着色（SVG自带颜色，仅加底部色条和背景） ---- */
 .suit-man { border-bottom: 2px solid var(--man-color); }
-
-/* 筒子 */
-.suit-pin .tile-number,
-.suit-pin .tile-suit { color: var(--pin-color); }
 .suit-pin { border-bottom: 2px solid var(--pin-color); }
-
-/* 索子 */
-.suit-sou .tile-number,
-.suit-sou .tile-suit { color: var(--sou-color); }
 .suit-sou { border-bottom: 2px solid var(--sou-color); }
 
-/* 赤宝牌（红五） */
-.tile-akadora .tile-number,
-.tile-akadora .tile-suit { color: #e53935 !important; }
+/* 赤宝牌 — 底部红线（红光由 .tile-akadora-glow 负责） */
 .tile-akadora { border-bottom: 2px solid #e53935 !important; }
-.tile-akadora .tile-inner::before {
-  content: '';
-  position: absolute;
-  inset: 1px;
-  border-radius: 3px;
-  background: radial-gradient(ellipse at 50% 60%, rgba(229,57,53,0.08) 0%, transparent 70%);
-  pointer-events: none;
-}
 
 /* 字牌 */
 .honor {
@@ -902,14 +974,31 @@ body {
 .action-panel {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  padding: 6px;
+  padding: 4px 8px;
   background: var(--bg-panel);
   border: 1px solid rgba(201, 168, 76, 0.2);
   border-radius: 8px;
   flex-shrink: 0;
   flex-wrap: wrap;
+  min-height: 32px;
+}
+
+/* toggle 组 — 固定在左侧 */
+.panel-toggles {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* 操作按钮组 — 居中 */
+.panel-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 1;
+  justify-content: center;
 }
 
 .action-buttons {
@@ -1030,6 +1119,31 @@ body {
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+/* ---- 听牌浮层 ---- */
+
+/* Toggle 开关按钮 */
+.toggle-btn {
+  padding: 3px 10px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.toggle-btn:hover {
+  border-color: var(--border-gold);
+  color: var(--text-primary);
+}
+.toggle-btn.toggle-on {
+  background: rgba(201,168,76,0.2);
+  border-color: var(--border-gold);
+  color: var(--border-gold);
+  box-shadow: 0 0 6px rgba(201,168,76,0.15);
 }
 
 /* ============================================================

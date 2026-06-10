@@ -46,9 +46,12 @@ export function findMahjongDivisions(tiles: Tile[], _melds: Meld[] = []): Mahjon
   return isWinningHand(tiles) ? [{ pair:{type:'pair',tileKey:''}, groups:[], tileCounts:{} }] : [];
 }
 
-// ---- checkTenpai (13 tiles) ----
+// ---- checkTenpai (supports melded hands: 13/10/7/4/1 tiles) ----
 export function checkTenpai(hand: Tile[], _melds: Meld[] = []): TenpaiInfo | null {
-  if (hand.length !== 13) return null;
+  // Melds reduce hand size: expected = 13 - 3 * meldCount
+  const meldGroups = _melds.length;
+  const expected = 13 - meldGroups * 3;
+  if (hand.length !== expected) return null;
   const result = checkMahjongStatus(tilesToHai(hand));
   if (typeof result === 'object' && result.status === 0) {
     const waits = result.info?.[0]?.waits || [];

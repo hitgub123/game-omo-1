@@ -26,13 +26,19 @@ interface GameTableProps {
   onCancelRiichi: () => void;
   difficulty: DifficultyLevel;
   onDifficultyChange: (level: DifficultyLevel) => void;
+  autoSelfDiscard: boolean;
+  noCall: boolean;
+  autoWin: boolean;
+  onToggleSelfDiscard: () => void;
+  onToggleNoCall: () => void;
+  onToggleAutoWin: () => void;
 }
 
 function fmtScore(score: number): string {
   return score < 0 ? `−${Math.abs(score).toLocaleString()}` : score.toLocaleString();
 }
 
-const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi, difficulty, onDifficultyChange }) => {
+const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi, difficulty, onDifficultyChange, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin }) => {
   const riichiWaitFloat = React.useMemo(() => {
     if (!riichiMode || selectedTileId === null) return null;
     const info = riichiValidTileIds.get(selectedTileId);
@@ -78,7 +84,9 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
           riichiMode={riichiMode} riichiValidTileIds={riichiValidTileIds} />
       </div>
 
-      <ActionPanel state={state} onAction={onAction} riichiMode={riichiMode} onCancelRiichi={onCancelRiichi} />
+      <ActionPanel state={state} onAction={onAction} riichiMode={riichiMode} onCancelRiichi={onCancelRiichi}
+        autoSelfDiscard={autoSelfDiscard} noCall={noCall} autoWin={autoWin}
+        onToggleSelfDiscard={onToggleSelfDiscard} onToggleNoCall={onToggleNoCall} onToggleAutoWin={onToggleAutoWin} />
 
       <TenpaiFloat state={state} riichiWaitTiles={riichiWaitFloat} />
 
@@ -163,7 +171,6 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
 
   return (
     <div className={`player-section ${isActive ? 'player-active' : ''}`}>
-      {isActive && <div className="turn-indicator">▼ 你的回合 ▼</div>}
       <div className="player-bar">
         <div className="player-info" style={{ borderColor: ch.color }}>
           <span className="player-name" style={{ color: ch.color }}>{player.name}</span>
@@ -219,14 +226,13 @@ const TenpaiFloat: React.FC<{ state: GameState; riichiWaitTiles: Tile[] | null }
   const player = state.players[humanWind];
   const tenpai = React.useMemo(() => {
     if (player.melds.length > 4) return null;
-    // 14张时去掉摸到的牌再判断
-    const h = player.hand.length === 14 && state.drawnTile
+    // Remove the drawn tile to get the standing hand
+    const h = state.drawnTile
       ? player.hand.filter(t => t.id !== state.drawnTile!.id)
       : player.hand;
-    if (h.length === 13) {
-      try { return checkTenpai(h, player.melds); } catch { return null; }
-    }
-    return null;
+    // Expected hand size = 13 - 3 * melds
+    if (h.length !== 13 - player.melds.length * 3) return null;
+    try { return checkTenpai(h, player.melds); } catch { return null; }
   }, [player.hand, player.melds, state.drawnTile]);
 
   const tiles = riichiWaitTiles && riichiWaitTiles.length > 0 ? riichiWaitTiles
@@ -249,6 +255,9 @@ const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
   const humanWind = WINDS.find(w => state.players[w].isHuman) ?? Wind.EAST;
   const humanActions = state.actionsAvailable[humanWind];
   const humanCanCall = humanActions && (humanActions.canRon || humanActions.canPon || humanActions.canChi || humanActions.canKan);
+
+  // 里宝牌只在和牌者立直时才显示
+  const showUra = state.phase === GamePhase.HAND_OVER && state.result?.winners?.some(w => state.players[w].isRiichi);
   return (
     <div className="discard-area">
       {state.players.map((player, i) => (
@@ -281,7 +290,7 @@ const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
               <TileComponent tile={tile} small isDora />
               <span className="dora-arrow">→</span>
               <span className="dora-tile-name">{tileDisplayName({...tile, id: -1, suit: dora.suit, value: dora.value})}</span>
-              {state.phase === GamePhase.HAND_OVER && ura && (
+              {showUra && ura && (
                 <span className="ura-indicator">
                   <TileComponent tile={ura} small isDora />
                   <span className="ura-tile-name">{tileDisplayName({...ura, id: -1, suit: getDoraFromIndicator(ura).suit, value: getDoraFromIndicator(ura).value})}</span>

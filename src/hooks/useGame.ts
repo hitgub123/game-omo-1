@@ -127,28 +127,68 @@ export function useGame(): GameControllerAPI {
     if (action === 'riichi') {
       const s = ctrl.state;
       const humanWind = WINDS.find(w => s.players[w].isHuman) ?? 0;
-      if (s.actionsAvailable[humanWind]?.canRiichi) {
+      const actions = s.actionsAvailable[humanWind];
+      if (!actions) return;
+      // 允许和牌形下立直（打一张牌放弃自摸）
+      if (actions.canRiichi || actions.canTsumo) {
         const humanHand = s.players[humanWind].hand;
-        const hai = tilesToHai(humanHand);
         const validMap = new Map<number, TenpaiInfo>();
-        const engResult = checkMahjongStatus(hai);
-        if (typeof engResult === 'object' && engResult.status === 0) {
-          for (const sol of engResult.info || []) {
-            if (sol.discard === 'none') continue;
-            const tile = humanHand.find(t => `${t.value}${t.suit}` === sol.discard);
-            if (!tile || validMap.has(tile.id)) continue;
+
+        if (actions.canRiichi) {
+          const hai = tilesToHai(humanHand);
+          const engResult = checkMahjongStatus(hai);
+          if (typeof engResult === 'object' && engResult.status === 0) {
+            for (const sol of engResult.info || []) {
+              if (sol.discard === 'none') continue;
+              const tile = humanHand.find(t => `${t.value}${t.suit}` === sol.discard);
+              if (!tile || validMap.has(tile.id)) continue;
+              validMap.set(tile.id, {
+                waitTiles: (sol.waits || []).map((k: string) => {
+                  const s = k.slice(-1) as import('../game/types').TileSuit;
+                  return { id: -1, suit: s, value: parseInt(k.slice(0, -1)) };
+                }),
+                divisions: [],
+              });
+            }
+          }
+          // 和牌形（エンジン返回-1）：任意打一张都听牌
+          if (engResult === -1) {
+            for (const tile of humanHand) {
+              // 去掉这张牌后计算听什么
+              const remaining = humanHand.filter(t => t.id !== tile.id);
+              const remHai = tilesToHai(remaining);
+              const remResult = checkMahjongStatus(remHai);
+              const waits: Tile[] = [];
+              if (typeof remResult === 'object' && remResult.status === 0) {
+                for (const sol of remResult.info || []) {
+                  if (sol.discard === 'none') continue; // tenpai
+                  for (const w of (sol.waits || [])) {
+                    const s = w.slice(-1) as import('../game/types').TileSuit;
+                    waits.push({ id: -1, suit: s, value: parseInt(w.slice(0, -1)) });
+                  }
+                }
+              }
+              if (!validMap.has(tile.id)) {
+                validMap.set(tile.id, { waitTiles: waits, divisions: [] });
+              }
+            }
+            setMessages(prev => [...prev.slice(-99), `⚡ 和牌形立直，共${validMap.size}张可打`]);
+          }
+        } else {
+          // 和牌形立直：任意打一张都是听牌
+          for (const tile of humanHand) {
             validMap.set(tile.id, {
-              waitTiles: (sol.waits || []).map((k: string) => {
-                const s = k.slice(-1) as import('../game/types').TileSuit;
-                return { id: -1, suit: s, value: parseInt(k.slice(0, -1)) };
-              }),
+              waitTiles: [],
               divisions: [],
             });
           }
+          setMessages(prev => [...prev.slice(-99), '⚡ 和牌形立直，打一张牌弃和']);
         }
-        setRiichiMode(true);
-        setRiichiValidTileIds(validMap);
-        setMessages(prev => [...prev.slice(-99), `⚡ 双击高亮牌立直（共${validMap.size}张可打）`]);
+
+        if (validMap.size > 0) {
+          setRiichiMode(true);
+          setRiichiValidTileIds(validMap);
+        }
       }
       return;
     }

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Tile } from '../game/types';
-import { tileDisplayName } from '../game/tiles';
+import { getTileInnerHtml, getCachedBackSvg } from '../game/tileAssets';
+import { TileBackContext } from './TileBackContext';
 
 interface TileProps {
   tile: Tile;
@@ -28,28 +29,24 @@ function getTileClass(tile: Tile): string {
   return `tile suit-${suitNames[tile.suit] || 'man'}`;
 }
 
-function getTileNum(tile: Tile): string {
-  if (tile.suit === 'z') return '';
-  return ['一','二','三','四','五','六','七','八','九'][tile.value - 1] || '';
-}
+// ── Tile Back (reads season from game-level context, with stable fallback) ──
+const TileBack: React.FC<{ small?: boolean }> = ({ small }) => {
+  const ctx = React.useContext(TileBackContext);
+  const svg = ctx || getCachedBackSvg();
+  if (!svg) return null;
+  return (
+    <div className={`tile tile-back ${small ? 'tile-small' : ''}`}>
+      <div className="tile-svg" dangerouslySetInnerHTML={{ __html: svg }} />
+    </div>
+  );
+};
 
-function getTileSuit(tile: Tile): string {
-  return { m: '萬', p: '筒', s: '索', z: '' }[tile.suit] || '';
-}
-
-const TileBack: React.FC<{ small?: boolean }> = ({ small }) => (
-  <div className={`tile tile-back ${small ? 'tile-small' : ''}`}>
-    <div className="tile-back-inner"><span className="tile-back-pattern">◆</span></div>
-  </div>
-);
-
+// ── Main Component ──
 const TileComponent: React.FC<TileProps> = ({
   tile, selected, onClick, onDoubleClick, onContextMenu, small, faceDown,
   isRiichi, highlighted, dimmed, isNewlyDrawn, isDora, isCalled, className,
 }) => {
   if (faceDown) return <TileBack small={small} />;
-
-  const displayName = tileDisplayName(tile);
 
   const tileClassNames = [
     getTileClass(tile),
@@ -65,23 +62,18 @@ const TileComponent: React.FC<TileProps> = ({
     className || '',
   ].filter(Boolean).join(' ');
 
+  // Stable SVG reference — same tile always gets the same {__html} object
+  const innerHtml = getTileInnerHtml(tile.suit, tile.value);
+
   return (
-    <div className={tileClassNames} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} title={displayName}>
-      <div className="tile-inner">
-        {tile.suit === 'z' ? (
-          <>
-            <span className="tile-honor-char">{displayName}</span>
-            <span className="tile-honor-sub">
-              {['東風','南風','西風','北風','白','發','中'][tile.value - 1]}
-            </span>
-          </>
-        ) : (
-          <>
-            <span className="tile-number">{getTileNum(tile)}</span>
-            <span className="tile-suit">{getTileSuit(tile)}</span>
-          </>
-        )}
-      </div>
+    <div
+      className={tileClassNames}
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
+      onContextMenu={onContextMenu}
+    >
+      <div className="tile-svg" dangerouslySetInnerHTML={innerHtml} />
+      {tile.isAkadora && <div className="tile-akadora-glow" />}
     </div>
   );
 };

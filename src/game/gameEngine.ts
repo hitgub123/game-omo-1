@@ -3,7 +3,7 @@ import { Wind, MeldType, GamePhase, TOUHOU_CHARACTERS, INITIAL_SCORE, WINDS } fr
 import { createTileDeck, shuffleArray, sortHand, tileKey, findTiles, isTerminalHonor } from './tiles';
 import { checkTenpai, isWinningHand, tilesToHai } from './hand';
 import { checkMahjongStatus } from '../../utils/syanten.js';
-import { riichiCheckWin as checkWin } from './riichi-check';
+import { riichiCheckWin as checkWin, canWinBySyanten } from './riichi-check';
 import { calculateScore, calculatePayouts } from './scoring';
 
 export function createInitialState(): GameState {
@@ -65,6 +65,7 @@ export function drawTile(state: GameState): GameState {
   if (state.wall.length === 0) return executeDraw(state);
   const wall = [...state.wall];
   const drawnTile = wall.shift()!;
+  const isLastDraw = wall.length === 0;
   const players = state.players.map(p => ({ ...p, hand: [...p.hand] }));
   const player = players[state.currentPlayer];
   player.hand = [...player.hand, drawnTile];
@@ -88,6 +89,8 @@ export function drawTile(state: GameState): GameState {
       if (p === state.currentPlayer && !state.players[p].isRiichi) return false;
       return true;
     }),
+    isRinshan: false,
+    isLastDraw,
   };
 }
 
@@ -99,13 +102,14 @@ export function getDrawActions(player: Player, state: GameState, playerWind: Win
   };
 
   if (drawnTile) {
-    if (isWinningHand(player.hand, player.melds)) {
-      if (player.isRiichi) {
+    // 立直玩家门清，isWinningHand 检查 14 张正确
+    if (player.isRiichi) {
+      if (isWinningHand(player.hand, player.melds)) {
         actions.canTsumo = true;
-      } else {
-        const winCheck = checkWin(player.hand, player.melds, drawnTile, true, playerWind, state);
-        actions.canTsumo = winCheck !== null && winCheck.yaku.length > 0;
       }
+    } else {
+      const winCheck = checkWin(player.hand, player.melds, drawnTile, true, playerWind, state);
+      actions.canTsumo = winCheck !== null;
     }
   }
 
@@ -206,6 +210,7 @@ export function discardTile(state: GameState, tileId: number): GameState {
     actionsAvailable,
     drawnTile: undefined,
     turnHistory: [...state.turnHistory, { type: 'discard' as const, player: state.currentPlayer, tile: discarded }],
+    isRinshan: false,
   };
 
   if (!hasActions) {
@@ -227,14 +232,15 @@ function getResponseActions(
   };
 
   const testHand = [...player.hand, discarded];
-  if (isWinningHand(testHand, player.melds)) {
-    // 立直玩家有役（立直本身就是役），直接判定
-    if (player.isRiichi) {
+  // 立直玩家门清，isWinningHand 检查 13+1=14 张正确
+  if (player.isRiichi) {
+    if (isWinningHand(testHand, player.melds)) {
       actions.canRon = true;
-    } else {
-      const winCheck = checkWin(player.hand, player.melds, discarded, false, playerWind, state);
-      actions.canRon = winCheck !== null && winCheck.yaku.length > 0;
     }
+  } else {
+    // riichiCheckWin 内含 syanten 快速预检，无需在外面包一层
+    const winCheck = checkWin(player.hand, player.melds, discarded, false, playerWind, state);
+    actions.canRon = winCheck !== null;
   }
 
   // 振听检查
@@ -433,7 +439,9 @@ function drawAfterKan(state: GameState, playerWind: Wind, meld: Meld): GameState
   const newDora = newDoraIdx + 4 < deadWall.length ? deadWall[newDoraIdx + 4] : null;
   const newUra = newDoraIdx + 5 < deadWall.length ? deadWall[newDoraIdx + 5] : null;
 
+  let canTsumoNow = false;
   const winCheck = checkWin(player.hand, player.melds, rinshanTile, true, playerWind, state);
+  canTsumoNow = winCheck !== null;
   const engResult = checkMahjongStatus(tilesToHai(player.hand));
   const canRiichiNow = !player.hasCalled && !player.isRiichi && state.wall.length >= 4 && player.score >= 1000 && typeof engResult === 'object';
 
@@ -458,15 +466,16 @@ function drawAfterKan(state: GameState, playerWind: Wind, meld: Meld): GameState
   return {
     ...afterKanState,
     currentPlayer: playerWind,
-    phase: (winCheck || canRiichiNow || canAnkanNow) ? GamePhase.ACTION_PROMPT : GamePhase.DISCARDING,
+    phase: (canTsumoNow || canRiichiNow || canAnkanNow) ? GamePhase.ACTION_PROMPT : GamePhase.DISCARDING,
     actionsAvailable: WINDS.map((_, i) => i === playerWind ? {
       ...emptyActions(),
-      canTsumo: winCheck !== null && winCheck.yaku.length > 0,
+      canTsumo: canTsumoNow,
       canRiichi: canRiichiNow,
       canAnkan: canAnkanNow,
     } : emptyActions()),
     drawnTile: rinshanTile,
     turn: state.turn + 1,
+    isRinshan: true,
   };
 }
 
@@ -757,7 +766,7 @@ export function createNextHand(prevState: GameState): GameState {
     phase: GamePhase.DRAWING,
     roundWind,
     honba: newHonba,
-    riichiSticks: prevState.riichiSticks,
+    riichiSticks: result.winners && result.winners.length > 0 ? 0 : prevState.riichiSticks,
     kanCount: 0,
     actionsAvailable: WINDS.map(() => emptyActions()),
     turnHistory: [],

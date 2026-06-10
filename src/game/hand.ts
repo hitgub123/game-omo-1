@@ -84,3 +84,4 @@ export function findTenpaiDiscards(hand: Tile[], _melds: Meld[] = []): Map<numbe
 // ---- Re-exports ----
 export interface EvaluationResult { yaku: any[]; totalHan: number; fu: number; divisions: any[] }
 export { riichiCheckWin as checkWin } from './riichi-check';
+export { canWinBySyanten } from './riichi-check';

@@ -30,6 +30,7 @@ const App: React.FC = () => {
     swapMode, enterSwapMode, executeSwap, cancelSwap,
     riichiMode, riichiValidTileIds, cancelRiichi,
     difficulty, setDifficulty,
+    downloadLog,
   } = useGame();
 
   const [skinIdx, setSkinIdx] = React.useState(0);
@@ -53,6 +54,19 @@ const App: React.FC = () => {
     if (!state.drawnTile) return;
     humanDiscard(state.drawnTile.id);
   }, [state.phase, state.currentPlayer, state.drawnTile?.id, autoSelfDiscard, humanDiscard]);
+
+  // ── 立直后默认开启自摸切，可手动取消勾选 ──
+  const humanWind = React.useMemo(() => WINDS.find(w => state.players[w].isHuman), [state.players]);
+  const prevRiichiRef = React.useRef(false);
+  React.useEffect(() => {
+    if (humanWind === undefined) return;
+    const isRiichi = state.players[humanWind].isRiichi;
+    // 仅在 false → true 转变时勾上，用户取消勾后不覆盖
+    if (isRiichi && !prevRiichiRef.current) {
+      setAutoSelfDiscard(true);
+    }
+    prevRiichiRef.current = isRiichi;
+  }, [state.players[humanWind ?? 0]?.isRiichi]);
 
   const handleNewGame = React.useCallback(() => {
     setGameKey(k => k + 1);
@@ -95,8 +109,10 @@ const App: React.FC = () => {
     const actions = state.actionsAvailable[hWind];
     if (!actions) return;
     if (state.lastDiscard && actions.canRon) {
+      console.log('[AUTO-WIN] ron triggered', { phase: state.phase, tile: state.lastDiscard?.suit + state.lastDiscard?.value });
       humanAction('ron');
     } else if (!state.lastDiscard && actions.canTsumo) {
+      console.log('[AUTO-WIN] tsumo triggered');
       humanAction('tsumo');
     }
   }, [autoWin, state.phase, state.lastDiscard?.id, state.drawnTile?.id, state.actionsAvailable, humanAction]);
@@ -104,6 +120,18 @@ const App: React.FC = () => {
   const backSvg = React.useMemo(() => pickGameBackSvg(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [gameKey]);
+
+  // ── Ctrl+L 下载游戏日志 ──
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'l') {
+        e.preventDefault();
+        downloadLog();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [downloadLog]);
 
   const handleTileClick = React.useCallback((tileId: number) => {
     const cp = state.players[state.currentPlayer];

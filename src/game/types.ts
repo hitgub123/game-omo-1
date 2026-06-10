@@ -167,6 +167,8 @@ export interface GameState {
   drawnTile?: Tile;
   handCount: number;        // 总局数（用于东南场判断）
   furitenPlayers: Wind[];   // 当前振听中的玩家
+  isRinshan?: boolean;      // 当前摸牌是否为杠后岭上牌
+  isLastDraw?: boolean;     // 当前是否为最后一张牌（海底/河底用）
 }
 
 /** 角色定义 */

@@ -1,7 +1,6 @@
 import React from 'react';
 import type { GameState, Tile } from '../game/types';
 import { Wind, GamePhase, TOUHOU_CHARACTERS, WINDS, MeldType } from '../game/types';
-import { getDoraFromIndicator, tileDisplayName } from '../game/tiles';
 import { checkTenpai } from '../game/hand';
 import type { TenpaiInfo } from '../game/hand';
 import TileComponent from './TileComponent';
@@ -48,7 +47,7 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
     <div className="game-table">
       <div className="table-header">
         <div className="game-info">
-          <span className="round-info">{state.roundWind === Wind.EAST ? '东' : '南'}{state.honba + 1}局</span>
+          <span className="round-info">{state.roundWind === Wind.EAST ? '东' : '南'}{(state.handCount % 4) + 1}局</span>
           <span className="honba-info">本场 {state.honba}</span>
           {state.riichiSticks > 0 && <span className="riichi-sticks">立直棒 x{state.riichiSticks}</span>}
         </div>
@@ -110,13 +109,12 @@ const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical }) => 
   const isActive = state.currentPlayer === wind && state.phase !== GamePhase.HAND_OVER;
 
   return (
-    <div className={`opponent-area ${vertical ? 'opponent-vertical' : 'opponent-horizontal'} ${isActive ? 'player-active' : ''}`}>
+    <div className={`opponent-area ${vertical ? 'opponent-vertical' : 'opponent-horizontal'} opponent-${['east','south','west','north'][wind]} ${isActive ? 'player-active' : ''}`}>`
       <div className="player-info" style={{ borderColor: ch.color }}>
         <span className="player-name" style={{ color: ch.color }}>{player.name}</span>
         <span className="player-score" style={{ color: ch.colorLight }}>{fmtScore(player.score)}</span>
         {player.isRiichi && <span className="riichi-badge">{player.isDoubleRiichi ? '两立直' : '立直'}</span>}
         {player.isDealer && <span className="dealer-badge">庄</span>}
-        {isActive && <span className="turn-arrow">◀</span>}
       </div>
 
       <div className={`hand-tiles ${vertical ? 'hand-vertical' : ''}`}>
@@ -131,8 +129,14 @@ const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical }) => 
             <div key={mi} className={`meld-group meld-${meld.type}`}>
               {meld.tiles.map((tile, ti) => (
                 <TileComponent key={`${mi}-${ti}`} tile={tile} small
-                  highlighted={meld.calledTile.id === tile.id} />
+                  highlighted={meld.calledTile.id === tile.id}
+                  className={meld.calledTile.id === tile.id && meld.type !== MeldType.ANKAN ? 'meld-called-tile' : undefined} />
               ))}
+              {meld.from !== undefined && meld.type !== MeldType.ANKAN && (
+                <span className="meld-from-label" style={{ color: TOUHOU_CHARACTERS[meld.from].color }}>
+                  {['', '下','对','上'][(meld.from - wind + 4) % 4]}
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -186,8 +190,14 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
                 {meld.tiles.map((tile, ti) => (
                   <TileComponent key={`${mi}-${ti}`} tile={tile} small
                     faceDown={meld.type === MeldType.ANKAN && (ti === 1 || ti === 2)}
-                    highlighted={meld.calledTile.id === tile.id} />
+                    highlighted={meld.calledTile.id === tile.id}
+                    className={meld.calledTile.id === tile.id && meld.type !== MeldType.ANKAN ? 'meld-called-tile' : undefined} />
                 ))}
+                {meld.from !== undefined && meld.type !== MeldType.ANKAN && (
+                  <span className="meld-from-label" style={{ color: TOUHOU_CHARACTERS[meld.from].color }}>
+                    {['', '下','对','上'][(meld.from - Wind.EAST + 4) % 4]}
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -261,7 +271,7 @@ const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
   return (
     <div className="discard-area">
       {state.players.map((player, i) => (
-        <div key={i} className={`discard-column discard-${['east','south','west','north'][i]}`}>
+        <div key={i} className={`discard-column discard-${['east','south','north','west'][i]}`}>
           <div className="discard-label" style={{ color: TOUHOU_CHARACTERS[i as Wind].color }}>
             {player.name}
           </div>
@@ -283,17 +293,13 @@ const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
       </div>
       <div className="dora-section">
         {state.doraIndicators.map((tile, i) => {
-          const dora = getDoraFromIndicator(tile);
           const ura = state.uraDoraIndicators[i];
           return (
             <div key={i} className="dora-pair">
               <TileComponent tile={tile} small isDora />
-              <span className="dora-arrow">→</span>
-              <span className="dora-tile-name">{tileDisplayName({...tile, id: -1, suit: dora.suit, value: dora.value})}</span>
               {showUra && ura && (
                 <span className="ura-indicator">
                   <TileComponent tile={ura} small isDora />
-                  <span className="ura-tile-name">{tileDisplayName({...ura, id: -1, suit: getDoraFromIndicator(ura).suit, value: getDoraFromIndicator(ura).value})}</span>
                 </span>
               )}
             </div>

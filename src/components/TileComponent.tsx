@@ -63,7 +63,7 @@ const TileComponent: React.FC<TileProps> = ({
   ].filter(Boolean).join(' ');
 
   // Stable SVG reference — same tile always gets the same {__html} object
-  const innerHtml = getTileInnerHtml(tile.suit, tile.value);
+  const innerHtml = getTileInnerHtml(tile.suit, tile.value, tile.isAkadora);
 
   return (
     <div
@@ -73,7 +73,6 @@ const TileComponent: React.FC<TileProps> = ({
       onContextMenu={onContextMenu}
     >
       <div className="tile-svg" dangerouslySetInnerHTML={innerHtml} />
-      {tile.isAkadora && <div className="tile-akadora-glow" />}
     </div>
   );
 };

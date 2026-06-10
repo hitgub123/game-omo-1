@@ -27,8 +27,8 @@ export function sanitizeSvg(raw: string): string {
 const htmlCache = new Map<string, { __html: string }>();
 
 /** Returns a stable {__html} object for dangerouslySetInnerHTML */
-export function getTileInnerHtml(suit: string, value: number): { __html: string } {
-  const key = `${value}${suit}`;
+export function getTileInnerHtml(suit: string, value: number, isAkadora?: boolean): { __html: string } {
+  const key = isAkadora ? `0${suit}` : `${value}${suit}`;
   let cached = htmlCache.get(key);
   if (!cached) {
     const raw = loadTileSvg(key);

@@ -116,9 +116,9 @@ function getShanten(hand34) {
 // ];
 
     let hai = [
-        [1, 1,1, 2, 3,1, 2, 1, 1], // 万子
-        [0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0,0, 0, 0,1, 1, 1, 0], // 万子
+        [0, 0, 0, 0, 0, 2, 0, 0, 0],
+        [0, 0, 4 ,0, 0, 0, 1, 1, 4],
         [0, 0, 0, 0, 0, 0, 0]
     ];
 
@@ -137,8 +137,9 @@ for (let i = 0; i < 7; i++) hand34.push(hai[3][i]);
 for (let i = 0; i < 34; i++) {
     if (hand34[i] >= 4) continue;
     hand34[i]++; // 模拟摸牌
-    
-    if (getShanten(hand34) === -1) {
+    let x=getShanten(hand34) ;
+    if (x === -1) {
+        console.log(x,i);
         let suitIdx = Math.floor(i / 9);
         let num = (i % 9) + 1;
         if (i >= 27) { suitIdx = 3; num = i - 27 + 1; }
@@ -146,6 +147,7 @@ for (let i = 0; i < 34; i++) {
     }
     hand34[i]--; // 还原
 }
+
 
 console.log("听牌结果:", waits);
 console.log("最终计算耗时:", new Date().getTime() - current_time, "ms");

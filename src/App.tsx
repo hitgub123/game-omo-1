@@ -5,7 +5,7 @@ import StartPage from './components/StartPage';
 import CharacterSelect from './components/CharacterSelect';
 import { TileBackContext } from './components/TileBackContext';
 import { pickGameBackSvg } from './game/tileAssets';
-import { GamePhase, Wind, WINDS } from './game/types';
+import { GamePhase, WINDS } from './game/types';
 import './styles/global.css';
 import './styles/title-screen.css';
 
@@ -231,7 +231,7 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
 const App: React.FC = () => {
   const [page, setPage] = React.useState<Page>('title');
   const [selectedChars, setSelectedChars] = React.useState<Character[] | null>(null);
-  const [teamMode, setTeamMode] = React.useState(false);
+  const [, setTeamMode] = React.useState(false);
 
   const handleStartSolo = () => { setTeamMode(false); setPage('select'); };
   const handleStartTeam = () => { setTeamMode(true); setPage('select'); };

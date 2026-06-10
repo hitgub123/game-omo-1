@@ -12,6 +12,7 @@ import { GamePhase, Wind, WINDS } from '../game/types';
 import { tilesToHai } from '../game/hand';
 import { checkMahjongStatus } from '../../utils/syanten.js';
 import { GameController } from '../game/GameController';
+import { createInitialState } from '../game/gameEngine';
 import type { TenpaiInfo } from '../game/hand';
 import type { DifficultyLevel } from '../game/difficulty';
 import { GameLogger } from '../debug/GameLogger';
@@ -286,32 +287,5 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
     riichiMode, riichiValidTileIds, cancelRiichi,
     difficulty, setDifficulty,
     downloadLog,
-  };
-}
-
-/** useGame 内使用了导入的 createInitialState；此处声明供初始状态使用 */
-function createInitialState(): GameState {
-  // 占位状态，GameController 启动后会覆盖
-  return {
-    wall: [], deadWall: [], doraIndicators: [], uraDoraIndicators: [],
-    players: [
-      { name: '—', wind: 0 as Wind, hand: [], melds: [], discards: [], discardsSize: 0,
-        isRiichi: false, isDoubleRiichi: false, riichiDiscardIndex: -1, riichiTurnStart: -1,
-        score: 0, isDealer: true, isHuman: true, tenpai: false, hasCalled: false, restrictedDiscardKeys: [] },
-      { name: '—', wind: 1 as Wind, hand: [], melds: [], discards: [], discardsSize: 0,
-        isRiichi: false, isDoubleRiichi: false, riichiDiscardIndex: -1, riichiTurnStart: -1,
-        score: 0, isDealer: false, isHuman: false, tenpai: false, hasCalled: false, restrictedDiscardKeys: [] },
-      { name: '—', wind: 2 as Wind, hand: [], melds: [], discards: [], discardsSize: 0,
-        isRiichi: false, isDoubleRiichi: false, riichiDiscardIndex: -1, riichiTurnStart: -1,
-        score: 0, isDealer: false, isHuman: false, tenpai: false, hasCalled: false, restrictedDiscardKeys: [] },
-      { name: '—', wind: 3 as Wind, hand: [], melds: [], discards: [], discardsSize: 0,
-        isRiichi: false, isDoubleRiichi: false, riichiDiscardIndex: -1, riichiTurnStart: -1,
-        score: 0, isDealer: false, isHuman: false, tenpai: false, hasCalled: false, restrictedDiscardKeys: [] },
-    ],
-    currentPlayer: 0 as Wind, turn: 0,
-    phase: 'waiting' as GamePhase, roundWind: 0 as Wind,
-    honba: 0, riichiSticks: 0, kanCount: 0,
-    actionsAvailable: [], turnHistory: [], dealerIndex: 0 as Wind,
-    handCount: 0, furitenPlayers: [], gameLength: 2,
   };
 }

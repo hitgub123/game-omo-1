@@ -309,7 +309,7 @@ export class GameController {
       case 'ron':
         if (!s.actionsAvailable[humanWind]?.canRon) {
           console.warn('[AUTO-RON] blocked: canRon is false', {
-            phase: s.phase, humanWind, lastDiscard: s.lastDiscard?.suit + s.lastDiscard?.value,
+            phase: s.phase, humanWind, lastDiscard: s.lastDiscard ? s.lastDiscard.suit + s.lastDiscard.value : 'none',
             actions: s.actionsAvailable[humanWind],
           });
           break;

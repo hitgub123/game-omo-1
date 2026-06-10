@@ -597,7 +597,7 @@ body {
 .discard-area {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-columns: 1.2fr 1.6fr 1.2fr;
   grid-template-rows: auto 1fr auto;
   gap: 2px;
   padding: 6px 8px 2px;
@@ -642,7 +642,7 @@ body {
   flex-wrap: wrap;
   gap: 1px;
   justify-content: flex-start;
-  max-height: 170px;
+  max-height: 300px;
   overflow-y: auto;
   flex-direction: row;
 }

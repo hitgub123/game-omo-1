@@ -3,7 +3,7 @@ import { Wind, MeldType, GamePhase, TOUHOU_CHARACTERS, INITIAL_SCORE, WINDS } fr
 import { createTileDeck, shuffleArray, sortHand, tileKey, findTiles, isTerminalHonor } from './tiles';
 import { checkTenpai, isWinningHand, tilesToHai } from './hand';
 import { checkMahjongStatus } from '../../utils/syanten.js';
-import { riichiCheckWin as checkWin, canWinBySyanten } from './riichi-check';
+import { riichiCheckWin as checkWin } from './riichi-check';
 import { calculateScore, calculatePayouts } from './scoring';
 
 export function createInitialState(characters?: { name: string }[], dealerWind?: Wind, gameLength = 2): GameState {

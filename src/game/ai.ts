@@ -6,8 +6,6 @@
 
 import type { Tile, GameState, Wind } from './types';
 import { tileKey, isTerminalHonor, isMiddleTile, isDragonTile } from './tiles';
-import { getTileCounts, tilesToHai } from './hand';
-import { checkMahjongStatus } from '../../utils/syanten.js';
 
 import type { DifficultyConfig } from './difficulty';
 import { DIFFICULTY_NORMAL } from './difficulty';

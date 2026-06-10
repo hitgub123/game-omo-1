@@ -331,7 +331,6 @@ export class GameController {
       case 'chi':
         if (tiles && tiles.length >= 2) {
           // 用户手动选择了吃牌组合
-          console.log(`[CHI] human selected tiles: ${tiles.map(t=>`${t.value}${t.suit}(id=${t.id})`).join(', ')}`);
           this._state = executeMeld(s, humanWind, MeldType.CHI, tiles.slice(0, 2));
           this.log('🟢 吃！');
         } else if (s.lastDiscard) {

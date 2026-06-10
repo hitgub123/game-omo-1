@@ -3,6 +3,7 @@ import '../styles/title-screen.css';
 
 interface StartPageProps {
   onStartSolo: () => void;
+  onStartTeam: () => void;
 }
 
 const BG_IMAGES = [
@@ -12,7 +13,7 @@ const BG_IMAGES = [
   '/bg/Konachan.com - 404789 sample.jpg',
 ];
 
-const StartPage: React.FC<StartPageProps> = ({ onStartSolo }) => {
+const StartPage: React.FC<StartPageProps> = ({ onStartSolo, onStartTeam }) => {
   const bgImage = React.useMemo(
     () => BG_IMAGES[Math.floor(Math.random() * BG_IMAGES.length)],
     []
@@ -33,9 +34,9 @@ const StartPage: React.FC<StartPageProps> = ({ onStartSolo }) => {
           单人模式
           <span className="sub">SINGLE PLAYER</span>
         </button>
-        <button className="start-btn" disabled>
+        <button className="start-btn" onClick={onStartTeam}>
           组队模式
-          <span className="sub">TEAM BATTLE — COMING SOON</span>
+          <span className="sub">TEAM BATTLE</span>
         </button>
         <button className="start-btn" disabled>
           剧情模式

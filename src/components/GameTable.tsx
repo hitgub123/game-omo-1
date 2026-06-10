@@ -31,18 +31,21 @@ interface GameTableProps {
   onToggleSelfDiscard: () => void;
   onToggleNoCall: () => void;
   onToggleAutoWin: () => void;
+  gameLength: number;
+  onGameLengthChange: (v: number) => void;
 }
 
 function fmtScore(score: number): string {
   return score < 0 ? `−${Math.abs(score).toLocaleString()}` : score.toLocaleString();
 }
 
-const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi, difficulty, onDifficultyChange, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin }) => {
+const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi, difficulty, onDifficultyChange, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin, gameLength, onGameLengthChange }) => {
   const riichiWaitFloat = React.useMemo(() => {
     if (!riichiMode || selectedTileId === null) return null;
     const info = riichiValidTileIds.get(selectedTileId);
     return info?.waitTiles || null;
   }, [riichiMode, selectedTileId, riichiValidTileIds]);
+  const canChangeLength = state.handCount === 0 && state.honba === 0;
   return (
     <div className="game-table">
       <div className="table-header">
@@ -53,6 +56,12 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
         </div>
         <div className="header-actions">
           <WallPulldown state={state} swapMode={swapMode} onSelectTile={onSwapTile} />
+          <select className="game-length-select" value={gameLength} onChange={e => onGameLengthChange(Number(e.target.value))} disabled={!canChangeLength} title={canChangeLength ? '' : '游戏中不可修改'}>
+            <option value={1}>东风</option>
+            <option value={2}>东南</option>
+            <option value={3}>东西</option>
+            <option value={4}>东北</option>
+          </select>
           <div className="difficulty-selector">
             <select
               value={difficulty}
@@ -107,14 +116,19 @@ const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical }) => 
   const player = state.players[wind];
   const ch = TOUHOU_CHARACTERS[wind];
   const isActive = state.currentPlayer === wind && state.phase !== GamePhase.HAND_OVER;
+  const dealerIdx = state.players.findIndex(p => p.isDealer);
+  const displayWind = (wind - dealerIdx + 4) % 4;
 
   return (
     <div className={`opponent-area ${vertical ? 'opponent-vertical' : 'opponent-horizontal'} opponent-${['east','south','west','north'][wind]} ${isActive ? 'player-active' : ''}`}>`
       <div className="player-info" style={{ borderColor: ch.color }}>
         <span className="player-name" style={{ color: ch.color }}>{player.name}</span>
-        <span className="player-score" style={{ color: ch.colorLight }}>{fmtScore(player.score)}</span>
-        {player.isRiichi && <span className="riichi-badge">{player.isDoubleRiichi ? '两立直' : '立直'}</span>}
-        {player.isDealer && <span className="dealer-badge">庄</span>}
+        <div className="player-info-row">
+          <span className="player-score" style={{ color: ch.colorLight }}>{fmtScore(player.score)}</span>
+          <span className="player-wind">{['東','南','西','北'][displayWind]}</span>
+          {player.isRiichi && <span className="riichi-badge">{player.isDoubleRiichi ? '两立直' : '立直'}</span>}
+          {player.isDealer && <span className="dealer-badge">庄</span>}
+        </div>
       </div>
 
       <div className={`hand-tiles ${vertical ? 'hand-vertical' : ''}`}>
@@ -178,6 +192,8 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
 
   // 新摸的牌ID
   const drawnTileId = state.drawnTile?.id;
+  const dealerIdx = state.players.findIndex(p => p.isDealer);
+  const displayWind = (playerWind - dealerIdx + 4) % 4;
 
   return (
     <div className={`player-section ${isActive ? 'player-active' : ''}`}>
@@ -185,9 +201,12 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
         <div className="player-info" style={{ borderColor: ch.color }}>
           <span className="player-name" style={{ color: ch.color }}>{player.name}</span>
           <span className="player-title">{ch.title}</span>
-          <span className="player-score" style={{ color: ch.colorLight }}>{fmtScore(player.score)}</span>
-          {player.isRiichi && <span className="riichi-badge">{player.isDoubleRiichi ? '两立直' : '立直'}</span>}
-          {player.isDealer && <span className="dealer-badge">庄</span>}
+          <div className="player-info-row">
+            <span className="player-score" style={{ color: ch.colorLight }}>{fmtScore(player.score)}</span>
+            <span className="player-wind">{['東','南','西','北'][displayWind]}</span>
+            {player.isRiichi && <span className="riichi-badge">{player.isDoubleRiichi ? '两立直' : '立直'}</span>}
+            {player.isDealer && <span className="dealer-badge">庄</span>}
+          </div>
           <div className="player-toggles">
             <button className={`toggle-btn-sm ${autoSelfDiscard ? 'toggle-on' : ''}`}
               onClick={onToggleSelfDiscard} title="自动打出摸到的牌（有动作时暂停）">自摸切</button>

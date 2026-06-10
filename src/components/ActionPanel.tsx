@@ -78,20 +78,14 @@ function renderChiOptions(
 ): React.ReactNode {
   const chiOpts = actions.chiOptions?.[0];
   if (!chiOpts || chiOpts.length <= 1) {
-    if (chiOpts?.length === 1) {
-      const names = chiOpts[0].tiles.map(t => `${t.value}${t.suit}`).join('');
-      console.log(`[CHI] single option: ${names}`);
-    }
     return <button className="btn-action btn-chi" onClick={() => onAction('chi')}>吃</button>;
   }
   return (
     <span className="chi-submenu">
       {chiOpts.map((opt, i) => {
         const tileNames = opt.tiles.map(t => `${t.value}${t.suit}`).join('');
-        console.log(`[CHI] btn #${i}: tiles=${tileNames} ids=${opt.tiles.map(t=>t.id).join(',')}`);
         return (
           <button key={i} className="btn-action btn-chi-sub" onClick={() => {
-            console.log(`[CHI] CLICKED btn #${i}: tiles=${tileNames} ids=${opt.tiles.map(t=>t.id).join(',')}`);
             onAction('chi', opt.tiles);
           }}>
             吃{tileNames}

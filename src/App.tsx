@@ -54,6 +54,7 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
   const [autoSelfDiscard, setAutoSelfDiscard] = React.useState(false);
   const [noCall, setNoCall] = React.useState(false);
   const [autoWin, setAutoWin] = React.useState(false);
+  const [gameLength, setGameLength] = React.useState(2); // 默认东南战
   const currentSkin = SKINS[skinIdx % SKINS.length];
 
   const handleSkinChange = React.useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -176,15 +177,16 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
     <div className={`app-container skin-${currentSkin.id} theme-${THEMES[themeIdx % THEMES.length].id}`}
       onContextMenu={handleContainerContextMenu} onClick={handleContainerClick}>
       <div className="app-header">
-        <button className="btn-back" onClick={onExit} style={{ marginRight: 12, fontSize: 12, padding: '4px 12px' }}>← 返回</button>
         <h1 className="app-title">东方幻想麻雀</h1>
         <div className="app-subtitle">Touhou Gensou Mahjong</div>
+        <div className="header-spacer" />
         <select className="skin-pulldown" value={skinIdx} onChange={handleSkinChange}>
           {SKINS.map((s, i) => (<option key={s.id} value={i}>{s.label}</option>))}
         </select>
         <select className="theme-pulldown" value={themeIdx} onChange={e => setThemeIdx(Number(e.target.value))}>
           {THEMES.map((t, i) => (<option key={t.id} value={i}>{t.label}</option>))}
         </select>
+        <button className="btn-back" onClick={onExit} style={{ fontSize: 12, padding: '4px 12px' }}>← 返回</button>
       </div>
       <GameTable key={gameKey}
         state={state}
@@ -202,12 +204,11 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
         onCancelRiichi={cancelRiichi}
         difficulty={difficulty}
         onDifficultyChange={setDifficulty}
-        autoSelfDiscard={autoSelfDiscard}
-        noCall={noCall}
-        autoWin={autoWin}
+        autoSelfDiscard={autoSelfDiscard} noCall={noCall} autoWin={autoWin}
         onToggleSelfDiscard={() => setAutoSelfDiscard(v => !v)}
         onToggleNoCall={() => setNoCall(v => !v)}
         onToggleAutoWin={() => setAutoWin(v => !v)}
+        gameLength={gameLength} onGameLengthChange={setGameLength}
       />
       <div className="status-bar">
         <div className="status-messages">
@@ -230,8 +231,10 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
 const App: React.FC = () => {
   const [page, setPage] = React.useState<Page>('title');
   const [selectedChars, setSelectedChars] = React.useState<Character[] | null>(null);
+  const [teamMode, setTeamMode] = React.useState(false);
 
-  const handleStartSolo = () => setPage('select');
+  const handleStartSolo = () => { setTeamMode(false); setPage('select'); };
+  const handleStartTeam = () => { setTeamMode(true); setPage('select'); };
   const handleBack = () => setPage('title');
   const handleSelectDone = (chars: Character[]) => {
     setSelectedChars(chars);
@@ -250,7 +253,7 @@ const App: React.FC = () => {
     return <CharacterSelect onStart={handleSelectDone} onBack={handleBack} />;
   }
 
-  return <StartPage onStartSolo={handleStartSolo} />;
+  return <StartPage onStartSolo={handleStartSolo} onStartTeam={handleStartTeam} />;
 };
 
 export default App;

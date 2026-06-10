@@ -226,7 +226,8 @@ describe('Scoring', () => {
   });
   it('2han 30fu non-dealer ron: 2000', () => expect(calculateScore(30,2,false,false,0,0).ronPayment).toBe(2000));
   it('3han 30fu non-dealer ron: 3900', () => expect(calculateScore(30,3,false,false,0,0).ronPayment).toBe(3900));
-  it('4han 30fu → mangan ron: 8000', () => expect(calculateScore(30,4,false,false,0,0).ronPayment).toBe(8000));
+  it('4han 30fu non-dealer ron: 7700 (mangan at 5han)', () => expect(calculateScore(30,4,false,false,0,0).ronPayment).toBe(7700));
+  it('4han 40fu → mangan ron: 8000', () => expect(calculateScore(40,4,false,false,0,0).ronPayment).toBe(8000));
   it('Dealer 1han 30fu ron: 1500', () => expect(calculateScore(30,1,true,false,0,0).ronPayment).toBe(1500));
   it('Dealer tsumo: all 500 for 1han 30fu', () => {
     const s = calculateScore(30,1,true,true,0,0);

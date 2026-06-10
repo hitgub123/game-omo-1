@@ -82,7 +82,12 @@ export function drawTile(state: GameState): GameState {
     actionsAvailable: WINDS.map((_, i) => i === state.currentPlayer ? actions : emptyActions()),
     turn: state.turn + 1,
     turnHistory: [...state.turnHistory, { type: 'draw' as const, player: state.currentPlayer, tile: drawnTile }],
-    furitenPlayers: state.furitenPlayers.filter(p => p !== state.currentPlayer),
+    furitenPlayers: state.furitenPlayers.filter(p => {
+      // 立直玩家的永久振听不因摸牌解除（见逃后整局不能荣和）
+      // 非立直玩家轮到自己摸牌时临时振听解除
+      if (p === state.currentPlayer && !state.players[p].isRiichi) return false;
+      return true;
+    }),
   };
 }
 
@@ -106,8 +111,9 @@ export function getDrawActions(player: Player, state: GameState, playerWind: Win
 
   if (!player.hasCalled && !player.isRiichi && state.wall.length >= 4 && player.score >= 1000) {
     const engResult = checkMahjongStatus(tilesToHai(player.hand));
-    // -1=和了, object=可立直, number>0=向听数
-    actions.canRiichi = typeof engResult === 'object';
+    // 可立直条件：手牌听牌（返回对象）或已和牌（返回-1，可打一张弃和）
+    // 兜底：门清且有1000点以上基本都可以立直
+    actions.canRiichi = typeof engResult === 'object' || engResult === -1;
   }
 
   if (!player.hasCalled && state.turn === 0) {

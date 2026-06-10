@@ -22,7 +22,8 @@ export function calculateBasePoints(fu: number, han: number): number {
   if (han >= 11) return 6000;
   if (han >= 8) return 4000;
   if (han >= 6) return 3000;
-  if (han >= 4) return 2000;
+  if (han >= 5) return 2000;
+  if (han === 4 && fu >= 40) return 2000;
   if (han === 3 && fu >= 70) return 2000;
   if (han === 2) {
     if (fu >= 130) return 2000;

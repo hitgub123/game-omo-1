@@ -13,11 +13,11 @@ function tileStr(t: Tile): string {
 }
 
 function meldStr(m: Meld): string {
-  const tiles = m.tiles.map(tileStr).join('');
-  if (m.type === MeldType.ANKAN) {
-    return `[${tileStr(m.tiles[0])}${tileStr(m.tiles[0])}${tileStr(m.tiles[2])}${tileStr(m.tiles[3])}]`;
-  }
-  return `[${tiles}]`;
+  // riichi 库要求副露格式为"数字+花色"，如 123m、111p
+  // 不能带括号 []，否则库无法识别为副露
+  const suit = m.tiles[0].suit;
+  const nums = m.tiles.map(t => tileStr(t).slice(0, -1)).join('');
+  return nums + suit;
 }
 
 /** 构建附加选项字符串 */
@@ -38,8 +38,8 @@ function optsStr(state: GameState, playerWind: Wind): string {
     ops.push('i');
   }
 
-  // 自风+场风: 1=E,2=S,3=W,4=N
-  ops.push(`${playerWind + 1}${state.roundWind + 1}`);
+  // 自风+场风: 格式 "bakaze jikaze"（riichi库要求场风在前）
+  ops.push(`${state.roundWind + 1}${playerWind + 1}`);
   return ops.join('');
 }
 

@@ -26,9 +26,13 @@ export class GameController {
   private msgListeners: Set<(msg: string) => void> = new Set();
   private timerId: ReturnType<typeof setTimeout> | null = null;
   private _difficulty: DifficultyConfig = DIFFICULTY_NORMAL;
+  private _characters?: { name: string }[];
+  private _gameLength: number;
 
-  constructor() {
-    this._state = createInitialState();
+  constructor(characters?: { name: string }[], gameLength = 2) {
+    this._characters = characters;
+    this._gameLength = gameLength;
+    this._state = createInitialState(characters, undefined, gameLength);
   }
 
   /** 设置 AI 难度 */
@@ -223,7 +227,7 @@ export class GameController {
 
   newGame() {
     this.clearTimer();
-    this._state = createInitialState();
+    this._state = createInitialState(this._characters, undefined, this._gameLength);
     this.emit();
     this.schedule(50);
   }
@@ -231,8 +235,8 @@ export class GameController {
   nextHand() {
     this.clearTimer();
     const s = this._state;
-    if (s.players.some(p => p.score < 0) || s.handCount >= 7) {
-      this._state = createInitialState();
+    if (s.players.some(p => p.score < 0) || s.handCount >= s.gameLength * 4) {
+      this._state = createInitialState(this._characters, undefined, this._gameLength);
     } else {
       this._state = createNextHand(s);
     }
@@ -305,7 +309,7 @@ export class GameController {
       case 'ron':
         if (!s.actionsAvailable[humanWind]?.canRon) {
           console.warn('[AUTO-RON] blocked: canRon is false', {
-            phase: s.phase, humanWind, lastDiscard: s.lastDiscard?.suit + s.lastDiscard?.value,
+            phase: s.phase, humanWind, lastDiscard: s.lastDiscard ? s.lastDiscard.suit + s.lastDiscard.value : 'none',
             actions: s.actionsAvailable[humanWind],
           });
           break;

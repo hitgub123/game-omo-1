@@ -151,13 +151,16 @@ body {
 
 /* ---- 头部 ---- */
 .app-header {
-  text-align: center;
-  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
   background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%);
   user-select: none;
   flex-shrink: 0;
   z-index: 10;
 }
+.header-spacer { flex: 1; }
 
 .app-title {
   font-size: 24px;
@@ -181,15 +184,11 @@ body {
 
 /* 牌面切换下拉 */
 .skin-pulldown {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
   background: rgba(255,255,255,0.08);
   border: 1px solid rgba(201,168,76,0.3);
   color: var(--text-primary);
   padding: 3px 8px;
-  border-radius: 10px;
+  border-radius: 4px;
   font-size: 11px;
   cursor: pointer;
   appearance: none;
@@ -198,21 +197,18 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M0 0l4 5 4-5' fill='%23a0a0a0'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 6px center;
+  flex-shrink: 0;
 }
 .skin-pulldown:hover { border-color: var(--border-gold); }
 .skin-pulldown option { background: #1a1a2e; color: #f0e6d3; }
 
 /* 桌面主题下拉 */
 .theme-pulldown {
-  position: absolute;
-  right: 104px;
-  top: 50%;
-  transform: translateY(-50%);
   background: rgba(255,255,255,0.08);
   border: 1px solid rgba(201,168,76,0.3);
   color: var(--text-primary);
   padding: 3px 8px;
-  border-radius: 10px;
+  border-radius: 4px;
   font-size: 11px;
   cursor: pointer;
   appearance: none;
@@ -221,10 +217,28 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M0 0l4 5 4-5' fill='%23a0a0a0'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 6px center;
+  flex-shrink: 0;
 }
 .theme-pulldown:hover { border-color: var(--border-gold); }
 .theme-pulldown option { background: #1a1a2e; color: #f0e6d3; }
-.app-header { position: relative; }
+
+/* 游戏长度选择 — 统一风格 */
+.game-length-select {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(201,168,76,0.3);
+  color: var(--text-primary);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.game-length-select:hover { border-color: var(--border-gold); }
+.game-length-select option { background: #1a1a2e; color: #f0e6d3; }
+.game-length-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ---- 牌面色调切换（CSS filter, GPU加速） ---- */
 .skin-default .tile-svg svg { filter: none; }
@@ -244,6 +258,8 @@ body {
   filter: brightness(0.75) saturate(0.65) contrast(1.1);
   opacity: 0.9;
 }
+
+.app-header { position: relative; }
 
 /* ---- 游戏桌 ---- */
 .game-table {
@@ -323,12 +339,7 @@ body {
   border-radius: 4px;
   font-size: 11px;
   cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: 20px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M0 0l4 5 4-5' fill='%23a0a0a0'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 6px center;
+  flex-shrink: 0;
 }
 .difficulty-pulldown option {
   background: #1a1a2e;
@@ -346,14 +357,15 @@ body {
 }
 
 .btn-wall-pulldown {
-  padding: 4px 12px;
+  padding: 3px 12px;
   background: rgba(255,255,255,0.08);
   color: var(--text-primary);
-  border: 1px solid rgba(255,255,255,0.15);
+  border: 1px solid rgba(201,168,76,0.3);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   transition: all 0.2s;
+  line-height: 1.5;
 }
 
 .btn-wall-pulldown:hover {
@@ -535,6 +547,12 @@ body {
   border-radius: 2px;
   min-width: 0;
 }
+.player-info-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
 
 .player-name {
   font-size: 13px;
@@ -579,7 +597,7 @@ body {
 .discard-area {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-columns: 1.2fr 1.6fr 1.2fr;
   grid-template-rows: auto 1fr auto;
   gap: 2px;
   padding: 6px 8px 2px;
@@ -624,7 +642,7 @@ body {
   flex-wrap: wrap;
   gap: 1px;
   justify-content: flex-start;
-  max-height: 170px;
+  max-height: 300px;
   overflow-y: auto;
   flex-direction: row;
 }
@@ -678,6 +696,39 @@ body {
 
 .tile-drawn-gap {
   margin-left: 24px;
+}
+
+/* 自风表示 */
+.player-wind {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.3);
+  margin-left: 4px;
+  padding: 0 4px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 3px;
+}
+.player-active .player-wind {
+  color: var(--border-gold);
+  border-color: rgba(255,215,0,0.3);
+}
+
+/* 游戏长度选择器 */
+.game-length-select {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.3);
+  color: #f0e6d3;
+  border: 1px solid rgba(255,255,255,0.15);
+  cursor: pointer;
+}
+.game-length-select:hover {
+  border-color: var(--border-gold);
+}
+.game-length-select option {
+  background: #1a1a2e;
+  color: #f0e6d3;
 }
 
 .player-active {
@@ -1254,6 +1305,34 @@ body {
   box-shadow: 0 0 6px rgba(201,168,76,0.15);
 }
 
+/* 玩家名下方的 toggle 按钮组 */
+.player-toggles {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  width: 100%;
+}
+.toggle-btn-sm {
+  padding: 2px 8px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255,255,255,0.4);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.toggle-btn-sm:hover {
+  border-color: var(--border-gold);
+  color: var(--text-primary);
+}
+.toggle-btn-sm.toggle-on {
+  background: rgba(201,168,76,0.2);
+  border-color: var(--border-gold);
+  color: var(--border-gold);
+}
+
 /* ============================================================
    状态栏
    ============================================================ */
@@ -1283,17 +1362,20 @@ body {
 
 .status-messages {
   flex: 1;
-  overflow: hidden;
-  max-height: 48px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  scrollbar-width: thin;
 }
 
 .status-message {
   font-size: 12px;
   color: var(--text-secondary);
-  line-height: 1.4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 
 .thinking-indicator {

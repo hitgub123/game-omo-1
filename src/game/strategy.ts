@@ -21,7 +21,7 @@ import { calculateDanger } from './defense';
  * 计算手牌向听数
  * 返回 -1 = 已和牌, 0 = 听牌, 1+ = 一向听以上
  */
-export function getShanten(hand: Tile[], melds?: Tile[][]): number {
+export function getShanten(hand: Tile[], _melds?: Tile[][]): number {
   // 使用 utils/syanten.js 引擎
   const hai = tilesToHai(hand);
   const result = checkMahjongStatus(hai);

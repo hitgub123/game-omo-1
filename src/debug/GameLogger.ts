@@ -35,9 +35,7 @@ export class GameLogger {
   private prevState: GameState | null = null;
   private turnLog = 0;
   private buffer: LogEntry[] = [];
-  private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private serverOk = true; // starts optimistic, disables on first failure
-  private prevActionStrs: string[] = [];
   private humanWind: Wind = Wind.EAST;
 
   constructor() {
@@ -46,7 +44,7 @@ export class GameLogger {
 
   /** Periodically flush buffered entries to server */
   private startFlushTimer(): void {
-    this.flushTimer = setTimeout(() => {
+    setTimeout(() => {
       this.flush();
       this.startFlushTimer();
     }, 1000); // flush every 1s
@@ -141,7 +139,6 @@ export class GameLogger {
     this.entries = [];
     this.prevState = null;
     this.turnLog = 0;
-    this.prevActionStrs = [];
   }
 
   /** Subscribe handler — call this on every GameController state change */

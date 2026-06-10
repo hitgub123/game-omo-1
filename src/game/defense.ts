@@ -151,7 +151,7 @@ function getVisibleKeys(state: GameState): Set<string> {
 }
 
 /** 筋牌危险度：对手的弃牌 ±3 间隔的牌风险较低 */
-function getSujiDanger(tile: Tile, opp: GameState['players'][0], visibleKeys: Set<string>): number {
+function getSujiDanger(tile: Tile, opp: GameState['players'][0], _visibleKeys: Set<string>): number {
   if (tile.suit === 'z') return 0;
   // 收集对手所有弃牌的筋牌
   for (const d of opp.discards) {
@@ -178,21 +178,11 @@ function getSujiDanger(tile: Tile, opp: GameState['players'][0], visibleKeys: Se
 }
 
 /** 壁牌危险度：某牌已见4张 = 它不能形成顺子 = 安全 */
-function getKabeDanger(tile: Tile, visibleKeys: Set<string>): number {
+function getKabeDanger(tile: Tile, _visibleKeys: Set<string>): number {
   if (tile.suit === 'z') return 0;
-  // 检查该牌在可见牌中是否已有4张
-  let count = 0;
-  for (let v = tile.value - 2; v <= tile.value + 2; v++) {
-    if (v < 1 || v > 9) continue;
-    const key = `${tile.suit}${v}`;
-    // 粗略估：每张可见牌按0.25张算（实际有4张一样的牌）
-    // 更精确需要从手牌+弃牌+副露中数
-  }
-  // 简化：检查该花色弃牌中是否有该数字的牌
-  if (visibleKeys.has(tileKey(tile))) {
-    // 见过但不确定有几张
-    return 0.05;
-  }
+  // TODO: 检查该牌在可见牌中是否已有4张
+  // 粗略估：每张可见牌按0.25张算（实际有4张一样的牌）
+  // 更精确需要从手牌+弃牌+副露中数
   return 0;
 }
 

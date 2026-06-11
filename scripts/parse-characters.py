@@ -32,8 +32,8 @@ def flush_team():
 for line in lines:
     stripped = line.rstrip()
 
-    # Team header: # thXX title
-    m = re.match(r'^#\s+(th\d{2})\s+(.+)$', stripped)
+    # Team header: # thXX title or # group title (players/ftg/qita/pc98)
+    m = re.match(r'^#\s+((?:th\d{2}|players|ftg|qita|pc98))\s+(.+)$', stripped)
     if m:
         flush_char()
         flush_team()
@@ -49,6 +49,19 @@ for line in lines:
         reading_table = False
         table_row = 0
         continue
+
+    # Reference character: ## 参考：ref_id CN(JP) / EN
+    if '参考：' in stripped:
+        m = re.match(r'^##\s+参考：\s*(\S+)\s+(.+?)\(([^)]+)\)\s*/\s*(.+)$', stripped)
+        if m and current_char:
+            current_char['id'] = m.group(1)  # use the referenced id
+            current_char['nameCN'] = m.group(2).strip()
+            current_char['nameJP'] = m.group(3).strip()
+            current_char['nameEN'] = m.group(4).strip()
+            current_char['ref'] = True
+            reading_table = False
+            table_row = 0
+            continue
 
     # Character header: ## id CN(JP) / EN
     m = re.match(r'^##\s+(\S+)\s+(.+?)\(([^)]+)\)\s*/\s*(.+)$', stripped)

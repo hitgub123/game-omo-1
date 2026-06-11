@@ -38,6 +38,8 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
   const [teams, setTeams] = React.useState<Team[]>([]);
   const [activeTeamIdx, setActiveTeamIdx] = React.useState(0);
   const [selected, setSelected] = React.useState<(Character | null)[]>([null, null, null, null]);
+  const [selectedTeams, setSelectedTeams] = React.useState<Team[]>([]);
+  const [selectedTeamMembers, setSelectedTeamMembers] = React.useState<Map<string, Character[]>>(new Map());
   const [hoveredChar, setHoveredChar] = React.useState<Character | null>(null);
   const [tooltipPos, setTooltipPos] = React.useState({ x: 0, y: 0 });
   const [confirming, setConfirming] = React.useState(false);
@@ -75,6 +77,7 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
   };
 
   const handleSlotClick = (idx: number) => {
+    if (teamMode) return;
     setSelected(prev => {
       const next = [...prev];
       next[idx] = null;
@@ -82,9 +85,62 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
     });
   };
 
-  const allFilled = selected.every(c => c !== null);
+  const handleTeamClick = (team: Team, i: number) => {
+    if (teamMode) {
+      setSelectedTeams(prev => {
+        const exists = prev.find(t => t.teamId === team.teamId);
+        if (exists) {
+          // Deselect team → also remove its members
+          setSelectedTeamMembers(m => { const next = new Map(m); next.delete(team.teamId); return next; });
+          return prev.filter(t => t.teamId !== team.teamId);
+        }
+        if (prev.length >= 4) return prev;
+        // Select team → init empty members
+        setSelectedTeamMembers(m => { const next = new Map(m); next.set(team.teamId, []); return next; });
+        return [...prev, team];
+      });
+      if (activeTeamIdx !== i) setActiveTeamIdx(i);
+    } else {
+      setActiveTeamIdx(i);
+    }
+  };
+
+  const handleCharClickTeam = (char: Character) => {
+    const activeTeam = teams[activeTeamIdx];
+    if (!activeTeam) return;
+    setSelectedTeamMembers(m => {
+      const next = new Map(m);
+      const current = next.get(activeTeam.teamId) || [];
+      const idx = current.findIndex(c => c.id === char.id);
+      if (idx >= 0) {
+        // Deselect
+        next.set(activeTeam.teamId, current.filter(c => c.id !== char.id));
+      } else if (current.length < 5) {
+        // Select (max 5)
+        next.set(activeTeam.teamId, [...current, char]);
+      }
+      return next;
+    });
+  };
+
+  // In team mode: all filled = 4 teams selected AND each has 5 members
+  const teamMembersReady = teamMode && selectedTeams.length === 4 &&
+    selectedTeams.every(t => (selectedTeamMembers.get(t.teamId) || []).length === 5);
+
+  // Flatten team members for confirm display
+  const allTeamMembersFlat = React.useMemo(() => {
+    if (!teamMode) return [];
+    const result: Character[] = [];
+    for (const t of selectedTeams) {
+      const members = selectedTeamMembers.get(t.teamId) || [];
+      result.push(...members);
+    }
+    return result;
+  }, [teamMode, selectedTeams, selectedTeamMembers]);
+
+  const allFilled = teamMode ? teamMembersReady : selected.every(c => c !== null);
   const totalChars = teams.reduce((s, t) => s + t.members.length, 0);
-  const activeTeam = teams[activeTeamIdx];
+  const activeTeam = teams[activeTeamIdx] ?? null;
 
   const handleMouseEnter = React.useCallback((char: Character, e: React.MouseEvent) => {
     setHoveredChar(char);
@@ -103,19 +159,46 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
   }, []);
 
   const quickStart = React.useCallback(() => {
-    const allChars = teams.flatMap(t => t.members);
-    const shuffled = [...allChars].sort(() => Math.random() - 0.5);
-    setSelected(shuffled.slice(0, 4));
-    setConfirming(true);
-  }, [teams]);
+    if (teamMode) {
+      const shuffledTeams = [...teams].sort(() => Math.random() - 0.5).slice(0, 4);
+      const membersMap = new Map<string, Character[]>();
+      for (const team of shuffledTeams) {
+        const shuffled = [...team.members].sort(() => Math.random() - 0.5).slice(0, 5);
+        membersMap.set(team.teamId, shuffled);
+      }
+      setSelectedTeams(shuffledTeams);
+      setSelectedTeamMembers(membersMap);
+      setConfirming(true);
+    } else {
+      const allChars = teams.flatMap(t => t.members);
+      const shuffled = [...allChars].sort(() => Math.random() - 0.5);
+      setSelected(shuffled.slice(0, 4));
+      setConfirming(true);
+    }
+  }, [teams, teamMode]);
 
   const handleStartClick = () => {
+    if (teamMode && selectedTeams.length < 4) return;
+    if (!teamMode && !allFilled) return;
     setConfirming(true);
   };
 
   const handleConfirm = () => {
     setConfirming(false);
-    onStart(selected as Character[]);
+    if (teamMode) {
+      const allChars: Character[] = [];
+      const teamInfo: { teamId: string; teamName: string; roundOrder: Character[] }[] = [];
+      for (const team of selectedTeams) {
+        const members = selectedTeamMembers.get(team.teamId) || [];
+        const shuffled = [...members].sort(() => Math.random() - 0.5);
+        allChars.push(...shuffled);
+        teamInfo.push({ teamId: team.teamId, teamName: team.teamName, roundOrder: shuffled });
+      }
+      (allChars as any).__teamInfo = teamInfo;
+      onStart(allChars);
+    } else {
+      onStart(selected as Character[]);
+    }
   };
 
   const handleCancelConfirm = () => {
@@ -131,22 +214,44 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
 
       {/* Header */}
       <div className="char-select-header">
-        <h2>选择角色</h2>
+        <h2>{teamMode ? '选择队伍' : '选择角色'}</h2>
         <div className="slot-indicators">
-          {SLOT_LABELS.map((label, i) => (
-            <div
-              key={i}
-              className={`slot-dot ${selected[i] ? 'filled' : ''}`}
-              onClick={() => handleSlotClick(i)}
-              title={selected[i] ? `点击取消 ${selected[i]!.nameCN}` : `${label}: 未选择`}
-            >
-              {selected[i] ? (
-                <span>{selected[i]!.nameCN.slice(0, 1)}</span>
-              ) : (
-                label
-              )}
-            </div>
-          ))}
+            {teamMode ? (
+              selectedTeams.map((team, i) => {
+                const count = (selectedTeamMembers.get(team.teamId) || []).length;
+                return (
+                  <div
+                    key={team.teamId}
+                    className={`slot-dot ${count > 0 ? 'filled' : ''}`}
+                    onClick={() => {
+                      setSelectedTeams(prev => {
+                        setSelectedTeamMembers(m => { const next = new Map(m); next.delete(team.teamId); return next; });
+                        return prev.filter(t => t.teamId !== team.teamId);
+                      });
+                    }}
+                    title={`点击取消 ${team.teamName} (${count}/5)`}
+                  >
+                    T{i + 1}
+                    <span className="slot-count">{count}/5</span>
+                  </div>
+                );
+              })
+            ) : (
+            SLOT_LABELS.map((label, i) => (
+              <div
+                key={i}
+                className={`slot-dot ${selected[i] ? 'filled' : ''}`}
+                onClick={() => handleSlotClick(i)}
+                title={selected[i] ? `点击取消 ${selected[i]!.nameCN}` : `${label}: 未选择`}
+              >
+                {selected[i] ? (
+                  <span>{selected[i]!.nameCN.slice(0, 1)}</span>
+                ) : (
+                  label
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -154,16 +259,21 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
       <div className="char-select-body">
         {/* Team sidebar */}
         <div className="char-team-list">
-          {teams.map((team, i) => (
-            <div
-              key={team.teamId}
-              className={`team-tab ${i === activeTeamIdx ? 'active' : ''}`}
-              onClick={() => setActiveTeamIdx(i)}
-            >
-              {team.teamName}
-              <span className="team-count">({team.members.length})</span>
-            </div>
-          ))}
+          {teams.map((team, i) => {
+            const isSelected = teamMode && selectedTeams.some(t => t.teamId === team.teamId);
+            const slotIdx = selectedTeams.findIndex(t => t.teamId === team.teamId);
+            return (
+              <div
+                key={team.teamId}
+                className={`team-tab ${!teamMode && i === activeTeamIdx ? 'active' : ''} ${isSelected ? 'team-selected' : ''}`}
+                onClick={() => handleTeamClick(team, i)}
+              >
+                {teamMode && isSelected && <span className="team-badge">{slotIdx + 1}</span>}
+                {team.teamName}
+                <span className="team-count">({team.members.length})</span>
+              </div>
+            );
+          })}
         </div>
 
         {/* Character grid */}
@@ -172,14 +282,19 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
             <>
               <div className="team-title">{activeTeam.teamName}</div>
               <div className="char-grid">
-                {activeTeam.members.map(char => {
+                {activeTeam.members.map((char, ci) => {
+                  const isSelectedInTeam = teamMode && selectedTeams.some(t => t.teamId === activeTeam.teamId)
+                    && (selectedTeamMembers.get(activeTeam.teamId) || []).some(c => c.id === char.id);
                   const slotIdx = selected.findIndex(c => c?.id === char.id);
-                  const isSelected = slotIdx >= 0;
+                  const isSelected = teamMode ? isSelectedInTeam : slotIdx >= 0;
+                  const memberIdx = isSelectedInTeam
+                    ? (selectedTeamMembers.get(activeTeam.teamId) || []).findIndex(c => c.id === char.id)
+                    : -1;
                   return (
                     <div
                       key={char.id}
                       className={`char-card ${isSelected ? 'selected' : ''}`}
-                      onClick={() => handleSelect(char)}
+                      onClick={() => teamMode ? handleCharClickTeam(char) : handleSelect(char)}
                       onMouseEnter={e => handleMouseEnter(char, e)}
                       onMouseLeave={handleMouseLeave}
                     >
@@ -189,8 +304,11 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
                       <div className="char-name">{char.nameCN}</div>
                       <div className="char-name-en">{char.nameEN}</div>
                       <div className="char-race">{char.race}</div>
-                      {isSelected && (
+                      {isSelected && !teamMode && (
                         <div className="selected-badge">{SLOT_LABELS[slotIdx]}</div>
+                      )}
+                      {isSelectedInTeam && (
+                        <div className="selected-badge">R{memberIdx + 1}</div>
                       )}
                     </div>
                   );
@@ -199,7 +317,9 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
             </>
           )}
           <div style={{ color: 'rgba(255,255,255,0.2)', textAlign: 'center', marginTop: 24, fontSize: 12 }}>
-            共 {totalChars} 名角色 · 点击角色选择 · 点击已选角色取消
+            {teamMode
+              ? `点击队伍名称选择队伍，点击角色选择出场队员（每队限 5 人）`
+              : `共 ${totalChars} 名角色 · 点击角色选择 · 点击已选角色取消`}
           </div>
         </div>
       </div>
@@ -207,9 +327,13 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
       {/* Footer */}
       <div className="char-select-footer">
         <div className="footer-status">
-          {allFilled
-            ? `已选择 ${selected.map(c => c!.nameCN).join(' · ')}`
-            : `已选择 ${selected.filter(Boolean).length}/4 位角色`}
+          {teamMode
+            ? (allFilled
+              ? `已选择 ${selectedTeams.map(t => `${t.teamName}(${(selectedTeamMembers.get(t.teamId)||[]).length})`).join(' · ')}`
+              : `已选择 ${selectedTeams.length}/4 组队伍 · ${selectedTeams.reduce((s, t) => s + (selectedTeamMembers.get(t.teamId)||[]).length, 0)}/20 人`)
+            : (allFilled
+              ? `已选择 ${selected.map(c => c!.nameCN).join(' · ')}`
+              : `已选择 ${selected.filter(Boolean).length}/4 位角色`)}
         </div>
         <div className="footer-buttons">
           <button className="btn-back" onClick={onBack}>← 返回</button>
@@ -247,9 +371,27 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
             )}
 
             {teamMode && (
-              <div className="confirm-team-placeholder">
-                <p>组队模式尚未实现</p>
-                <p className="confirm-team-hint">将选择 4 组队伍，每组 5 人，共 20 人</p>
+              <div className="confirm-team-list">
+                {selectedTeams.map((team, i) => {
+                  const members = selectedTeamMembers.get(team.teamId) || [];
+                  const shuffled = [...members].sort(() => Math.random() - 0.5);
+                  return (
+                    <div key={team.teamId} className="confirm-team-block">
+                      <div className="confirm-team-header">
+                        <span className="confirm-slot">T{i + 1}</span>
+                        <span className="confirm-cn">{team.teamName}</span>
+                      </div>
+                      <div className="confirm-team-members">
+                        {shuffled.map((m, j) => (
+                          <span key={m.id} className="confirm-member-tag">
+                            {m.nameCN}
+                            <span className="confirm-member-num">R{j + 1}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 

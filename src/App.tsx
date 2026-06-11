@@ -250,6 +250,13 @@ const App: React.FC = () => {
   const [selectedChars, setSelectedChars] = React.useState<Character[] | null>(null);
   const [teamMode, setTeamMode] = React.useState(false);
 
+  // 禁用鼠标右键菜单
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => { e.preventDefault(); };
+    document.addEventListener('contextmenu', handler);
+    return () => document.removeEventListener('contextmenu', handler);
+  }, []);
+
   const handleStartSolo = () => { setTeamMode(false); setPage('select'); };
   const handleStartTeam = () => { setTeamMode(true); setPage('select'); };
   const handleBack = () => setPage('title');

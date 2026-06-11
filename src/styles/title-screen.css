@@ -109,13 +109,22 @@
   display: flex; gap: 8px;
 }
 .slot-dot {
-  width: 36px; height: 36px;
+  width: 44px; height: 44px;
   border-radius: 50%;
   border: 2px solid rgba(255,255,255,0.3);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
   color: rgba(255,255,255,0.4);
   transition: all 0.3s ease;
+  line-height: 1.1;
+  gap: 1px;
+}
+.slot-dot .slot-count {
+  font-size: 9px; font-weight: 400;
+  color: rgba(255,255,255,0.25);
+}
+.slot-dot.filled .slot-count {
+  color: rgba(255, 215, 0, 0.6);
 }
 .slot-dot.filled {
   border-color: #ffd700;
@@ -157,6 +166,23 @@
   color: #ffd700;
   border-left-color: #ffd700;
   background: rgba(255, 215, 0, 0.08);
+}
+.char-team-list .team-tab.team-selected {
+  color: #ffd700;
+  border-left-color: #ffd700;
+  background: rgba(255, 215, 0, 0.12);
+  font-weight: 600;
+}
+.char-team-list .team-tab .team-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #ffd700;
+  color: #1a1a2e;
+  font-size: 10px;
+  font-weight: 700;
+  margin-right: 6px;
+  flex-shrink: 0;
 }
 .char-team-list .team-tab .team-count {
   font-size: 11px;
@@ -237,6 +263,12 @@
   font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+}
+.char-card .char-overflow {
+  position: absolute;
+  bottom: 4px; right: 6px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.2);
 }
 .char-card .slot-label {
   position: absolute;
@@ -493,6 +525,38 @@
 .confirm-team-hint {
   font-size: 12px !important;
   color: rgba(255,255,255,0.2);
+}
+.confirm-team-list {
+  display: flex; flex-direction: column; gap: 14px;
+  margin-bottom: 24px;
+}
+.confirm-team-block {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 14px;
+}
+.confirm-team-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 10px;
+}
+.confirm-team-members {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  padding-left: 52px;
+}
+.confirm-member-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+}
+.confirm-member-num {
+  font-size: 10px;
+  color: rgba(255, 215, 0, 0.4);
+  font-weight: 600;
 }
 .confirm-actions {
   display: flex; justify-content: center; gap: 16px;

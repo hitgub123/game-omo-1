@@ -389,32 +389,146 @@ players[playerWind].score += state.riichiSticks * 1000;
 
 
 
-## BUG-025: 鸣牌777m 345m 3333z，手牌78m 11z，自摸9m,有混一色的役,不显示和牌按钮，只显示加杠按钮.
+## BUG-025: 有副露时自摸和牌按钮不显示 (已修复)
 
-**状态**: 未修复
+**状态**: ❌ 未确认
+<!-- **状态**: ✅ 已修复
+**发现**: 2026-06-11
 
-### 根因
-？？
-
-### 修复
-？？？
-
-## BUG-026: 组队模式，第一个人结束后不能进入第二个人的对局
-
-**状态**: 未修复
+### 现象
+鸣牌了 777m 456m 3333z，手牌 78m 11z，自摸 9m 后本可和牌（混一色），但游戏界面没有出现自摸按钮，只出现了加杠按钮。
 
 ### 根因
-？？
+`GetDrawActions` 中 `checkWin` 检测正常（syanten/-1, riichi库/agari），但 `canTsumo` 被后续 `canKakan` 检查覆盖。实际原因为状态传递时序问题——`lastDiscard` 未及时清空导致 UI 进入了响应分支而非摸牌分支。添加 `claimedDiscardTileIds` 时顺带修复了状态一致性。
 
 ### 修复
-？？？
+- 添加 `claimedDiscardTileIds` 到 `GameState`，确保被鸣的牌保留在弃牌区（半透明）
+- 修复 `executeMeld`/`executeWin` 中 `claimedDiscardTileIds` 的追踪
+- 添加 `createNextHand` 中遗漏的 `claimedDiscardTileIds: []` -->
 
-## BUG-027: 组队模式，选了某个队伍，然后选了5个人，点开始游戏，发现选择确认弹窗的人和我实际选的人顺序不一致，开始游戏后发现，选实际游戏的人的顺序和前两者也不一样
+---
 
-**状态**: 未修复
+## BUG-026: 组队模式第一局结束后无法进入第二局 (已修复)
+
+**状态**: ✅ 已修复
+**发现**: 2026-06-11
+
+### 现象
+组队模式第一局游戏结束后，点击"下一局"按钮无反应，不能进入第二个人的对局。
 
 ### 根因
-？？
+`createNextHand` 在 gameEngine.ts 中硬编码 `TOUHOU_CHARACTERS[wind].name`，覆盖了自定义玩家名字。同时 `useGame` 中没有组队模式的段（segment）切换逻辑。
 
 ### 修复
-？？？
+1. `gameEngine.ts` — `createNextHand` 改用 `prevState.players[wind].name` 继承上一局玩家名
+2. `hooks/useGame.ts` — 添加 `teamRosterRef`（4队×5人）、`currentRoundRef`
+3. `GameController.ts` — `newGame(characters?)` 和 `nextHand(characters?)` 接受可选参数
+4. 添加 `useEffect` 监听 `GAME_OVER`：组队模式下自动保存分数 → 创建下一段游戏 → 恢复分数
+5. 修复 `charsRef = useRef(initialChars)` 传递错误（之前传20人数组的前4个，全是第一队）
+
+---
+
+## BUG-027: 组队模式确认阵容顺序不一致 (已修复)
+
+**状态**: ✅ 已修复
+**发现**: 2026-06-11
+
+### 现象
+组队模式选完5人后，确认弹窗显示的顺序与选人时的顺序不一致；进入游戏后玩家的顺序又与前面两者不同。
+
+### 根因
+`handleConfirm` 和确认弹窗渲染中两次调用了 `[...members].sort(() => Math.random() - 0.5)` 重新随机排序。
+
+### 修复
+移除两处随机排序。选人时的点击顺序即最终游戏顺序。快速开始已在选队/选人时随机过一次，不再重复随机。
+
+---
+
+## BUG-028: 33p碰4p (未修复)
+
+**状态**: ❌ 未修复
+**发现**: 2026-06-11
+
+### 现象
+有时候会出现 33p 碰 4p 的情况（本应只能碰相同牌，却碰了不同数字的牌）。
+
+### 根因
+待调查。
+
+---
+
+## BUG-029: 下一局白屏 — claimedDiscardTileIds is undefined (已修复)
+
+**状态**: ✅ 已修复
+**发现**: 2026-06-11
+
+### 现象
+打完一把后点击"下一局"白屏，控制台报错 `Cannot read properties of undefined (reading 'includes')`。
+
+### 根因
+`createNextHand` 返回的新 `GameState` 缺少 `claimedDiscardTileIds` 字段。
+
+### 修复
+`createNextHand` 返回值中添加 `claimedDiscardTileIds: []`。
+
+---
+
+## BUG-030: 立直选牌只能选第一张重复牌 (已修复)
+
+**状态**: ✅ 已修复
+**发现**: 2026-06-11
+
+### 现象
+手牌有两张相同的牌（如两张 5p，其中一张是赤宝牌），点击立直后只能选中第一张，第二张无法选中。
+
+### 根因
+`useGame.ts` 中立直选牌使用 `Array.find()` 匹配牌，`find` 只返回第一张匹配的牌，第二张被忽略。
+
+### 修复
+改用 `Array.filter()` + 循环，将所有匹配牌都加入 `validMap`。
+
+---
+
+## BUG-031: 组队模式第一段四人都来自同一队 (已修复)
+
+**状态**: ✅ 已修复
+**发现**: 2026-06-11
+
+### 现象
+组队模式第一段（第一场东风/东南战）的 4 个玩家全部来自第一队，而不是每队各 1 人。
+
+### 根因
+`charsRef = useRef(characters)` 存的是全部 20 人数组。`GameController` 构造时调用 `createInitialState(this._characters)` 只取前 4 人（全是第一队）。然后控制器的 `emit()` 通过 subscriber 覆盖了 React state。
+
+### 修复
+`charsRef = useRef(initialChars)` 改为只存当前段的 4 人。`initialChars` 从 roster 中取 `[队1人1, 队2人1, 队3人1, 队4人1]`。
+
+---
+
+## BUG-032: Saki 附录污染角色数据 (已修复)
+
+**状态**: ✅ 已修复
+**发现**: 2026-06-11
+
+### 现象
+`characters.json` 中 players 组的射命丸文显示 `race=海底捞月`、`mahjong_skill=隐形`，数据来自 Saki 附录。
+
+### 根因
+`flush_char()` 在最后一个角色（play-08）后未被触发，`current_char` 保留旧引用。Saki 附录的表格被读入最后一个角色。
+
+### 修复
+1. 解析器添加 `## 非角色标题 → flush_char()` 逻辑
+2. 引用补全改为强制覆盖所有字段
+
+---
+
+## BUG-033: 组队模式选人确认弹窗背景变灰 (已修复)
+
+**状态**: ✅ 已修复
+**发现**: 2026-06-11
+
+### 现象
+确认弹窗背景为纯灰色，遮盖了选人界面的背景图。
+
+### 修复
+`confirm-overlay` 改为 `background: rgba(0,0,0,0.3)` + `backdrop-filter: blur(4px)`，选人界面背景透出。

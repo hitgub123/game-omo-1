@@ -60,6 +60,7 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     turnHistory: [],
     dealerIndex: actualDealer,
     furitenPlayers: [],
+    claimedDiscardTileIds: [],
     gameLength,
   };
 }
@@ -114,6 +115,15 @@ export function getDrawActions(player: Player, state: GameState, playerWind: Win
     } else {
       const winCheck = checkWin(player.hand, player.melds, drawnTile, true, playerWind, state);
       actions.canTsumo = winCheck !== null;
+      if (!winCheck && drawnTile) {
+        console.debug('[BUG] tsumo check failed', {
+          hand: player.hand.map(t => t.suit + t.value).join(''),
+          drawnTile: drawnTile.suit + drawnTile.value,
+          meldCount: player.melds.length,
+          handLen: player.hand.length,
+          hasKakan: player.melds.some(m => m.type === 'pon' && player.hand.some(t => t.suit === m.tiles[0].suit && t.value === m.tiles[0].value)),
+        });
+      }
     }
   }
 
@@ -356,7 +366,12 @@ export function executeMeld(state: GameState, playerWind: Wind, meldType: MeldTy
       const handTiles = tiles.slice(0, 3);
       player.hand = removeTilesFromHand(player.hand, handTiles);
       meld = { type: MeldType.KAN, tiles: [...handTiles, discarded], from: state.lastDiscardPlayer, calledTile: discarded };
-      return drawAfterKan({ ...state, players, lastDiscard: undefined }, playerWind, meld);
+      return drawAfterKan({
+        ...state, players, lastDiscard: undefined,
+        claimedDiscardTileIds: state.lastDiscard
+          ? [...state.claimedDiscardTileIds, state.lastDiscard.id]
+          : state.claimedDiscardTileIds,
+      }, playerWind, meld);
     }
     case MeldType.ANKAN: {
       if (tiles.length >= 4) {
@@ -426,6 +441,9 @@ export function executeMeld(state: GameState, playerWind: Wind, meldType: MeldTy
     phase: GamePhase.DISCARDING,
     actionsAvailable: WINDS.map(() => emptyActions()),
     furitenPlayers: state.furitenPlayers.filter(p => state.players[p].isRiichi), // 仅保留立直玩家的永久振听
+    claimedDiscardTileIds: state.lastDiscard
+      ? [...state.claimedDiscardTileIds, state.lastDiscard.id]
+      : state.claimedDiscardTileIds,
   };
 }
 
@@ -568,7 +586,12 @@ function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winning
     payments: allPayments,
   };
 
-  return { ...state, players, result, phase: GamePhase.HAND_OVER };
+  return {
+    ...state, players, result, phase: GamePhase.HAND_OVER,
+    claimedDiscardTileIds: !isTsumo && state.lastDiscard
+      ? [...state.claimedDiscardTileIds, state.lastDiscard.id]
+      : state.claimedDiscardTileIds,
+  };
 }
 
 // ---- Next turn ----
@@ -732,9 +755,9 @@ export function createNextHand(prevState: GameState): GameState {
   const wall = deck.slice(14);
   const doraIndicators = [deadWall[4]];
 
-  // 继承分数
+  // 继承分数和名字
   const players: Player[] = WINDS.map((wind) => ({
-    name: TOUHOU_CHARACTERS[wind].name,
+    name: prevState.players[wind].name,
     wind,
     hand: [],
     melds: [],
@@ -779,5 +802,6 @@ export function createNextHand(prevState: GameState): GameState {
     handCount: newHandCount,
     furitenPlayers: [],
     gameLength: prevState.gameLength,
+    claimedDiscardTileIds: [],
   };
 }

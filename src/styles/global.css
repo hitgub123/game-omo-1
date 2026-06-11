@@ -1093,6 +1093,12 @@ body {
   to   { box-shadow: 0 0 0 5px #ff5722, 0 0 24px rgba(255, 87, 34, 0.9); }
 }
 
+/* 已被鸣牌：留在弃牌区但半透明 */
+.tile-claimed {
+  opacity: 0.3 !important;
+  filter: grayscale(0.6);
+}
+
 .tile-dora-indicator {
   box-shadow: 0 0 0 2px #ef5350, 0 0 8px rgba(239, 83, 80, 0.4);
   z-index: 1;

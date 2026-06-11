@@ -225,18 +225,18 @@ export class GameController {
     this.schedule(50);
   }
 
-  newGame() {
+  newGame(characters?: { name: string }[]) {
     this.clearTimer();
-    this._state = createInitialState(this._characters, undefined, this._gameLength);
+    this._state = createInitialState(characters ?? this._characters, undefined, this._gameLength);
     this.emit();
     this.schedule(50);
   }
 
-  nextHand() {
+  nextHand(characters?: { name: string }[]) {
     this.clearTimer();
     const s = this._state;
     if (s.players.some(p => p.score < 0) || s.handCount >= s.gameLength * 4) {
-      this._state = createInitialState(this._characters, undefined, this._gameLength);
+      this._state = createInitialState(characters ?? this._characters, undefined, this._gameLength);
     } else {
       this._state = createNextHand(s);
     }

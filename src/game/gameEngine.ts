@@ -60,6 +60,7 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     turnHistory: [],
     dealerIndex: actualDealer,
     furitenPlayers: [],
+    claimedDiscardTileIds: [],
     gameLength,
   };
 }
@@ -365,7 +366,12 @@ export function executeMeld(state: GameState, playerWind: Wind, meldType: MeldTy
       const handTiles = tiles.slice(0, 3);
       player.hand = removeTilesFromHand(player.hand, handTiles);
       meld = { type: MeldType.KAN, tiles: [...handTiles, discarded], from: state.lastDiscardPlayer, calledTile: discarded };
-      return drawAfterKan({ ...state, players, lastDiscard: undefined }, playerWind, meld);
+      return drawAfterKan({
+        ...state, players, lastDiscard: undefined,
+        claimedDiscardTileIds: state.lastDiscard
+          ? [...state.claimedDiscardTileIds, state.lastDiscard.id]
+          : state.claimedDiscardTileIds,
+      }, playerWind, meld);
     }
     case MeldType.ANKAN: {
       if (tiles.length >= 4) {
@@ -435,6 +441,9 @@ export function executeMeld(state: GameState, playerWind: Wind, meldType: MeldTy
     phase: GamePhase.DISCARDING,
     actionsAvailable: WINDS.map(() => emptyActions()),
     furitenPlayers: state.furitenPlayers.filter(p => state.players[p].isRiichi), // 仅保留立直玩家的永久振听
+    claimedDiscardTileIds: state.lastDiscard
+      ? [...state.claimedDiscardTileIds, state.lastDiscard.id]
+      : state.claimedDiscardTileIds,
   };
 }
 
@@ -577,7 +586,12 @@ function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winning
     payments: allPayments,
   };
 
-  return { ...state, players, result, phase: GamePhase.HAND_OVER };
+  return {
+    ...state, players, result, phase: GamePhase.HAND_OVER,
+    claimedDiscardTileIds: !isTsumo && state.lastDiscard
+      ? [...state.claimedDiscardTileIds, state.lastDiscard.id]
+      : state.claimedDiscardTileIds,
+  };
 }
 
 // ---- Next turn ----
@@ -788,5 +802,6 @@ export function createNextHand(prevState: GameState): GameState {
     handCount: newHandCount,
     furitenPlayers: [],
     gameLength: prevState.gameLength,
+    claimedDiscardTileIds: [],
   };
 }

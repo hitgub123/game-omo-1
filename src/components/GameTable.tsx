@@ -315,7 +315,8 @@ const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
               player.discards.map((tile, j) => (
                 <TileComponent key={`d${i}-${j}`} tile={tile} small dimmed
                   isRiichi={player.isRiichi && player.riichiDiscardIndex === j}
-                  isCalled={humanCanCall && state.lastDiscard?.id === tile.id} />
+                  isCalled={humanCanCall && state.lastDiscard?.id === tile.id}
+                  className={state.claimedDiscardTileIds.includes(tile.id) ? 'tile-claimed' : ''} />
               ))
             )}
           </div>

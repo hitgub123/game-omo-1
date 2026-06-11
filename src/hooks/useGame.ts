@@ -151,15 +151,17 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
           if (typeof engResult === 'object' && engResult.status === 0) {
             for (const sol of engResult.info || []) {
               if (sol.discard === 'none') continue;
-              const tile = humanHand.find(t => `${t.value}${t.suit}` === sol.discard);
-              if (!tile || validMap.has(tile.id)) continue;
-              validMap.set(tile.id, {
-                waitTiles: (sol.waits || []).map((k: string) => {
-                  const s = k.slice(-1) as import('../game/types').TileSuit;
-                  return { id: -1, suit: s, value: parseInt(k.slice(0, -1)) };
-                }),
-                divisions: [],
-              });
+              const tiles = humanHand.filter(t => `${t.value}${t.suit}` === sol.discard);
+              for (const tile of tiles) {
+                if (!tile || validMap.has(tile.id)) continue;
+                validMap.set(tile.id, {
+                  waitTiles: (sol.waits || []).map((k: string) => {
+                    const s = k.slice(-1) as import('../game/types').TileSuit;
+                    return { id: -1, suit: s, value: parseInt(k.slice(0, -1)) };
+                  }),
+                  divisions: [],
+                });
+              }
             }
           }
           // 和牌形（エンジン返回-1）：任意打一张都听牌

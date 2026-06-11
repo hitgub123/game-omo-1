@@ -169,6 +169,7 @@ export interface GameState {
   furitenPlayers: Wind[];   // 当前振听中的玩家
   isRinshan?: boolean;      // 当前摸牌是否为杠后岭上牌
   isLastDraw?: boolean;     // 当前是否为最后一张牌（海底/河底用）
+  claimedDiscardTileIds: number[];  // 被鸣牌后被移出弃牌区的牌ID（保留在弃牌区但半透明）
   gameLength: number;        // 游戏长度: 1=东风 2=东南 3=东西 4=东北
 }
 

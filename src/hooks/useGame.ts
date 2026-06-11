@@ -44,8 +44,29 @@ export interface GameControllerAPI {
   downloadLog: () => void;
 }
 
+/** 从展平的20人数组构建4队×5人的 roster */
+function buildTeamRoster(chars: { name: string }[]): { name: string }[][] {
+  const roster: { name: string }[][] = [];
+  for (let t = 0; t < 4; t++) {
+    const team: { name: string }[] = [];
+    for (let r = 0; r < 5; r++) {
+      team.push(chars[t * 5 + r]);
+    }
+    roster.push(team);
+  }
+  return roster;
+}
+
 export function useGame(characters?: { name: string }[], gameLength = 2): GameControllerAPI {
-  const [state, setState] = useState<GameState>(() => createInitialState(characters, undefined, gameLength));
+  const isTeamMode = characters && characters.length > 4;
+  const teamRosterRef = useRef<{ name: string }[][] | null>(null);
+  const currentRoundRef = useRef(0);
+  // 组队模式：构建 roster（4队×5人），首次只取每队第1人
+  const initialChars = isTeamMode && characters
+    ? (teamRosterRef.current = buildTeamRoster(characters)).map(t => t[0])
+    : characters;
+
+  const [state, setState] = useState<GameState>(() => createInitialState(initialChars, undefined, gameLength));
   const [selectedTileId, setSelectedTileId] = useState<number | null>(null);
   const [messages, setMessages] = useState<string[]>([
     '🎴 东方幻想麻雀 - 新游戏开始！',
@@ -109,6 +130,35 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
       `[阶段:${state.phase}] 玩家:${cp?.name}[${state.currentPlayer}] 牌山:${state.wall.length} 摸牌:${!!state.drawnTile} 弃牌:${!!state.lastDiscard}`
     );
   }, [state.phase, state.currentPlayer, state.turn, state.wall.length, state.drawnTile, state.lastDiscard, state.players]);
+
+  // 组队模式：当游戏结束(GAME_OVER)时，自动进入下一段
+  useEffect(() => {
+    if (!isTeamMode || state.phase !== GamePhase.GAME_OVER) return;
+    const roster = teamRosterRef.current;
+    if (!roster) return;
+    const segIdx = currentRoundRef.current;
+    if (segIdx >= 4) return; // All 5 segments done (0-4)
+
+    // Save current scores and start next segment with new players
+    const scores = state.players.map(p => p.score);
+    const nextPlayers = roster.map(team => team[segIdx + 1]);
+    const ctrl = ctrlRef.current;
+    if (!ctrl) return;
+    ctrl.newGame(nextPlayers);
+
+    // Wait for the new game to initialize, then restore scores
+    const checkInit = () => {
+      const s = ctrl.state;
+      if (s.phase === GamePhase.DRAWING || s.phase === GamePhase.DISCARDING || s.phase === GamePhase.ACTION_PROMPT) {
+        s.players.forEach((p, i) => { p.score = scores[i]; });
+        currentRoundRef.current = segIdx + 1;
+        setMessages(prev => [...prev.slice(-99), `🏁 第${segIdx + 2}轮开始！`]);
+      } else {
+        setTimeout(checkInit, 50);
+      }
+    };
+    setTimeout(checkInit, 100);
+  }, [state.phase, isTeamMode]);
 
   const humanDiscard = useCallback((tileId: number) => {
     const ctrl = ctrlRef.current;
@@ -214,6 +264,7 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
     if (!ctrl) return;
     ctrl.newGame();
     loggerRef.current?.reset();
+    currentRoundRef.current = 0;
     setSelectedTileId(null);
     setSwapMode(false);
     setSwapSourceTileId(null);

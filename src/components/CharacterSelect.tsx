@@ -190,9 +190,8 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
       const teamInfo: { teamId: string; teamName: string; roundOrder: Character[] }[] = [];
       for (const team of selectedTeams) {
         const members = selectedTeamMembers.get(team.teamId) || [];
-        const shuffled = [...members].sort(() => Math.random() - 0.5);
-        allChars.push(...shuffled);
-        teamInfo.push({ teamId: team.teamId, teamName: team.teamName, roundOrder: shuffled });
+        allChars.push(...members);
+        teamInfo.push({ teamId: team.teamId, teamName: team.teamName, roundOrder: [...members] });
       }
       (allChars as any).__teamInfo = teamInfo;
       onStart(allChars);
@@ -374,7 +373,6 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
               <div className="confirm-team-list">
                 {selectedTeams.map((team, i) => {
                   const members = selectedTeamMembers.get(team.teamId) || [];
-                  const shuffled = [...members].sort(() => Math.random() - 0.5);
                   return (
                     <div key={team.teamId} className="confirm-team-block">
                       <div className="confirm-team-header">
@@ -382,7 +380,7 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
                         <span className="confirm-cn">{team.teamName}</span>
                       </div>
                       <div className="confirm-team-members">
-                        {shuffled.map((m, j) => (
+                        {members.map((m, j) => (
                           <span key={m.id} className="confirm-member-tag">
                             {m.nameCN}
                             <span className="confirm-member-num">R{j + 1}</span>

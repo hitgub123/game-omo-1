@@ -755,9 +755,9 @@ export function createNextHand(prevState: GameState): GameState {
   const wall = deck.slice(14);
   const doraIndicators = [deadWall[4]];
 
-  // 继承分数
+  // 继承分数和名字
   const players: Player[] = WINDS.map((wind) => ({
-    name: TOUHOU_CHARACTERS[wind].name,
+    name: prevState.players[wind].name,
     wind,
     hand: [],
     melds: [],

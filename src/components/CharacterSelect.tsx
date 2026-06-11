@@ -21,6 +21,7 @@ interface Team {
 interface CharacterSelectProps {
   onStart: (selected: Character[]) => void;
   onBack: () => void;
+  teamMode?: boolean;
 }
 
 // Auto-discover background images (same source as StartPage)
@@ -33,12 +34,13 @@ const FALLBACK_BG = '/bg/Konachan.com - 404789 sample.jpg';
 
 const SLOT_LABELS = ['1P', '2P', '3P', '4P'];
 
-const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack }) => {
+const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, teamMode }) => {
   const [teams, setTeams] = React.useState<Team[]>([]);
   const [activeTeamIdx, setActiveTeamIdx] = React.useState(0);
   const [selected, setSelected] = React.useState<(Character | null)[]>([null, null, null, null]);
   const [hoveredChar, setHoveredChar] = React.useState<Character | null>(null);
   const [tooltipPos, setTooltipPos] = React.useState({ x: 0, y: 0 });
+  const [confirming, setConfirming] = React.useState(false);
   const bgImage = React.useMemo(
     () => BG_IMAGES.length > 0
       ? BG_IMAGES[Math.floor(Math.random() * BG_IMAGES.length)]
@@ -103,8 +105,24 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack }) =>
   const quickStart = React.useCallback(() => {
     const allChars = teams.flatMap(t => t.members);
     const shuffled = [...allChars].sort(() => Math.random() - 0.5);
-    onStart(shuffled.slice(0, 4));
-  }, [teams, onStart]);
+    setSelected(shuffled.slice(0, 4));
+    setConfirming(true);
+  }, [teams]);
+
+  const handleStartClick = () => {
+    setConfirming(true);
+  };
+
+  const handleConfirm = () => {
+    setConfirming(false);
+    onStart(selected as Character[]);
+  };
+
+  const handleCancelConfirm = () => {
+    setConfirming(false);
+  };
+
+  const SLOT_LABELS = ['1P', '2P', '3P', '4P'];
 
   return (
     <div className="char-select-page">
@@ -130,7 +148,6 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack }) =>
             </div>
           ))}
         </div>
-        <button className="btn-back" onClick={onBack}>← 返回</button>
       </div>
 
       {/* Body */}
@@ -189,22 +206,61 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack }) =>
 
       {/* Footer */}
       <div className="char-select-footer">
-        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
+        <div className="footer-status">
           {allFilled
             ? `已选择 ${selected.map(c => c!.nameCN).join(' · ')}`
             : `已选择 ${selected.filter(Boolean).length}/4 位角色`}
         </div>
-        <button className="btn-back" onClick={quickStart} style={{ fontSize: 14, padding: '8px 24px' }}>
-          快速开始
-        </button>
-        <button
-          className="btn-start-game"
-          disabled={!allFilled}
-          onClick={() => onStart(selected as Character[])}
-        >
-          开始游戏
-        </button>
+        <div className="footer-buttons">
+          <button className="btn-back" onClick={onBack}>← 返回</button>
+          <button className="btn-back" onClick={quickStart} style={{ fontSize: 14, padding: '8px 24px' }}>
+            快速开始
+          </button>
+          <button
+            className="btn-start-game"
+            disabled={!allFilled}
+            onClick={handleStartClick}
+          >
+            开始游戏
+          </button>
+        </div>
       </div>
+      {/* Confirm dialog overlay */}
+      {confirming && (
+        <div className="confirm-overlay" onClick={handleCancelConfirm}>
+          <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
+            <h2>{teamMode ? '组队模式' : '单人模式'} — 确认阵容</h2>
+
+            {!teamMode && (
+              <div className="confirm-list">
+                {(selected.filter(Boolean) as Character[]).map((char, i) => (
+                  <div key={char.id} className="confirm-item">
+                    <span className="confirm-slot">{SLOT_LABELS[i]}</span>
+                    <div className="confirm-char-info">
+                      <span className="confirm-cn">{char.nameCN}</span>
+                      <span className="confirm-jp">{char.nameJP}</span>
+                      <span className="confirm-en">{char.nameEN}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {teamMode && (
+              <div className="confirm-team-placeholder">
+                <p>组队模式尚未实现</p>
+                <p className="confirm-team-hint">将选择 4 组队伍，每组 5 人，共 20 人</p>
+              </div>
+            )}
+
+            <div className="confirm-actions">
+              <button className="btn-back" onClick={handleCancelConfirm}>← 返回</button>
+              <button className="btn-start-game" onClick={handleConfirm}>确认开始</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Character tooltip */}
       {hoveredChar && (
         <div

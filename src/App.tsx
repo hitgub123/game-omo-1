@@ -13,7 +13,7 @@ interface Character {
   id: string; nameCN: string; nameJP: string; nameEN: string;
 }
 
-type Page = 'title' | 'select' | 'confirm' | 'game';
+type Page = 'title' | 'select' | 'game';
 
 // ── In-game wrapper (mounts useGame + GameTable) ──
 interface GamePageProps {
@@ -55,6 +55,7 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
   const [themeIdx, setThemeIdx] = React.useState(0);
   const [gameKey, setGameKey] = React.useState(0);
   const [autoSelfDiscard, setAutoSelfDiscard] = React.useState(false);
+  const [showExitConfirm, setShowExitConfirm] = React.useState(false);
   const currentSkin = SKINS[skinIdx % SKINS.length];
 
   const handleSkinChange = React.useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -186,7 +187,7 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
         <select className="theme-pulldown" value={themeIdx} onChange={e => setThemeIdx(Number(e.target.value))}>
           {THEMES.map((t, i) => (<option key={t.id} value={i}>{t.label}</option>))}
         </select>
-        <button className="btn-back" onClick={() => { if (window.confirm('确定要返回主页吗？当前游戏进度将丢失。')) onExit(); }} style={{ fontSize: 12, padding: '4px 12px' }}>← 返回</button>
+        <button className="btn-back" onClick={() => setShowExitConfirm(true)} style={{ fontSize: 12, padding: '4px 12px' }}>← 返回</button>
       </div>
       <GameTable key={gameKey}
         state={state}
@@ -222,6 +223,22 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
           </div>
         )}
       </div>
+
+      {/* Exit confirmation dialog */}
+      {showExitConfirm && (
+        <div className="confirm-overlay" onClick={() => setShowExitConfirm(false)}>
+          <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
+            <h2>退出游戏</h2>
+            <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', margin: '0 0 24px 0', lineHeight: 1.6 }}>
+              确定要返回主页吗？<br />当前游戏进度将丢失。
+            </p>
+            <div className="confirm-actions">
+              <button className="btn-back" onClick={() => setShowExitConfirm(false)}>← 继续游戏</button>
+              <button className="btn-start-game" onClick={onExit} style={{ borderColor: 'rgba(255,80,80,0.6)', color: '#ff6666' }}>确认退出</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </TileBackContext.Provider>
   );
@@ -231,7 +248,7 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
 const App: React.FC = () => {
   const [page, setPage] = React.useState<Page>('title');
   const [selectedChars, setSelectedChars] = React.useState<Character[] | null>(null);
-  const [, setTeamMode] = React.useState(false);
+  const [teamMode, setTeamMode] = React.useState(false);
 
   const handleStartSolo = () => { setTeamMode(false); setPage('select'); };
   const handleStartTeam = () => { setTeamMode(true); setPage('select'); };
@@ -250,7 +267,7 @@ const App: React.FC = () => {
   }
 
   if (page === 'select') {
-    return <CharacterSelect onStart={handleSelectDone} onBack={handleBack} />;
+    return <CharacterSelect onStart={handleSelectDone} onBack={handleBack} teamMode={teamMode} />;
   }
 
   return <StartPage onStartSolo={handleStartSolo} onStartTeam={handleStartTeam} />;

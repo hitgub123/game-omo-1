@@ -114,6 +114,15 @@ export function getDrawActions(player: Player, state: GameState, playerWind: Win
     } else {
       const winCheck = checkWin(player.hand, player.melds, drawnTile, true, playerWind, state);
       actions.canTsumo = winCheck !== null;
+      if (!winCheck && drawnTile) {
+        console.debug('[BUG] tsumo check failed', {
+          hand: player.hand.map(t => t.suit + t.value).join(''),
+          drawnTile: drawnTile.suit + drawnTile.value,
+          meldCount: player.melds.length,
+          handLen: player.hand.length,
+          hasKakan: player.melds.some(m => m.type === 'pon' && player.hand.some(t => t.suit === m.tiles[0].suit && t.value === m.tiles[0].value)),
+        });
+      }
     }
   }
 

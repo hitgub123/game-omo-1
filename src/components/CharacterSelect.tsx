@@ -23,12 +23,13 @@ interface CharacterSelectProps {
   onBack: () => void;
 }
 
-const BACKGROUNDS = [
-  '/bg/Konachan.com - 398756 sample.jpg',
-  '/bg/Konachan.com - 403419 sample.jpg',
-  '/bg/Konachan.com - 403798 sample.jpg',
-  '/bg/Konachan.com - 404789 sample.jpg',
-];
+// Auto-discover background images (same source as StartPage)
+const bgModules = import.meta.glob<string>(
+  '/assets/pic/desktop/*.{jpg,png,webp}',
+  { eager: true, query: '?url', import: 'default' },
+);
+const BG_IMAGES = Object.values(bgModules);
+const FALLBACK_BG = '/bg/Konachan.com - 404789 sample.jpg';
 
 const SLOT_LABELS = ['1P', '2P', '3P', '4P'];
 
@@ -37,7 +38,9 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack }) =>
   const [activeTeamIdx, setActiveTeamIdx] = React.useState(0);
   const [selected, setSelected] = React.useState<(Character | null)[]>([null, null, null, null]);
   const bgImage = React.useMemo(
-    () => encodeURI(BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)]),
+    () => BG_IMAGES.length > 0
+      ? BG_IMAGES[Math.floor(Math.random() * BG_IMAGES.length)]
+      : FALLBACK_BG,
     []
   );
 

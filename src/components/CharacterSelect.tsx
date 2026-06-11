@@ -92,7 +92,6 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack }) =>
 
       {/* Header */}
       <div className="char-select-header">
-        <button className="btn-back" onClick={onBack}>← 返回</button>
         <h2>选择角色</h2>
         <div className="slot-indicators">
           {SLOT_LABELS.map((label, i) => (
@@ -110,6 +109,7 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack }) =>
             </div>
           ))}
         </div>
+        <button className="btn-back" onClick={onBack}>← 返回</button>
       </div>
 
       {/* Body */}

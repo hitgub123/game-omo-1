@@ -9,7 +9,16 @@
   position: absolute; inset: 0;
   background-size: cover; background-position: center;
   filter: brightness(0.5) saturate(0.7);
-  transition: background-image 1s ease;
+  transition: opacity 1.2s ease;
+}
+.start-bg-prev {
+  z-index: 0;
+  opacity: 0;
+  animation: fadeOutPrev 1.2s ease forwards;
+}
+@keyframes fadeOutPrev {
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
 .start-overlay {
   position: absolute; inset: 0;
@@ -281,6 +290,26 @@
   transition: all 0.2s;
 }
 .btn-back:hover { color: #f0e6d3; border-color: rgba(255,255,255,0.4); }
+
+/* ── Background Slideshow Dots ── */
+.start-slide-dots {
+  position: absolute; bottom: 32px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 10px;
+  z-index: 2;
+}
+.slide-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  transition: all 0.4s ease;
+}
+.slide-dot.active {
+  background: rgba(255, 215, 0, 0.7);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+  width: 24px;
+  border-radius: 4px;
+}
 
 @media (max-width: 768px) {
   .start-title h1 { font-size: 36px; letter-spacing: 4px; }

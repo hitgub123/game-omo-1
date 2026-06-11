@@ -37,7 +37,7 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack }) =>
   const [activeTeamIdx, setActiveTeamIdx] = React.useState(0);
   const [selected, setSelected] = React.useState<(Character | null)[]>([null, null, null, null]);
   const bgImage = React.useMemo(
-    () => BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)],
+    () => encodeURI(BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)]),
     []
   );
 

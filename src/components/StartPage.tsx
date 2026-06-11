@@ -13,15 +13,42 @@ const BG_IMAGES = [
   '/bg/Konachan.com - 404789 sample.jpg',
 ];
 
+const SLIDE_INTERVAL_MS = 8000;
+
 const StartPage: React.FC<StartPageProps> = ({ onStartSolo, onStartTeam }) => {
-  const bgImage = React.useMemo(
-    () => BG_IMAGES[Math.floor(Math.random() * BG_IMAGES.length)],
-    []
-  );
+  const [slideIdx, setSlideIdx] = React.useState(0);
+  const [prevIdx, setPrevIdx] = React.useState<number | null>(null);
+
+  // cycle background on interval
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setPrevIdx(slideIdx);
+      setSlideIdx(i => (i + 1) % BG_IMAGES.length);
+    }, SLIDE_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [slideIdx]);
+
+  // preload next image for smooth transition
+  React.useEffect(() => {
+    const nextIdx = (slideIdx + 1) % BG_IMAGES.length;
+    const img = new Image();
+    img.src = encodeURI(BG_IMAGES[nextIdx]);
+  }, [slideIdx]);
 
   return (
     <div className="start-page">
-      <div className="start-bg" style={{ backgroundImage: `url(${bgImage})` }} />
+      {/* Previous background (fading out) — only render during transition */}
+      {prevIdx !== null && prevIdx !== slideIdx && (
+        <div
+          className="start-bg start-bg-prev"
+          style={{ backgroundImage: `url(${encodeURI(BG_IMAGES[prevIdx])})` }}
+        />
+      )}
+      {/* Current background */}
+      <div
+        className="start-bg"
+        style={{ backgroundImage: `url(${encodeURI(BG_IMAGES[slideIdx])})` }}
+      />
       <div className="start-overlay" />
 
       <div className="start-title">
@@ -46,6 +73,13 @@ const StartPage: React.FC<StartPageProps> = ({ onStartSolo, onStartTeam }) => {
           联机模式
           <span className="sub">ONLINE MULTIPLAYER — COMING SOON</span>
         </button>
+      </div>
+
+      {/* Slide indicator dots */}
+      <div className="start-slide-dots">
+        {BG_IMAGES.map((_, i) => (
+          <span key={i} className={`slide-dot ${i === slideIdx ? 'active' : ''}`} />
+        ))}
       </div>
     </div>
   );

@@ -9,7 +9,7 @@
 ```
 src/
 ├── main.tsx                      # 入口文件，挂载 React 应用
-├── App.tsx                       # 主组件，组合 GameTable + 状态栏
+├── App.tsx                       # 根组件：页面路由 + GamePage 封装
 │
 ├── game/                         # 纯游戏逻辑层（不依赖 React）
 │   ├── types.ts                  # 核心类型定义
@@ -17,27 +17,69 @@ src/
 │   ├── hand.ts                   # 手牌分析引擎
 │   ├── scoring.ts                # 点数计算
 │   ├── gameEngine.ts             # 游戏状态机
+│   ├── GameController.ts         # 游戏循环控制器（AI 决策 + 时序）
 │   └── ai.ts                     # AI 策略
 │
 ├── hooks/
 │   └── useGame.ts                # React Hook，管理游戏状态 + AI 循环
 │
 ├── components/                   # UI 组件层
-│   ├── TileComponent.tsx          # 单张麻将牌渲染
+│   ├── StartPage.tsx              # 标题画面（背景轮播 + 模式选择）
+│   ├── CharacterSelect.tsx        # 角色选择画面（108角色 + 15队伍）
 │   ├── GameTable.tsx              # 牌桌主布局
+│   ├── TileComponent.tsx          # 单张麻将牌渲染
 │   ├── ActionPanel.tsx            # 操作按钮面板
 │   ├── GameOverModal.tsx          # 牌局结果弹窗
 │   └── WallPulldown.tsx           # 牌山下拉面板（牌数确认/换牌）
 │
-├── data/                         # 静态数据（预留，当前为空）
-├── __tests__/                    # 测试文件
-│   ├── run-test.mjs
-│   ├── state-machine-test.mjs
-│   └── stateMachine.test.ts
+├── styles/
+│   ├── global.css                # 全局样式 + 东方Project主题
+│   └── title-screen.css          # 标题画面 + 角色选择画面样式
 │
-└── styles/
-    └── global.css                # 全局样式 + 东方Project主题
+├── data/                         # 静态数据（预留）
+└── __tests__/                    # 测试文件
+    ├── run-test.mjs
+    ├── state-machine-test.mjs
+    └── stateMachine.test.ts
 ```
+
+## 页面路由
+
+应用包含三个页面，通过 `App.tsx` 中的 `page` 状态切换：
+
+| 页面 | state 值 | 组件 | 说明 |
+|------|---------|------|------|
+| 标题 | `'title'` | `StartPage.tsx` | 背景图片轮播，选择游戏模式 |
+| 选人 | `'select'` | `CharacterSelect.tsx` | 从 108 角色中选择 4 位 |
+| 游戏 | `'game'` | `GameTable.tsx` (封装在 `GamePage`) | 牌局主界面 |
+
+**流程**: `title` → (选择单人/组队) → `select` → (选齐4人) → `game` → (退出游戏) → `title`
+
+## 角色数据与 Anchor 跳转
+
+角色数据在 `public/characters.json` 中，来源于 `doc/abilities.md`。
+
+`abilities.md` 中每个角色以 **Anchor（锚点）** 标记，格式为：
+```html
+<a name="th06-01"></a>
+```
+跳转方式：在页面 URL 后加 `#th06-01` 即可定位到该角色。
+
+### Anchor 命名规则
+
+| 前缀 | 含义 | 示例 |
+|------|------|------|
+| `th06-` ~ `th20-` | 各正作游戏角色（按面数编号） | `th08-05` = 永夜抄5面Boss 铃仙 |
+| `play-` | 主角群（自机角色） | `play-01` = 博丽灵梦 |
+| `ftg-` | 格斗作/外传角色 | `ftg-05` = 茨木华扇 |
+| `pc98-` | PC-98 旧作角色 | `pc98-01` = 魅魔 |
+| `qita-` | 其他角色 | `qita-01` = 稗田阿求 |
+
+### 使用场景
+
+- **选人画面**: 读取 `characters.json`，通过 `id` 字段（如 `"th06-01"`）关联角色数据
+- **角色资料页**: 可通过 `window.location.hash` 跳转到指定角色的详细能力设定
+- **扩展新角色**: 在 `abilities.md` 中添加条目并赋予唯一 anchor ID，更新 `characters.json` 即可
 
 ## 各文件详细说明
 

@@ -13,7 +13,7 @@ interface Character {
   id: string; nameCN: string; nameJP: string; nameEN: string;
 }
 
-type Page = 'title' | 'select' | 'game';
+type Page = 'title' | 'select' | 'confirm' | 'game';
 
 // ── In-game wrapper (mounts useGame + GameTable) ──
 interface GamePageProps {

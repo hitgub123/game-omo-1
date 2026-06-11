@@ -37,6 +37,8 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack }) =>
   const [teams, setTeams] = React.useState<Team[]>([]);
   const [activeTeamIdx, setActiveTeamIdx] = React.useState(0);
   const [selected, setSelected] = React.useState<(Character | null)[]>([null, null, null, null]);
+  const [hoveredChar, setHoveredChar] = React.useState<Character | null>(null);
+  const [tooltipPos, setTooltipPos] = React.useState({ x: 0, y: 0 });
   const bgImage = React.useMemo(
     () => BG_IMAGES.length > 0
       ? BG_IMAGES[Math.floor(Math.random() * BG_IMAGES.length)]
@@ -81,6 +83,22 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack }) =>
   const allFilled = selected.every(c => c !== null);
   const totalChars = teams.reduce((s, t) => s + t.members.length, 0);
   const activeTeam = teams[activeTeamIdx];
+
+  const handleMouseEnter = React.useCallback((char: Character, e: React.MouseEvent) => {
+    setHoveredChar(char);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const TOOLTIP_W = 320;
+    let left = rect.left;
+    // 防右侧溢出：如果悬浮窗超出右边界，则右侧对齐
+    if (left + TOOLTIP_W > window.innerWidth - 8) {
+      left = Math.max(8, window.innerWidth - TOOLTIP_W - 8);
+    }
+    setTooltipPos({ x: left, y: rect.bottom + 8 });
+  }, []);
+
+  const handleMouseLeave = React.useCallback(() => {
+    setHoveredChar(null);
+  }, []);
 
   const quickStart = React.useCallback(() => {
     const allChars = teams.flatMap(t => t.members);
@@ -145,6 +163,8 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack }) =>
                       key={char.id}
                       className={`char-card ${isSelected ? 'selected' : ''}`}
                       onClick={() => handleSelect(char)}
+                      onMouseEnter={e => handleMouseEnter(char, e)}
+                      onMouseLeave={handleMouseLeave}
                     >
                       <div className="char-avatar">
                         {char.nameCN.slice(0, 1)}
@@ -185,6 +205,43 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack }) =>
           开始游戏
         </button>
       </div>
+      {/* Character tooltip */}
+      {hoveredChar && (
+        <div
+          className="char-tooltip"
+          style={{ left: tooltipPos.x, top: tooltipPos.y }}
+          onMouseEnter={() => setHoveredChar(hoveredChar)}
+          onMouseLeave={() => setHoveredChar(null)}
+        >
+          <div className="tooltip-header">
+            <span className="tooltip-name">{hoveredChar.nameCN}</span>
+            <span className="tooltip-name-jp">{hoveredChar.nameJP}</span>
+            <span className="tooltip-name-en">{hoveredChar.nameEN}</span>
+          </div>
+          {hoveredChar.ref && (
+            <div className="tooltip-ref">参考：{hoveredChar.id}</div>
+          )}
+          <div className="tooltip-body">
+            <div className="tooltip-row">
+              <span className="tooltip-label">种族</span>
+              <span className="tooltip-value">{hoveredChar.race || '—'}</span>
+            </div>
+            <div className="tooltip-row">
+              <span className="tooltip-label">能力</span>
+              <span className="tooltip-value">{hoveredChar.ability || '—'}</span>
+            </div>
+            <div className="tooltip-row">
+              <span className="tooltip-label">性格</span>
+              <span className="tooltip-value">{hoveredChar.personality || '—'}</span>
+            </div>
+            <div className="tooltip-divider" />
+            <div className="tooltip-row">
+              <span className="tooltip-label">麻将能力</span>
+              <span className="tooltip-value mahjong">{hoveredChar.mahjong_skill || '—'}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

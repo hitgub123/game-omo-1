@@ -13,6 +13,8 @@ current_char = None
 CHAR_KEYS = ['icon', 'normal', 'win', 'lose', 'skill', 'race', 'ability', 'personality', 'mahjong_skill']
 reading_table = False
 table_row = 0
+# 所有角色的查询表（id → dict），用于补全引用角色的信息
+char_lookup: dict[str, dict] = {}
 
 def flush_char():
     global current_char, current_team
@@ -21,6 +23,14 @@ def flush_char():
             if 'members' not in current_team:
                 current_team['members'] = []
             current_team['members'].append(current_char)
+            # 存入查询表（引用条目信息不全，会被后面的完整条目覆盖）
+            cid = current_char.get('id')
+            if cid:
+                if cid not in char_lookup:
+                    char_lookup[cid] = dict(current_char)
+                elif not current_char.get('ref'):
+                    # 非引用条目覆盖引用条目的占位数据
+                    char_lookup[cid].update({k: v for k, v in current_char.items() if k != 'ref'})
         current_char = None
 
 def flush_team():
@@ -75,6 +85,13 @@ for line in lines:
         table_row = 0
         continue
 
+    # ## 非角色标题（如附录）→ 清除当前角色，防止后续表格数据污染
+    if stripped.startswith('## '):
+        flush_char()
+        reading_table = False
+        table_row = 0
+        continue
+
     # Character header without JP: ## id CN / EN  
     m = re.match(r'^##\s+(\S+)\s+(.+?)\s*/\s*(.+)$', stripped)
     if m and not re.match(r'^##\s+th\d{2}', stripped):
@@ -108,6 +125,15 @@ for line in lines:
 # Flush remaining
 flush_char()
 flush_team()
+
+# 补全引用角色的信息（从原始条目复制全部关键字段，覆盖 Saki 附录可能的污染）
+FILL_KEYS = ['race', 'ability', 'personality', 'mahjong_skill', 'icon', 'normal', 'win', 'lose', 'skill']
+for t in teams:
+    for m in t['members']:
+        if m.get('ref') and m['id'] in char_lookup:
+            src = char_lookup[m['id']]
+            for key in FILL_KEYS:
+                m[key] = src.get(key, '')
 
 print(f"Parsed {len(teams)} teams, {sum(len(t['members']) for t in teams)} total characters", file=sys.stderr)
 for t in teams:

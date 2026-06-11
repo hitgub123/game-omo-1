@@ -333,6 +333,76 @@
   user-select: none;
 }
 
+/* ── Character Tooltip ── */
+.char-tooltip {
+  position: fixed;
+  z-index: 999;
+  width: 320px;
+  background: rgba(15, 10, 30, 0.95);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 12px;
+  padding: 16px 18px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255, 215, 0, 0.08);
+  pointer-events: auto;
+  animation: tooltipFadeIn 0.15s ease;
+}
+@keyframes tooltipFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.tooltip-header {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.tooltip-name {
+  font-size: 18px; font-weight: 700;
+  color: #ffd700;
+}
+.tooltip-name-jp {
+  font-size: 13px; color: rgba(255,255,255,0.5);
+}
+.tooltip-name-en {
+  font-size: 11px; color: rgba(255,255,255,0.3);
+  width: 100%;
+}
+.tooltip-ref {
+  font-size: 11px;
+  color: rgba(255, 215, 0, 0.4);
+  margin: -6px 0 8px 0;
+  font-style: italic;
+}
+.tooltip-body {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.tooltip-row {
+  display: flex; gap: 8px; align-items: flex-start;
+}
+.tooltip-label {
+  flex-shrink: 0;
+  width: 56px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  line-height: 1.6;
+}
+.tooltip-value {
+  flex: 1;
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
+  line-height: 1.5;
+}
+.tooltip-value.mahjong {
+  color: rgba(255, 215, 0, 0.85);
+  font-size: 12px;
+}
+.tooltip-divider {
+  height: 1px;
+  background: rgba(255, 215, 0, 0.12);
+  margin: 2px 0;
+}
+
 @media (max-width: 768px) {
   .start-title h1 { font-size: 36px; letter-spacing: 4px; }
   .start-menu { width: 260px; }

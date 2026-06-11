@@ -1121,7 +1121,7 @@
 # th09 东方花映塚
 
 <a name="th09-01"></a>
-## 参考： th10-04b 射命丸文(しゃめいまる あや) / Aya Shameimaru
+## 参考：th10-04b 射命丸文(しゃめいまる あや) / Aya Shameimaru
 <a name="th09-02"></a>
 ## th09-02 梅蒂欣·梅兰可莉(メディスン・メランコリー) / Medicine Melancholy
 | 立绘 | 值 |
@@ -4930,7 +4930,7 @@
 ## 参考：th07-05 魂魄妖梦(こんぱく ようむ) / Youmu Konpaku
 
 <a name="play-05"></a>
-## 参考：th08-05 铃仙·优昙华院·因幡(れいせん・うどんげいん・イナバ) / Reisen Udongein Inaba
+## 参考：th08-05b 铃仙·优昙华院·因幡(れいせん・うどんげいん・イナバ) / Reisen Udongein Inaba
 
 <a name="play-06"></a>
 ## 参考：th06-02b 琪露诺(チルノ) / Cirno

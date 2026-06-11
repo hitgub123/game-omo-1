@@ -430,7 +430,16 @@
         "nameCN": "射命丸文",
         "nameJP": "しゃめいまる あや",
         "nameEN": "Aya Shameimaru",
-        "ref": true
+        "ref": true,
+        "race": "鸦天狗",
+        "ability": "操纵风",
+        "personality": "八卦记者",
+        "mahjong_skill": "Lv1(20) 風速 — 弃牌与牌山底交换",
+        "icon": "th10-04b-head",
+        "normal": "th10-04b-pic-01",
+        "win": "th10-04b-pic-02",
+        "lose": "th10-04b-pic-03",
+        "skill": "th10-04b-pic-04"
       },
       {
         "id": "th09-02",
@@ -1979,49 +1988,112 @@
         "nameCN": "博丽灵梦",
         "nameJP": "はくれい れいむ",
         "nameEN": "Reimu Hakurei",
-        "ref": true
+        "ref": true,
+        "race": "人类（巫女）",
+        "ability": "操纵灵力程度的能力（主要是飞行）",
+        "personality": "乐天、退治妖怪、无自觉的努力家",
+        "mahjong_skill": "Lv1(20) 夢想封印 — 本巡的和牌判定无视振听限制（强制和牌）。Lv2(55) 二重結界 — 对手本巡不能对自己进行任何操作（荣和/碰/杠/吃）",
+        "icon": "th08-04a-head",
+        "normal": "th08-04a-pic-01",
+        "win": "th08-04a-pic-02",
+        "lose": "th08-04a-pic-03",
+        "skill": "th08-04a-pic-04"
       },
       {
         "id": "th08-04b",
         "nameCN": "雾雨魔理沙",
         "nameJP": "きりさめ まりさ",
         "nameEN": "Marisa Kirisame",
-        "ref": true
+        "ref": true,
+        "race": "人类（魔法使）",
+        "ability": "使用魔法程度的能力",
+        "personality": "努力家、自信家、豪快",
+        "mahjong_skill": "Lv1(20) ミニ八卦炉 — 本巡打出的牌视为被加强（点炮时多付 500）。Lv2(55) マスタースパーク — 本巡和牌得分 x1.5（一发入魂）",
+        "icon": "th08-04b-head",
+        "normal": "th08-04b-pic-01",
+        "win": "th08-04b-pic-02",
+        "lose": "th08-04b-pic-03",
+        "skill": "th08-04b-pic-04"
       },
       {
         "id": "th06-05",
         "nameCN": "十六夜咲夜",
         "nameJP": "いざよい さくや",
         "nameEN": "Sakuya Izayoi",
-        "ref": true
+        "ref": true,
+        "race": "人类",
+        "ability": "操纵时间程度的能力",
+        "personality": "完美女仆",
+        "mahjong_skill": "Lv1(25) 時間停止 — 本回合连续两次操作。Lv2(50) タイムリープ — 回到 2 巡前的状态",
+        "icon": "th06-05-head",
+        "normal": "th06-05-pic-01",
+        "win": "th06-05-pic-02",
+        "lose": "th06-05-pic-03",
+        "skill": "th06-05-pic-04"
       },
       {
         "id": "th07-05",
         "nameCN": "魂魄妖梦",
         "nameJP": "こんぱく ようむ",
         "nameEN": "Youmu Konpaku",
-        "ref": true
+        "ref": true,
+        "race": "半人半灵",
+        "ability": "使用剑术",
+        "personality": "认真正直",
+        "mahjong_skill": "Lv1(20) 剣術 — 本回合可多弃一张牌",
+        "icon": "th07-05-head",
+        "normal": "th07-05-pic-01",
+        "win": "th07-05-pic-02",
+        "lose": "th07-05-pic-03",
+        "skill": "th07-05-pic-04"
       },
       {
-        "id": "th08-05",
+        "id": "th08-05b",
         "nameCN": "铃仙·优昙华院·因幡",
         "nameJP": "れいせん・うどんげいん・イナバ",
         "nameEN": "Reisen Udongein Inaba",
-        "ref": true
+        "ref": true,
+        "race": "月兔",
+        "ability": "操纵狂气",
+        "personality": "胆小焦虑",
+        "mahjong_skill": "Lv1(20) 幻視 — 对手弃牌区随机显示 2 巡",
+        "icon": "th08-05b-head",
+        "normal": "th08-05b-pic-01",
+        "win": "th08-05b-pic-02",
+        "lose": "th08-05b-pic-03",
+        "skill": "th08-05b-pic-04"
       },
       {
         "id": "th06-02b",
         "nameCN": "琪露诺",
         "nameJP": "チルノ",
         "nameEN": "Cirno",
-        "ref": true
+        "ref": true,
+        "race": "妖精",
+        "ability": "操纵冷气程度的能力",
+        "personality": "笨蛋、好战、自称⑨最强",
+        "mahjong_skill": "Lv1(20) 氷結 — 指定对手跳过下一次摸牌",
+        "icon": "th06-02b-head",
+        "normal": "th06-02b-pic-01",
+        "win": "th06-02b-pic-02",
+        "lose": "th06-02b-pic-03",
+        "skill": "th06-02b-pic-04"
       },
       {
         "id": "th10-05",
         "nameCN": "东风谷早苗",
         "nameJP": "こちや さなえ",
         "nameEN": "Sanae Kochiya",
-        "ref": true
+        "ref": true,
+        "race": "人类（现人神）",
+        "ability": "引发奇迹",
+        "personality": "认真自信",
+        "mahjong_skill": "Lv1(20) 奇跡 — 摸 3 选 1。Lv2(50) 大奇跡 — 直接自摸（消耗大量槽）",
+        "icon": "th10-05-head",
+        "normal": "th10-05-pic-01",
+        "win": "th10-05-pic-02",
+        "lose": "th10-05-pic-03",
+        "skill": "th10-05-pic-04"
       },
       {
         "id": "th10-04b",
@@ -2029,15 +2101,15 @@
         "nameJP": "しゃめいまる あや",
         "nameEN": "Aya Shameimaru",
         "ref": true,
-        "icon": "岭上开花",
-        "normal": "理论麻将",
-        "win": "方位能力",
-        "lose": "不确定/地狱听",
-        "skill": "透华能力",
-        "race": "海底捞月",
-        "ability": "牌山操作",
-        "personality": "怯懦→爆发",
-        "mahjong_skill": "隐形"
+        "race": "鸦天狗",
+        "ability": "操纵风",
+        "personality": "八卦记者",
+        "mahjong_skill": "Lv1(20) 風速 — 弃牌与牌山底交换",
+        "icon": "th10-04b-head",
+        "normal": "th10-04b-pic-01",
+        "win": "th10-04b-pic-02",
+        "lose": "th10-04b-pic-03",
+        "skill": "th10-04b-pic-04"
       }
     ]
   }

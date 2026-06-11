@@ -249,9 +249,63 @@ npm run dev
 | 临时振听 | 非立直时能荣和选了过 | 自己摸牌时 / 任何人鸣牌时 |
 | 立直後振听 | 立直后能荣和选了过 | 永久 |
 
+## 角色数据管理
+
+角色数据来源于 `doc/abilities.md`，通过 `scripts/parse-characters.py` 自动生成 `public/characters.json`，供选人界面使用。
+
+### 更新方法
+
+```bash
+# 改完 abilities.md 后运行：
+cd /home/cc/ai-projects/game-omo-1
+python3 scripts/parse-characters.py
+```
+
+### abilities.md 格式要求
+
+每个角色以 anchor + `##` 标题开头，后跟 Markdown 表格：
+
+```markdown
+<a name="th06-01"></a>
+## th06-01 露米娅(ルーミア) / Rumia
+| 立绘 | 值 |
+|------|----|
+| 头像 | th06-01-head |
+| ...   | ...   |
+```
+
+支持 **跨组引用**，用于角色在多个作品中出现的情况：
+
+```markdown
+<a name="th09-01"></a>
+## 参考：th10-04b 射命丸文(しゃめいまる あや) / Aya Shameimaru
+```
+
+引用角色会被归入当前队伍，但 `id` 使用原始角色的 ID。
+
+### 组名前缀
+
+| 前缀 | 含义 |
+|------|------|
+| `th06`~`th20` | 各正作游戏 |
+| `ftg` | 格斗作/外传 |
+| `pc98` | PC-98 旧作 |
+| `qita` | 其他角色 |
+| `players` | 主角群 |
+
+## 式样变更记录
+
+### 2026-06-11 角色悬浮信息窗
+
+选人界面（`CharacterSelect.tsx`）新增 **悬浮信息窗**：
+- 鼠标悬停在角色卡上时，右侧弹出浮窗
+- 显示：角色名（中/日/英）、种族、能力、性格、麻将能力
+- 引用角色（如 players 组的灵梦）额外显示「参考：id」
+- 毛玻璃质感，金色主题，适配现有视觉风格
+
 ## 相关文档
 
-- **BUGS.md**: Bug 追踪表，共 14 条（13 条已修复 + 1 条未修复）
+- **BUGS.md**: Bug 追踪表
 - **TEST_SPEC.md**: 状态机测试式样书，21 个测试用例
 - **CONVERSATION.md**: 开发会话记录
 

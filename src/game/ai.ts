@@ -6,7 +6,7 @@
  */
 
 import type { Tile, GameState, Wind } from './types';
-import { tileKey, isTerminalHonor, isMiddleTile, isDragonTile } from './tiles';
+import { tileKey, isTerminalHonor, isMiddleTile, isDragonTile, isYakuhaiTile } from './tiles';
 
 import type { DifficultyConfig } from './difficulty';
 import { DIFFICULTY_NORMAL } from './difficulty';
@@ -161,49 +161,46 @@ function scoreDiscardTile(
 ): number {
   let score = 0;
 
-  // 基础得分：保留有价值的牌
+  // ── 字牌：役牌価値 + 対子/刻子状態 ──
   if (tile.suit === 'z') {
-    if (isDragonTile(tile)) score += 3;
-    else score += 2;
+    const count = hand.filter(t => t.suit === tile.suit && t.value === tile.value).length;
+    const isYakuhai = isYakuhaiTile(tile, state.roundWind, _playerWind);
+    if (count >= 3) score += isYakuhai ? 20 : 12;
+    else if (count === 2) score += isYakuhai ? 14 : 8;
+    else score += isYakuhai ? 6 : 2;
     return score;
   }
 
-  if (isTerminalHonor(tile)) score += 2;
-  if (isMiddleTile(tile)) score += 5;
-
-  // 孤立牌惩罚
-  const neighborCount = getNeighborCount(hand, tile);
-  if (neighborCount === 0) score -= 3;
-
-  // 对子/刻子价值
-  const pairCount = hand.filter(t => t.suit === tile.suit && t.value === tile.value).length;
-  if (pairCount >= 3) score += 8;
-  else if (pairCount === 2) score += 5;
-
-  // 顺子可能性
-  const seqPotential = getSequencePotential(hand, tile);
-  score += seqPotential * 2;
-
-  // 同花色张数
-  const suitCount = hand.filter(t => t.suit === tile.suit).length;
-  if (suitCount >= 5) score += 3;
-  if (suitCount <= 2 && suitCount > 0) score -= 2;
-
-  // Hard/Lunatic: 宝牌加成（有宝牌在手 → 尽量保留）
-  if (config.useHandValue) {
-    const doraBonus = getDoraValue(tile, state);
-    score += doraBonus * 2;
+  // ── 5ブロック理論に基づくブロック品質 ──
+  const sameCount = hand.filter(t => t.suit === tile.suit && t.value === tile.value).length;
+  if (sameCount >= 3) score += 20;
+  else if (sameCount === 2) score += 14;
+  else {
+    const adj = hand.filter(t => t.suit === tile.suit && Math.abs(t.value - tile.value) === 1).length;
+    const gap = hand.filter(t => t.suit === tile.suit && Math.abs(t.value - tile.value) === 2).length;
+    if (adj >= 2) score += 12;
+    else if (adj === 1) score += 8;
+    else if (gap >= 1) score += 5;
+    else score += 1; // 孤立牌
   }
 
-  // Hard/Lunatic: 向听数优化
+  // 赤ドラ：高価値
+  if (tile.isAkadora) score += 10;
+
+  // Hard/Lunatic: 宝牌加成
+  if (config.useHandValue) {
+    const doraBonus = getDoraValue(tile, state);
+    score += doraBonus * 3;
+  }
+
+  // Hard/Lunatic: 向听数悪化防止
   if (config.useWaitQuality) {
-    // 检查弃掉此牌后是否还能保持手牌形状
     const testHand = hand.filter(t => t.id !== tile.id);
     if (testHand.length === hand.length - 1) {
       const shantenBefore = getShanten(hand);
       const shantenAfter = getShanten(testHand);
       if (shantenAfter > shantenBefore) {
-        score -= 10; // 弃掉这张牌会增加向听数 → 坏棋
+        score -= 15;
       }
     }
   }

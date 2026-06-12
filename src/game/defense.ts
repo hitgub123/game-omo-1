@@ -83,6 +83,7 @@ function calculateDangerForOpponent(
 
   // 收集全局可见牌（所有弃牌 + 副露 + 宝牌指示）
   const visibleKeys = getVisibleKeys(state);
+  const tileCounts = getVisibleTileCounts(state);
 
   for (const tile of hand) {
     const key = tileKey(tile);
@@ -102,7 +103,7 @@ function calculateDangerForOpponent(
     }
 
     // 3. 壁牌检查
-    const kabeBonus = getKabeDanger(tile, visibleKeys);
+    const kabeBonus = getKabeDanger(tile, tileCounts);
     danger -= kabeBonus;
 
     // 4. 字牌安全度
@@ -150,6 +151,28 @@ function getVisibleKeys(state: GameState): Set<string> {
   return keys;
 }
 
+/** 获取每种牌的可见枚数（用于壁牌判定） */
+function getVisibleTileCounts(state: GameState): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const p of state.players) {
+    for (const d of p.discards) {
+      const k = tileKey(d);
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    for (const m of p.melds) {
+      for (const t of m.tiles) {
+        const k = tileKey(t);
+        counts.set(k, (counts.get(k) ?? 0) + 1);
+      }
+    }
+  }
+  for (const di of state.doraIndicators) {
+    const k = tileKey(di);
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  return counts;
+}
+
 /** 筋牌危险度：对手的弃牌 ±3 间隔的牌风险较低 */
 function getSujiDanger(tile: Tile, opp: GameState['players'][0], _visibleKeys: Set<string>): number {
   if (tile.suit === 'z') return 0;
@@ -177,13 +200,19 @@ function getSujiDanger(tile: Tile, opp: GameState['players'][0], _visibleKeys: S
   return 0;
 }
 
-/** 壁牌危险度：某牌已见4张 = 它不能形成顺子 = 安全 */
-function getKabeDanger(tile: Tile, _visibleKeys: Set<string>): number {
+/** 壁牌危険度：隣接牌が4枚見え → その牌は相対的に安全 */
+function getKabeDanger(tile: Tile, tileCounts: Map<string, number>): number {
   if (tile.suit === 'z') return 0;
-  // TODO: 检查该牌在可见牌中是否已有4张
-  // 粗略估：每张可见牌按0.25张算（实际有4张一样的牌）
-  // 更精确需要从手牌+弃牌+副露中数
-  return 0;
+  let safety = 0;
+  for (const offset of [-1, 1]) {
+    const nv = tile.value + offset;
+    if (nv < 1 || nv > 9) continue;
+    const nk = `${tile.suit}${nv}`;
+    const count = tileCounts.get(nk) ?? 0;
+    if (count >= 4) safety = Math.max(safety, 0.15);
+    else if (count >= 3) safety = Math.max(safety, 0.05);
+  }
+  return safety;
 }
 
 /** 字牌危险度 */

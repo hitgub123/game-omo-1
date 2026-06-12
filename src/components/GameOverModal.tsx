@@ -41,7 +41,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ state, onNewGame, onNextH
                 <p>流局：{result.drawReason || '牌山耗尽'}</p>
                 {result.tenpaiPlayers && result.tenpaiPlayers.length > 0 && (
                   <p className="tenpai-info">
-                    听牌：{result.tenpaiPlayers.map(w => TOUHOU_CHARACTERS[w as Wind].name).join('、')}
+                    听牌：{result.tenpaiPlayers.map(w => state.players[w as Wind].name).join('、')}
                   </p>
                 )}
               </div>
@@ -51,7 +51,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ state, onNewGame, onNextH
               <div key={idx} className="win-result">
                 <div className="win-header">
                   <span className="winner-name" style={{ color: TOUHOU_CHARACTERS[wr.player as Wind].color }}>
-                    {TOUHOU_CHARACTERS[wr.player as Wind].name}
+                    {state.players[wr.player as Wind].name}
                   </span>
                   <span className="win-type">{wr.isTsumo ? '自摸' : '荣和'}</span>
                 </div>
@@ -80,11 +80,11 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ state, onNewGame, onNextH
                 result.payments.map((p, i) => (
                   <div key={i} className="payment-row">
                     <span style={{ color: (p.from as number) === -1 ? '#888' : TOUHOU_CHARACTERS[p.from as Wind]?.color }}>
-                      {(p.from as number) === -1 ? '供託' : TOUHOU_CHARACTERS[p.from as Wind]?.name || '?'}
+                      {(p.from as number) === -1 ? '供託' : state.players[p.from as Wind]?.name || '?'}
                     </span>
                     <span className="payment-arrow">→</span>
                     <span style={{ color: TOUHOU_CHARACTERS[p.to as Wind].color }}>
-                      {TOUHOU_CHARACTERS[p.to as Wind].name}
+                      {state.players[p.to as Wind].name}
                     </span>
                     <span className="payment-amount">{p.amount.toLocaleString()}点</span>
                   </div>

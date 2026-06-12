@@ -2,6 +2,7 @@
  * ai.ts — AI 决策主入口
  *
  * 整合防守、进攻、策略三大模块，接收 DifficultyConfig 控制难度。
+ * P0: 弃牌以向听数为首要标准，次优才看评分。
  */
 
 import type { Tile, GameState, Wind } from './types';
@@ -43,42 +44,43 @@ export function aiChooseDiscard(
   // 计算危险度（防守）
   const dangerMap = calculateDanger(hand, state, playerWind, config);
 
-  // 计算每张牌的进攻得分
+  // 推/缩判断
+  const pushFold = shouldPushOrFold(hand, state, playerWind, config);
+
+  // 对每张牌算两个值：打出后的向听数 + 进攻评分
   const scored = hand.map(t => {
-    const key = tileKey(t);
+    const remaining = hand.filter(h => h.id !== t.id);
+    const shanten = getShanten(remaining);
     const offense = scoreDiscardTile(t, hand, state, playerWind, config);
-    const danger = dangerMap.get(key) ?? 0;
-    const defenseWeight = config.defenseWeight;
-
-    // 推/缩判断
-    const pushFold = shouldPushOrFold(hand, state, playerWind, config);
-    let finalScore: number;
-
-    if (pushFold === 'fold') {
-      // 弃和：几乎只看安全度
-      finalScore = offense - danger * 100;
-    } else if (pushFold === 'ambiguous') {
-      // 模糊：进攻和防守权重相近
-      finalScore = offense - danger * 30 * defenseWeight;
-    } else {
-      // 进攻：安全度权重低
-      finalScore = offense - danger * 3 * defenseWeight;
-    }
-
-    return { tile: t, score: finalScore, danger };
+    const danger = dangerMap.get(tileKey(t)) ?? 0;
+    return { tile: t, shanten, offense, danger };
   });
 
-  // 按综合得分排序（越高越好）
-  scored.sort((a, b) => b.score - a.score);
+  // P0: 以向听数为首要排序（越低越好），同向听数内按进攻评分（越高越好）
+  scored.sort((a, b) => {
+    if (a.shanten !== b.shanten) return a.shanten - b.shanten;
+    // 同向听数内：防守调整
+    let aScore = a.offense;
+    let bScore = b.offense;
+    if (pushFold === 'fold') {
+      aScore -= a.danger * 100;
+      bScore -= b.danger * 100;
+    } else if (pushFold === 'ambiguous') {
+      aScore -= a.danger * 30;
+      bScore -= b.danger * 30;
+    } else {
+      aScore -= a.danger * 3;
+      bScore -= b.danger * 3;
+    }
+    return bScore - aScore;
+  });
 
   // 次优选择（模拟失误）
   if (config.suboptimalDiscardChance > 0 && Math.random() < config.suboptimalDiscardChance) {
-    // 在 top 3 中随机选
     const topN = Math.min(3, scored.length);
     return scored[Math.floor(Math.random() * topN)].tile;
   }
 
-  // 选最高分的
   return scored[0].tile;
 }
 

@@ -11,15 +11,25 @@ import { tilesToHai } from './hand';
 
 const LOG_SERVER = 'http://localhost:12345/log';
 
-/** 发送调试信息到日志文件（静默失败） */
+let _consecutiveFailures = 0;
+const MAX_FAILURES = 3;
+
+/** 发送调试信息到日志文件 — 连续 3 次失败后静默，成功后恢复 */
 function logDebug(type: string, data: Record<string, unknown>): void {
+  if (_consecutiveFailures >= MAX_FAILURES) return;
   try {
     fetch(LOG_SERVER, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify([{ time: '', type, data }]),
-    }).catch(() => {});
-  } catch {}
+    }).then(() => {
+      _consecutiveFailures = 0;
+    }).catch(() => {
+      _consecutiveFailures++;
+    });
+  } catch {
+    _consecutiveFailures++;
+  }
 }
 
 /** 转 riichi 库牌面：赤5用 '0' 表示，自动计赤宝牌 */

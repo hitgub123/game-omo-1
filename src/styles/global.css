@@ -369,7 +369,25 @@ body {
 }
 
 .btn-wall-pulldown:hover {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 215, 0, 0.2);
+}
+.btn-reveal {
+  padding: 4px 10px;
+  font-size: 16px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  background: rgba(0,0,0,0.3);
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1;
+}
+.btn-reveal:hover {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: rgba(255, 215, 0, 0.4);
+}
+.btn-reveal.active {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: #ffd700;
 }
 
 .wall-pulldown-menu {

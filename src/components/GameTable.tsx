@@ -40,6 +40,7 @@ function fmtScore(score: number): string {
 }
 
 const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi, difficulty, onDifficultyChange, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin, gameLength, onGameLengthChange }) => {
+  const [revealHands, setRevealHands] = React.useState(false);
   const riichiWaitFloat = React.useMemo(() => {
     if (!riichiMode || selectedTileId === null) return null;
     const info = riichiValidTileIds.get(selectedTileId);
@@ -56,6 +57,11 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
         </div>
         <div className="header-actions">
           <WallPulldown state={state} swapMode={swapMode} onSelectTile={onSwapTile} />
+          <button className={`btn-reveal ${revealHands ? 'active' : ''}`}
+            onClick={() => setRevealHands(v => !v)}
+            title="查看所有玩家手牌">
+            {revealHands ? '🙈' : '👁'}
+          </button>
           <select className="game-length-select" value={gameLength} onChange={e => onGameLengthChange(Number(e.target.value))} disabled={!canChangeLength} title={canChangeLength ? '' : '游戏中不可修改'}>
             <option value={1}>东风</option>
             <option value={2}>东南</option>
@@ -82,10 +88,9 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
       {swapMode && <div className="swap-banner">🔄 点击牌山中要交换的牌，或右键取消</div>}
 
       <div className="table-area">
-        <OpponentSection state={state} wind={Wind.WEST} />
-        <OpponentSection state={state} wind={Wind.NORTH} vertical />
-        <DiscardArea state={state} />
-        <OpponentSection state={state} wind={Wind.SOUTH} vertical />
+        <OpponentSection state={state} wind={Wind.WEST} revealHands={revealHands} />
+        <OpponentSection state={state} wind={Wind.NORTH} vertical revealHands={revealHands} />
+        <OpponentSection state={state} wind={Wind.SOUTH} vertical revealHands={revealHands} />
         <PlayerSection state={state} playerWind={Wind.EAST} selectedTileId={selectedTileId}
           onTileClick={onTileClick} onTileDoubleClick={onTileDoubleClick}
           onTileContextMenu={onTileContextMenu}
@@ -110,9 +115,10 @@ interface OpponentProps {
   state: GameState;
   wind: Wind;
   vertical?: boolean;
+  revealHands?: boolean;
 }
 
-const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical }) => {
+const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical, revealHands }) => {
   const player = state.players[wind];
   const ch = TOUHOU_CHARACTERS[wind];
   const isActive = state.currentPlayer === wind && state.phase !== GamePhase.HAND_OVER;
@@ -133,7 +139,7 @@ const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical }) => 
 
       <div className={`hand-tiles ${vertical ? 'hand-vertical' : ''}`}>
         {player.hand.map(t => (
-          <TileComponent key={t.id} tile={t} faceDown small={vertical} />
+          <TileComponent key={t.id} tile={t} faceDown={!revealHands} small={vertical} />
         ))}
       </div>
 

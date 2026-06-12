@@ -40,7 +40,7 @@ function fmtScore(score: number): string {
 }
 
 const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi, difficulty, onDifficultyChange, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin, gameLength, onGameLengthChange }) => {
-  const [revealHands, setRevealHands] = React.useState(false);
+  const [revealHands, setRevealHands] = React.useState(true);
   const riichiWaitFloat = React.useMemo(() => {
     if (!riichiMode || selectedTileId === null) return null;
     const info = riichiValidTileIds.get(selectedTileId);
@@ -60,7 +60,7 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
           <button className={`btn-reveal ${revealHands ? 'active' : ''}`}
             onClick={() => setRevealHands(v => !v)}
             title="查看所有玩家手牌">
-            {revealHands ? '🙈' : '👁'}
+            {revealHands ? '隐藏手牌' : '显示手牌'}
           </button>
           <select className="game-length-select" value={gameLength} onChange={e => onGameLengthChange(Number(e.target.value))} disabled={!canChangeLength} title={canChangeLength ? '' : '游戏中不可修改'}>
             <option value={1}>东风</option>
@@ -90,6 +90,7 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
       <div className="table-area">
         <OpponentSection state={state} wind={Wind.WEST} revealHands={revealHands} />
         <OpponentSection state={state} wind={Wind.NORTH} vertical revealHands={revealHands} />
+        <DiscardArea state={state} />
         <OpponentSection state={state} wind={Wind.SOUTH} vertical revealHands={revealHands} />
         <PlayerSection state={state} playerWind={Wind.EAST} selectedTileId={selectedTileId}
           onTileClick={onTileClick} onTileDoubleClick={onTileDoubleClick}
@@ -137,11 +138,11 @@ const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical, revea
         </div>
       </div>
 
-      <div className={`hand-tiles ${vertical ? 'hand-vertical' : ''}`}>
-        {player.hand.map(t => (
-          <TileComponent key={t.id} tile={t} faceDown={!revealHands} small={vertical} />
-        ))}
-      </div>
+        <div className={`hand-tiles ${vertical ? 'hand-vertical' : ''}`}>
+          {player.hand.map(t => (
+            <TileComponent key={t.id} tile={t} faceDown={!revealHands} small={vertical} />
+          ))}
+        </div>
 
       {player.melds.length > 0 && (
         <div className="meld-area">
@@ -322,7 +323,7 @@ const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
                 <TileComponent key={`d${i}-${j}`} tile={tile} small dimmed
                   isRiichi={player.isRiichi && player.riichiDiscardIndex === j}
                   isCalled={humanCanCall && state.lastDiscard?.id === tile.id}
-                  className={state.claimedDiscardTileIds.includes(tile.id) ? 'tile-claimed' : ''} />
+                  className={state.claimedDiscardTileIds?.includes(tile.id) ? 'tile-claimed' : ''} />
               ))
             )}
           </div>

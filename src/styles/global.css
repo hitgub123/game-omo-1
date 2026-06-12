@@ -372,14 +372,16 @@ body {
   background: rgba(255, 215, 0, 0.2);
 }
 .btn-reveal {
-  padding: 4px 10px;
-  font-size: 16px;
-  border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 6px;
-  background: rgba(0,0,0,0.3);
+  padding: 3px 8px;
+  font-size: 11px;
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
   line-height: 1;
+  white-space: nowrap;
 }
 .btn-reveal:hover {
   background: rgba(255, 215, 0, 0.15);
@@ -533,13 +535,13 @@ body {
   align-items: center;
 }
 
-/* 对手手牌每张牌旋转：牌面向桌中央 */
+
 .opponent-west .hand-tiles .tile,
-.opponent-west .hand-tiles .tile:hover { transform: rotate(180deg); }
+.opponent-west .hand-tiles .tile:hover { transform: rotate(0deg);  }
 .opponent-south .hand-tiles .tile,
 .opponent-south .hand-tiles .tile:hover { transform: rotate(-90deg); }
 .opponent-north .hand-tiles .tile,
-.opponent-north .hand-tiles .tile:hover { transform: rotate(90deg); }
+.opponent-north .hand-tiles .tile:hover { transform: rotate(90deg);}
 
 /* 确保对手手牌的 SVG 填满牌面 */
 .opponent-area .tile .tile-svg {

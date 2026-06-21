@@ -298,7 +298,8 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
                       onMouseLeave={handleMouseLeave}
                     >
                       <div className="char-avatar">
-                        {char.nameCN.slice(0, 1)}
+                        <img src={`/chars/${char.id}.svg`} alt={char.nameCN} width={60} height={60}
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                       </div>
                       <div className="char-name">{char.nameCN}</div>
                       <div className="char-name-en">{char.nameEN}</div>

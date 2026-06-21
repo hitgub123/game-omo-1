@@ -36,13 +36,14 @@ interface GameTableProps {
   onGameLengthChange: (n: number) => void;
   autoPlay: boolean;
   onToggleAutoPlay: () => void;
+  activateAbility: () => boolean;
 }
 
 function fmtScore(score: number): string {
   return score < 0 ? `−${Math.abs(score).toLocaleString()}` : score.toLocaleString();
 }
 
-const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi, difficulty, onDifficultyChange, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin, gameLength, onGameLengthChange, autoPlay, onToggleAutoPlay }) => {
+const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi, difficulty, onDifficultyChange, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin, gameLength, onGameLengthChange, autoPlay, onToggleAutoPlay, activateAbility }) => {
   const [revealHands, setRevealHands] = React.useState(true);
   const riichiWaitFloat = React.useMemo(() => {
     if (!riichiMode || selectedTileId === null) return null;
@@ -101,7 +102,8 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
           riichiMode={riichiMode} riichiValidTileIds={riichiValidTileIds}
           autoSelfDiscard={autoSelfDiscard} noCall={noCall} autoWin={autoWin}
           onToggleSelfDiscard={onToggleSelfDiscard} onToggleNoCall={onToggleNoCall} onToggleAutoWin={onToggleAutoWin}
-          autoPlay={autoPlay} onToggleAutoPlay={onToggleAutoPlay} />
+          autoPlay={autoPlay} onToggleAutoPlay={onToggleAutoPlay}
+          activateAbility={activateAbility} />
       </div>
 
       <ActionPanel state={state} onAction={onAction} riichiMode={riichiMode} onCancelRiichi={onCancelRiichi} />
@@ -144,6 +146,9 @@ const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical, revea
           <span className="player-wind">{['東','南','西','北'][displayWind]}</span>
           {player.isRiichi && <span className="riichi-badge">{player.isDoubleRiichi ? '两立直' : '立直'}</span>}
           {player.isDealer && <span className="dealer-badge">庄</span>}
+        </div>
+        <div className="energy-bar-wrap">
+          <span className="energy-text" style={{ color: ch.colorLight }}>⚡{player.energy}</span>
         </div>
       </div>
 
@@ -193,9 +198,10 @@ interface PlayerSectionProps {
   onToggleAutoWin: () => void;
   autoPlay: boolean;
   onToggleAutoPlay: () => void;
+  activateAbility: () => boolean;
 }
 
-const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, riichiMode, riichiValidTileIds, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin, autoPlay, onToggleAutoPlay }) => {
+const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, riichiMode, riichiValidTileIds, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin, autoPlay, onToggleAutoPlay, activateAbility }) => {
   const player = state.players[playerWind];
   const ch = TOUHOU_CHARACTERS[playerWind];
   const isActive = state.currentPlayer === playerWind && state.phase !== GamePhase.HAND_OVER;
@@ -229,6 +235,14 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
             <span className="player-wind">{['東','南','西','北'][displayWind]}</span>
             {player.isRiichi && <span className="riichi-badge">{player.isDoubleRiichi ? '两立直' : '立直'}</span>}
             {player.isDealer && <span className="dealer-badge">庄</span>}
+          </div>
+          <div className="energy-bar-wrap">
+            <span className="energy-text" style={{ color: ch.colorLight }}>⚡{player.energy}</span>
+            {player.isHuman && player.energy >= 100 && isActive && (
+              <button className="toggle-btn-sm" onClick={activateAbility}
+                style={{ fontSize: 11, marginLeft: 6, padding: '2px 8px', background: ch.color, color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                title="消耗100能量发动能力">发动能力</button>
+            )}
           </div>
           <div className="player-toggles">
             <button className={`toggle-btn-sm ${autoSelfDiscard ? 'toggle-on' : ''}`}

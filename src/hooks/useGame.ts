@@ -43,6 +43,8 @@ export interface GameControllerAPI {
   /** 托管模式 */
   autoPlay: boolean;
   setAutoPlay: (on: boolean) => void;
+  /** 发动能力 */
+  activateAbility: () => boolean;
   /** 下载游戏日志 (Ctrl+L) */
   downloadLog: () => void;
 }
@@ -60,7 +62,7 @@ function buildTeamRoster(chars: { name: string }[]): { name: string }[][] {
   return roster;
 }
 
-export function useGame(characters?: { name: string }[], gameLength = 2): GameControllerAPI {
+export function useGame(characters?: { name: string }[], gameLength = 1): GameControllerAPI {
   const isTeamMode = characters && characters.length > 4;
   const teamRosterRef = useRef<{ name: string }[][] | null>(null);
   const currentRoundRef = useRef(0);
@@ -145,8 +147,11 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
     const segIdx = currentRoundRef.current;
     if (segIdx >= 4) return; // All 5 segments done (0-4)
 
-    // Save current scores and start next segment with new players
+    // Save current scores and energy, start next segment with new players
     const scores = state.players.map(p => p.score);
+    const energies = state.players.map(p => p.energy);
+    const abilityCounts = state.players.map(p => p.abilityUseCount);
+    const swapCosts = state.players.map(p => p.swapEnergyCost);
     const nextPlayers = roster.map(team => team[segIdx + 1]);
     const ctrl = ctrlRef.current;
     if (!ctrl) return;
@@ -156,7 +161,7 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
     const checkInit = () => {
       const s = ctrl.state;
       if (s.phase === GamePhase.DRAWING || s.phase === GamePhase.DISCARDING || s.phase === GamePhase.ACTION_PROMPT) {
-        s.players.forEach((p, i) => { p.score = scores[i]; });
+        s.players.forEach((p, i) => { p.score = scores[i]; p.energy = energies[i]; p.abilityUseCount = abilityCounts[i]; p.swapEnergyCost = swapCosts[i]; });
         currentRoundRef.current = segIdx + 1;
         setMessages(prev => [...prev.slice(-99), `🏁 第${segIdx + 2}轮开始！`]);
       } else {
@@ -339,6 +344,12 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
     setAutoPlayState(on);
   }, []);
 
+  const activateAbility = useCallback((): boolean => {
+    const ctrl = ctrlRef.current;
+    if (!ctrl) return false;
+    return ctrl.activateAbility();
+  }, []);
+
   const downloadLog = useCallback(() => {
     loggerRef.current?.download();
   }, []);
@@ -352,6 +363,7 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
     riichiMode, riichiValidTileIds, cancelRiichi,
     difficulty, setDifficulty,
     autoPlay, setAutoPlay,
+    activateAbility,
     downloadLog,
   };
 }

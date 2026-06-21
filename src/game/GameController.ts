@@ -31,7 +31,7 @@ export class GameController {
   private _autoPlay = false;
   private _autoAdvanceScheduled = false; // 防止重复调度自动下一局
 
-  constructor(characters?: { name: string }[], gameLength = 2) {
+  constructor(characters?: { name: string }[], gameLength = 1) {
     this._characters = characters;
     this._gameLength = gameLength;
     this._state = createInitialState(characters, undefined, gameLength);
@@ -54,6 +54,28 @@ export class GameController {
   }
 
   get autoPlay(): boolean { return this._autoPlay; }
+
+  /** 发动能力：消耗100能量，abilityUseCount+1。仅限自己的出牌回合 */
+  activateAbility(): boolean {
+    const s = this._state;
+    const cp = s.players[s.currentPlayer];
+    if (!cp) return false;
+    if (cp.energy < 100) {
+      this.log('⚡ 能量不足100，无法发动能力');
+      return false;
+    }
+    if (s.phase !== GamePhase.DISCARDING && s.phase !== GamePhase.ACTION_PROMPT) {
+      this.log('⛔ 只能在出牌回合发动能力');
+      return false;
+    }
+    const players = s.players.map(p => ({ ...p }));
+    players[s.currentPlayer].energy -= 100;
+    players[s.currentPlayer].abilityUseCount++;
+    this._state = { ...s, players };
+    this.log(`⚡ ${cp.name} 发动能力！(剩余能量${players[s.currentPlayer].energy}，累计${players[s.currentPlayer].abilityUseCount}次)`);
+    this.emit();
+    return true;
+  }
 
   /** 获取当前难度 */
   get difficulty(): DifficultyConfig {
@@ -197,7 +219,7 @@ export class GameController {
                 riichiSticks: s.riichiSticks + 1,
                 players: s.players.map((p, i) =>
                   i === s.currentPlayer
-                    ? { ...p, isRiichi: true, isDoubleRiichi: isFirstTurn, riichiTurnStart: s.turn, score: p.score - 1000 }
+                    ? { ...p, isRiichi: true, isDoubleRiichi: isFirstTurn, riichiTurnStart: s.turn, score: p.score - 1000, energy: Math.min(p.energyMax, p.energy + p.energyPerRiichi) }
                     : p
                 ),
               };
@@ -273,7 +295,7 @@ export class GameController {
         riichiSticks: s.riichiSticks + 1,
         players: s.players.map((p, i) =>
           i === s.currentPlayer
-            ? { ...p, isRiichi: true, isDoubleRiichi: isFirstTurn, riichiTurnStart: s.turn, score: p.score - 1000 }
+            ? { ...p, isRiichi: true, isDoubleRiichi: isFirstTurn, riichiTurnStart: s.turn, score: p.score - 1000, energy: Math.min(p.energyMax, p.energy + p.energyPerRiichi) }
             : p
         ),
       };
@@ -394,7 +416,7 @@ export class GameController {
       riichiSticks: s.riichiSticks + 1,
       players: s.players.map((p, i) =>
         i === s.currentPlayer
-          ? { ...p, isRiichi: true, isDoubleRiichi: isFirstTurn, riichiTurnStart: s.turn, score: p.score - 1000 }
+          ? { ...p, isRiichi: true, isDoubleRiichi: isFirstTurn, riichiTurnStart: s.turn, score: p.score - 1000, energy: Math.min(p.energyMax, p.energy + p.energyPerRiichi) }
           : p
       ),
     };
@@ -559,21 +581,29 @@ export class GameController {
     if (s.phase !== GamePhase.DISCARDING && s.phase !== GamePhase.ACTION_PROMPT) return false;
     if (s.currentPlayer !== Wind.EAST) return false;
 
+    const humanPlayer = s.players[Wind.EAST];
+    const cost = humanPlayer.swapEnergyCost ?? 200;
+    if (humanPlayer.energy < cost) {
+      this.log(`⚡ 能量不足${cost}，无法换牌（当前${humanPlayer.energy}）`);
+      return false;
+    }
+
     const suit = wallTileKey[0] as import('./types').TileSuit;
     const value = parseInt(wallTileKey[1]);
     const wallTile = s.wall.find(t => t.suit === suit && t.value === value);
     if (!wallTile) return false;
 
     const players = s.players.map(p => ({ ...p, hand: [...p.hand] }));
-    const humanPlayer = players[Wind.EAST];
-    const handIdx = humanPlayer.hand.findIndex(t => t.id === sourceTileId);
+    const humanPlayer2 = players[Wind.EAST];
+    humanPlayer2.energy -= cost;  // 扣除换牌能量
+    const handIdx = humanPlayer2.hand.findIndex(t => t.id === sourceTileId);
     if (handIdx === -1) return false;
-    const oldTile = humanPlayer.hand[handIdx];
-    humanPlayer.hand[handIdx] = wallTile;
-    if (handIdx !== humanPlayer.hand.length - 1 && s.drawnTile) {
-      const drawnIdx = humanPlayer.hand.findIndex(t => t.id === s.drawnTile!.id);
+    const oldTile = humanPlayer2.hand[handIdx];
+    humanPlayer2.hand[handIdx] = wallTile;
+    if (handIdx !== humanPlayer2.hand.length - 1 && s.drawnTile) {
+      const drawnIdx = humanPlayer2.hand.findIndex(t => t.id === s.drawnTile!.id);
       if (drawnIdx >= 0) {
-        [humanPlayer.hand[handIdx], humanPlayer.hand[drawnIdx]] = [humanPlayer.hand[drawnIdx], humanPlayer.hand[handIdx]];
+        [humanPlayer2.hand[handIdx], humanPlayer2.hand[drawnIdx]] = [humanPlayer2.hand[drawnIdx], humanPlayer2.hand[handIdx]];
       }
     }
 

@@ -65,7 +65,31 @@ export interface Player {
   hasCalled: boolean;
   /** 食替限制：不能打出的牌的 tileKey 列表（鸣牌后下巡生效） */
   restrictedDiscardKeys: string[];
+  /** 能量槽 (0~energyMax) */
+  energy: number;
+  /** 能量槽上限 */
+  energyMax: number;
+  /** 每弃牌增加能量 */
+  energyPerDiscard: number;
+  /** 每鸣牌增加能量 */
+  energyPerMeld: number;
+  /** 每立直增加能量 */
+  energyPerRiichi: number;
+  /** 每和牌增加能量 */
+  energyPerWin: number;
+  /** 本局能力使用次数（继承到下一局） */
+  abilityUseCount: number;
+  /** 换牌消耗能量（默认200，特殊角色可降低） */
+  swapEnergyCost: number;
 }
+
+/** 能量槽默认配置 */
+export const DEFAULT_ENERGY_MAX = 1000;
+export const DEFAULT_ENERGY_PER_DISCARD = 5;
+export const DEFAULT_ENERGY_PER_MELD = 10;
+export const DEFAULT_ENERGY_PER_RIICHI = 10;
+export const DEFAULT_ENERGY_PER_WIN = 10;
+export const DEFAULT_SWAP_ENERGY_COST = 200;
 
 /** 牌局阶段 */
 export const GamePhase = {

@@ -19,9 +19,9 @@ interface Team {
 }
 
 interface CharacterSelectProps {
-  onStart: (selected: Character[]) => void;
+  onStart: (selected: Character[], useAbilities: boolean) => void;
   onBack: () => void;
-  teamMode?: boolean;
+  teamMode: boolean;
 }
 
 // Auto-discover background images (same source as StartPage)
@@ -43,6 +43,7 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
   const [hoveredChar, setHoveredChar] = React.useState<Character | null>(null);
   const [tooltipPos, setTooltipPos] = React.useState({ x: 0, y: 0 });
   const [confirming, setConfirming] = React.useState(false);
+  const [useAbilities, setUseAbilities] = React.useState(true);
   const bgImage = React.useMemo(
     () => BG_IMAGES.length > 0
       ? BG_IMAGES[Math.floor(Math.random() * BG_IMAGES.length)]
@@ -194,9 +195,9 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
         teamInfo.push({ teamId: team.teamId, teamName: team.teamName, roundOrder: [...members] });
       }
       (allChars as any).__teamInfo = teamInfo;
-      onStart(allChars);
+      onStart(allChars, useAbilities);
     } else {
-      onStart(selected as Character[]);
+      onStart(selected as Character[], useAbilities);
     }
   };
 
@@ -396,6 +397,12 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
 
             <div className="confirm-actions">
               <button className="btn-back" onClick={handleCancelConfirm}>← 返回</button>
+              <button className={`toggle-btn-sm ${useAbilities ? 'toggle-on' : ''}`}
+                onClick={() => setUseAbilities(v => !v)}
+                style={{ fontSize: 14, padding: '6px 16px' }}
+                title="启用角色超能力（能量槽+技能）">
+                {useAbilities ? '⚡ 能力 ON' : '能力 OFF'}
+              </button>
               <button className="btn-start-game" onClick={handleConfirm}>确认开始</button>
             </div>
           </div>

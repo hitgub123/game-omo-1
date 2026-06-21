@@ -1,13 +1,14 @@
 import type { Tile, Meld, GameState, Player, AvailableActions, ChiOption, HandResult, WinResult } from './types';
-import { Wind, MeldType, GamePhase, TOUHOU_CHARACTERS, INITIAL_SCORE, WINDS } from './types';
+import { Wind, MeldType, GamePhase, TOUHOU_CHARACTERS, INITIAL_SCORE, WINDS, DEFAULT_ENERGY_MAX, DEFAULT_ENERGY_PER_DISCARD, DEFAULT_ENERGY_PER_MELD, DEFAULT_ENERGY_PER_RIICHI, DEFAULT_ENERGY_PER_WIN } from './types';
 import { createTileDeck, shuffleArray, sortHand, tileKey, findTiles, isTerminalHonor } from './tiles';
 import { checkTenpai, isWinningHand, tilesToHai } from './hand';
 import { checkMahjongStatus } from '../../utils/syanten.js';
 import { riichiCheckWin as checkWin } from './riichi-check';
 import { calculateScore, calculatePayouts } from './scoring';
 import { debugLog } from '../debug/debugLog';
+import { getAllRequirements } from './abilities';
 
-export function createInitialState(characters?: { name: string }[], dealerWind?: Wind, gameLength = 2): GameState {
+export function createInitialState(characters?: { name: string }[], dealerWind?: Wind, gameLength = 1): GameState {
   const deck = shuffleArray(createTileDeck());
   const deadWall = deck.slice(0, 14);
   const wall = deck.slice(14);
@@ -33,9 +34,87 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     tenpai: false,
     hasCalled: false,
     restrictedDiscardKeys: [],
+    energy: 0,
+    energyMax: DEFAULT_ENERGY_MAX,
+    energyPerDiscard: DEFAULT_ENERGY_PER_DISCARD,
+    energyPerMeld: DEFAULT_ENERGY_PER_MELD,
+    energyPerRiichi: DEFAULT_ENERGY_PER_RIICHI,
+    energyPerWin: DEFAULT_ENERGY_PER_WIN,
+    abilityUseCount: 0,
+    swapEnergyCost: DEFAULT_SWAP_ENERGY_COST,
   }));
 
-  // 配牌：每人13张，庄家先摸第14张
+  // 配牌：先处理能力需求，再随机分配剩余牌
+  const playerNames = players.map(p => p.name);
+  const playerUseCounts = players.map(p => p.abilityUseCount);
+  const requirements = getAllRequirements(playerNames, playerUseCounts);
+
+  if (requirements.length > 0) {
+    // 有配牌需求：从牌山中预留给对应玩家
+    const wallPool = [...wall];
+    const reserved: { wind: number; tiles: Tile[] }[] = [];
+
+    for (const req of requirements) {
+      const taken: Tile[] = [];
+      for (const rt of req.tiles) {
+        const idx = wallPool.findIndex(t => t.suit === rt.suit && t.value === rt.value);
+        if (idx >= 0) {
+          taken.push(wallPool[idx]);
+          wallPool.splice(idx, 1);
+        }
+      }
+      if (taken.length > 0) {
+        reserved.push({ wind: req.wind, tiles: taken });
+      }
+    }
+
+    // 先给有需求的玩家发预留牌，再随机发剩余
+    const remaining = shuffleArray(wallPool);
+
+    // 按优先级发预留牌（reserved 已按 useCount 降序）
+    for (const r of reserved) {
+      players[r.wind].hand = [...r.tiles];
+    }
+
+    // 补足到13张
+    let ri = 0;
+    for (let i = 0; i < 4; i++) {
+      const needed = 13 - players[i].hand.length;
+      if (needed > 0) {
+        players[i].hand.push(...remaining.slice(ri, ri + needed));
+        ri += needed;
+      }
+      players[i].hand = sortHand(players[i].hand);
+    }
+
+    // 配牌完成，重置能力计数
+    for (const p of players) p.abilityUseCount = 0;
+
+    const remainingWall = remaining.slice(ri);
+    return {
+      wall: remainingWall,
+      deadWall,
+      doraIndicators,
+      uraDoraIndicators: [deadWall[5]],
+      players,
+      currentPlayer: actualDealer,
+      turn: 0,
+      phase: GamePhase.DRAWING,
+      roundWind: Wind.EAST,
+      honba: 0,
+      riichiSticks: 0,
+      kanCount: 0,
+      handCount: 0,
+      actionsAvailable: WINDS.map(() => emptyActions()),
+      turnHistory: [],
+      dealerIndex: actualDealer,
+      furitenPlayers: [],
+      claimedDiscardTileIds: [],
+      gameLength,
+    };
+  }
+
+  // 无配牌需求：原逻辑
   let idx = 0;
   for (let i = 0; i < 4; i++) {
     players[i].hand = sortHand(wall.slice(idx, idx + 13));
@@ -223,6 +302,9 @@ export function discardTile(state: GameState, tileId: number): GameState {
 
   const discarded = player.hand.splice(idx, 1)[0];
   player.hand = sortHand(player.hand);
+
+  // 能量槽：弃牌 +energyPerDiscard
+  player.energy = Math.min(player.energyMax, player.energy + player.energyPerDiscard);
 
   // 食替检查：不能打出鸣牌所关联的牌
   const tileKey_ = `${discarded.value}${discarded.suit}`;
@@ -451,6 +533,9 @@ export function executeMeld(state: GameState, playerWind: Wind, meldType: MeldTy
   player.melds.push(meld);
   player.hasCalled = true;
 
+  // 能量槽：鸣牌 +energyPerMeld
+  player.energy = Math.min(player.energyMax, player.energy + player.energyPerMeld);
+
   // ── [DEBUG] 鸣牌日志 → game.log ──
   debugLog('MELD_DBG', {
     player: player.name,
@@ -657,6 +742,8 @@ function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winning
     });
     players[playerWind].score += state.riichiSticks * 1000;
   }
+  // 能量槽：和牌 +energyPerWin
+  players[playerWind].energy = Math.min(players[playerWind].energyMax, players[playerWind].energy + players[playerWind].energyPerWin);
   const modifiedWinds = new Set<number>();
   for (const pay of payouts) { modifiedWinds.add(pay.from); modifiedWinds.add(pay.to); }
   if (state.riichiSticks > 0) modifiedWinds.add(playerWind);
@@ -891,9 +978,80 @@ export function createNextHand(prevState: GameState): GameState {
     tenpai: false,
     hasCalled: false,
     restrictedDiscardKeys: [],
+    energy: prevState.players[wind].energy,  // 继承能量槽
+    energyMax: prevState.players[wind].energyMax,
+    energyPerDiscard: prevState.players[wind].energyPerDiscard,
+    energyPerMeld: prevState.players[wind].energyPerMeld,
+    energyPerRiichi: prevState.players[wind].energyPerRiichi,
+    energyPerWin: prevState.players[wind].energyPerWin,
+    abilityUseCount: prevState.players[wind].abilityUseCount,
+    swapEnergyCost: prevState.players[wind].swapEnergyCost,
   }));
 
-  // 配牌
+  // 配牌：先处理能力需求，再随机分配剩余牌
+  const playerNames2 = players.map(p => p.name);
+  const playerUseCounts2 = players.map(p => p.abilityUseCount);
+  const requirements2 = getAllRequirements(playerNames2, playerUseCounts2);
+
+  if (requirements2.length > 0) {
+    const wallPool = [...wall];
+    const reserved: { wind: number; tiles: Tile[] }[] = [];
+
+    for (const req of requirements2) {
+      const taken: Tile[] = [];
+      for (const rt of req.tiles) {
+        const idx = wallPool.findIndex(t => t.suit === rt.suit && t.value === rt.value);
+        if (idx >= 0) {
+          taken.push(wallPool[idx]);
+          wallPool.splice(idx, 1);
+        }
+      }
+      if (taken.length > 0) {
+        reserved.push({ wind: req.wind, tiles: taken });
+      }
+    }
+
+    const remaining2 = shuffleArray(wallPool);
+    for (const r of reserved) {
+      players[r.wind].hand = [...r.tiles];
+    }
+    let ri2 = 0;
+    for (let i = 0; i < 4; i++) {
+      const needed = 13 - players[i].hand.length;
+      if (needed > 0) {
+        players[i].hand.push(...remaining2.slice(ri2, ri2 + needed));
+        ri2 += needed;
+      }
+      players[i].hand = sortHand(players[i].hand);
+    }
+
+    // 配牌完成，重置能力计数
+    for (const p of players) p.abilityUseCount = 0;
+
+    return {
+      wall: remaining2.slice(ri2),
+      deadWall,
+      doraIndicators,
+      uraDoraIndicators: [deadWall[5]],
+      players,
+      currentPlayer: newDealer,
+      turn: 0,
+      phase: GamePhase.DRAWING,
+      roundWind,
+      honba: newHonba,
+      riichiSticks: result.winners && result.winners.length > 0 ? 0 : prevState.riichiSticks,
+      kanCount: 0,
+      actionsAvailable: WINDS.map(() => emptyActions()),
+      turnHistory: [],
+      dealerIndex: newDealer,
+      handCount: newHandCount,
+      furitenPlayers: [],
+      gameLength: prevState.gameLength,
+      claimedDiscardTileIds: [],
+    };
+  }
+
+  // 无配牌需求：原逻辑
   let idx = 0;
   for (let i = 0; i < 4; i++) {
     players[i].hand = sortHand(wall.slice(idx, idx + 13));

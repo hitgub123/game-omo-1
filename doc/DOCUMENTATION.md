@@ -249,6 +249,48 @@ npm run dev
 | 临时振听 | 非立直时能荣和选了过 | 自己摸牌时 / 任何人鸣牌时 |
 | 立直後振听 | 立直后能荣和选了过 | 永久 |
 
+## 能量槽系统
+
+每位角色拥有一个能量槽，范围为 **0 ~ energyMax**（默认 1000）。能量在牌局间和组队模式切换角色时继承。
+
+### 能量获取
+
+| 动作 | 增加量 | 配置字段 |
+|---|---|---|
+| 弃牌 | +5 | `energyPerDiscard` |
+| 鸣牌（吃/碰/杠） | +10 | `energyPerMeld` |
+| 立直 | +10 | `energyPerRiichi` |
+
+### 角色定制
+
+不同角色可配置不同的能量获取速率。在 `Player` 对象初始化时设置：
+
+```typescript
+// 默认值（全部角色通用）
+energyMax: 1000
+energyPerDiscard: 5
+energyPerMeld: 10
+energyPerRiichi: 10
+
+// 角色专属示例（露米娅）
+energyPerDiscard: 8   // 露米娅每次弃牌 +8
+energyPerMeld: 15      // 露米娅每次鸣牌 +15
+```
+
+### 继承规则
+
+- **同角色下一局**：`createNextHand` 自动继承上一局的 `energy` 值
+- **组队模式切换角色**：`useGame` 保存上一角色的最终 `energy`，恢复给下一角色的初始值
+- **新游戏**：所有角色 `energy` 重置为 0
+
+### UI 显示
+
+每个玩家名字下方显示 `⚡{energy}`，如 `⚡250`。颜色随角色主题。
+
+### 能量槽上限
+
+`energyMax` 可在角色数据中定制。`energy` 不会超过 `energyMax`（所有增加操作前均 `Math.min(energyMax, ...)`）。
+
 ## 角色数据管理
 
 角色数据来源于 `doc/abilities.md`，通过 `scripts/parse-characters.py` 自动生成 `public/characters.json`，供选人界面使用。

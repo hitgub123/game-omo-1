@@ -583,6 +583,15 @@ body {
   gap: 0;
   line-height: 1.2;
 }
+.energy-bar-wrap {
+  display: flex;
+  align-items: center;
+  margin-top: 1px;
+}
+.energy-text {
+  font-size: 13px;
+  font-weight: 700;
+}
 .player-info-row {
   display: flex;
   align-items: center;

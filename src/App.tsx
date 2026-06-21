@@ -39,7 +39,7 @@ const THEMES = [
 
 const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
   const charNames = characters.map(c => ({ name: c.nameCN }));
-  const [gameLength, setGameLength] = React.useState(2);
+  const [gameLength, setGameLength] = React.useState(1);
   const [noCall, setNoCall] = React.useState(true);
   const [autoWin, setAutoWin] = React.useState(true);
   const {
@@ -49,6 +49,7 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
     riichiMode, riichiValidTileIds, cancelRiichi,
     difficulty, setDifficulty,
     autoPlay, setAutoPlay,
+    activateAbility,
     downloadLog,
   } = useGame(charNames, gameLength);
 
@@ -215,6 +216,7 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
         onToggleAutoWin={() => setAutoWin(v => !v)}
         gameLength={gameLength} onGameLengthChange={setGameLength}
         autoPlay={autoPlay} onToggleAutoPlay={() => setAutoPlay(!autoPlay)}
+        activateAbility={activateAbility}
       />
       <div className="status-bar">
         <div className="status-messages">
@@ -253,6 +255,7 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
 const App: React.FC = () => {
   const [page, setPage] = React.useState<Page>('title');
   const [selectedChars, setSelectedChars] = React.useState<Character[] | null>(null);
+  const [useAbilities, setUseAbilities] = React.useState(false);
   const [teamMode, setTeamMode] = React.useState(false);
 
   // 禁用鼠标右键菜单
@@ -265,8 +268,9 @@ const App: React.FC = () => {
   const handleStartSolo = () => { setTeamMode(false); setPage('select'); };
   const handleStartTeam = () => { setTeamMode(true); setPage('select'); };
   const handleBack = () => setPage('title');
-  const handleSelectDone = (chars: Character[]) => {
+  const handleSelectDone = (chars: Character[], useAbilities: boolean) => {
     setSelectedChars(chars);
+    setUseAbilities(useAbilities);
     setPage('game');
   };
   const handleExitGame = () => {

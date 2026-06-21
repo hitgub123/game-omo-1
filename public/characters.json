@@ -31,7 +31,7 @@
         "race": "妖精",
         "ability": "使用魔法程度的能力",
         "personality": "温柔、琪露诺的朋友，中 BOSS 级",
-        "mahjong_skill": "Lv1(15) 妖精の加護 — 本巡副露(吃碰杠)不消耗摸牌机会"
+        "mahjong_skill": "妖精の加護 — 下局其他玩家各有一张牌不得打出。不限制鸣牌"
       },
       {
         "id": "th06-02b",
@@ -46,7 +46,7 @@
         "race": "妖精",
         "ability": "操纵冷气程度的能力",
         "personality": "笨蛋、好战、自称⑨最强",
-        "mahjong_skill": "Lv1(20) 氷結 — 指定对手跳过下一次摸牌"
+        "mahjong_skill": "氷結 — 所有对手下一次摸牌必须自摸切（暗杠/立直/和牌除外）"
       },
       {
         "id": "th06-03",
@@ -106,7 +106,7 @@
         "race": "人类",
         "ability": "操纵时间程度的能力",
         "personality": "完美女仆",
-        "mahjong_skill": "Lv1(25) 時間停止 — 本回合连续两次操作。Lv2(50) タイムリープ — 回到 2 巡前的状态"
+        "mahjong_skill": "时间操作 — 弃牌后再进行一次摸牌+弃牌（额外一巡）"
       },
       {
         "id": "th06-06",
@@ -216,7 +216,7 @@
         "race": "半人半灵",
         "ability": "使用剑术",
         "personality": "认真正直",
-        "mahjong_skill": "Lv1(20) 剣術 — 本回合可多弃一张牌"
+        "mahjong_skill": "剣術 — 其他每人减60能量，不足变0"
       },
       {
         "id": "th07-06",
@@ -327,7 +327,7 @@
         "race": "人类（巫女）",
         "ability": "操纵灵力程度的能力（主要是飞行）",
         "personality": "乐天、退治妖怪、无自觉的努力家",
-        "mahjong_skill": "Lv1(20) 夢想封印 — 本巡的和牌判定无视振听限制（强制和牌）。Lv2(55) 二重結界 — 对手本巡不能对自己进行任何操作（荣和/碰/杠/吃）"
+        "mahjong_skill": "博丽护符 — 自己打出的牌无法被鸣牌（吃碰杠）"
       },
       {
         "id": "th08-04b",
@@ -342,7 +342,7 @@
         "race": "人类（魔法使）",
         "ability": "使用魔法程度的能力",
         "personality": "努力家、自信家、豪快",
-        "mahjong_skill": "Lv1(20) ミニ八卦炉 — 本巡打出的牌视为被加强（点炮时多付 500）。Lv2(55) マスタースパーク — 本巡和牌得分 x1.5（一发入魂）"
+        "mahjong_skill": "ミニ八卦炉 — 每发动一次，立直和牌时多翻一张里宝牌"
       },
       {
         "id": "th08-05a",
@@ -372,7 +372,7 @@
         "race": "月兔",
         "ability": "操纵狂气",
         "personality": "胆小焦虑",
-        "mahjong_skill": "Lv1(20) 幻視 — 对手弃牌区随机显示 2 巡"
+        "mahjong_skill": "狙击 — 听牌后可发动，指定一名玩家摸到铃仙要的和牌"
       },
       {
         "id": "th08-06a",
@@ -434,7 +434,7 @@
         "race": "鸦天狗",
         "ability": "操纵风",
         "personality": "八卦记者",
-        "mahjong_skill": "Lv1(20) 風速 — 弃牌与牌山底交换",
+        "mahjong_skill": "風速 — 用一张风牌（东南西北）与牌山交换",
         "icon": "th10-04b-head",
         "normal": "th10-04b-pic-01",
         "win": "th10-04b-pic-02",
@@ -595,7 +595,7 @@
         "race": "鸦天狗",
         "ability": "操纵风",
         "personality": "八卦记者",
-        "mahjong_skill": "Lv1(20) 風速 — 弃牌与牌山底交换"
+        "mahjong_skill": "風速 — 用一张风牌（东南西北）与牌山交换"
       },
       {
         "id": "th10-05",
@@ -610,7 +610,7 @@
         "race": "人类（现人神）",
         "ability": "引发奇迹",
         "personality": "认真自信",
-        "mahjong_skill": "Lv1(20) 奇跡 — 摸 3 选 1。Lv2(50) 大奇跡 — 直接自摸（消耗大量槽）"
+        "mahjong_skill": "奇跡 — 奇数次→字牌对子，偶数次→对子升暗刻"
       },
       {
         "id": "th10-06",
@@ -1992,7 +1992,7 @@
         "race": "人类（巫女）",
         "ability": "操纵灵力程度的能力（主要是飞行）",
         "personality": "乐天、退治妖怪、无自觉的努力家",
-        "mahjong_skill": "Lv1(20) 夢想封印 — 本巡的和牌判定无视振听限制（强制和牌）。Lv2(55) 二重結界 — 对手本巡不能对自己进行任何操作（荣和/碰/杠/吃）",
+        "mahjong_skill": "博丽护符 — 自己打出的牌无法被鸣牌（吃碰杠）",
         "icon": "th08-04a-head",
         "normal": "th08-04a-pic-01",
         "win": "th08-04a-pic-02",
@@ -2008,7 +2008,7 @@
         "race": "人类（魔法使）",
         "ability": "使用魔法程度的能力",
         "personality": "努力家、自信家、豪快",
-        "mahjong_skill": "Lv1(20) ミニ八卦炉 — 本巡打出的牌视为被加强（点炮时多付 500）。Lv2(55) マスタースパーク — 本巡和牌得分 x1.5（一发入魂）",
+        "mahjong_skill": "ミニ八卦炉 — 每发动一次，立直和牌时多翻一张里宝牌",
         "icon": "th08-04b-head",
         "normal": "th08-04b-pic-01",
         "win": "th08-04b-pic-02",
@@ -2024,7 +2024,7 @@
         "race": "人类",
         "ability": "操纵时间程度的能力",
         "personality": "完美女仆",
-        "mahjong_skill": "Lv1(25) 時間停止 — 本回合连续两次操作。Lv2(50) タイムリープ — 回到 2 巡前的状态",
+        "mahjong_skill": "时间操作 — 弃牌后再进行一次摸牌+弃牌（额外一巡）",
         "icon": "th06-05-head",
         "normal": "th06-05-pic-01",
         "win": "th06-05-pic-02",
@@ -2040,7 +2040,7 @@
         "race": "半人半灵",
         "ability": "使用剑术",
         "personality": "认真正直",
-        "mahjong_skill": "Lv1(20) 剣術 — 本回合可多弃一张牌",
+        "mahjong_skill": "剣術 — 其他每人减60能量，不足变0",
         "icon": "th07-05-head",
         "normal": "th07-05-pic-01",
         "win": "th07-05-pic-02",
@@ -2056,7 +2056,7 @@
         "race": "月兔",
         "ability": "操纵狂气",
         "personality": "胆小焦虑",
-        "mahjong_skill": "Lv1(20) 幻視 — 对手弃牌区随机显示 2 巡",
+        "mahjong_skill": "狙击 — 听牌后可发动，指定一名玩家摸到铃仙要的和牌",
         "icon": "th08-05b-head",
         "normal": "th08-05b-pic-01",
         "win": "th08-05b-pic-02",
@@ -2072,7 +2072,7 @@
         "race": "妖精",
         "ability": "操纵冷气程度的能力",
         "personality": "笨蛋、好战、自称⑨最强",
-        "mahjong_skill": "Lv1(20) 氷結 — 指定对手跳过下一次摸牌",
+        "mahjong_skill": "氷結 — 所有对手下一次摸牌必须自摸切（暗杠/立直/和牌除外）",
         "icon": "th06-02b-head",
         "normal": "th06-02b-pic-01",
         "win": "th06-02b-pic-02",
@@ -2088,7 +2088,7 @@
         "race": "人类（现人神）",
         "ability": "引发奇迹",
         "personality": "认真自信",
-        "mahjong_skill": "Lv1(20) 奇跡 — 摸 3 选 1。Lv2(50) 大奇跡 — 直接自摸（消耗大量槽）",
+        "mahjong_skill": "奇跡 — 奇数次→字牌对子，偶数次→对子升暗刻",
         "icon": "th10-05-head",
         "normal": "th10-05-pic-01",
         "win": "th10-05-pic-02",
@@ -2104,7 +2104,7 @@
         "race": "鸦天狗",
         "ability": "操纵风",
         "personality": "八卦记者",
-        "mahjong_skill": "Lv1(20) 風速 — 弃牌与牌山底交换",
+        "mahjong_skill": "風速 — 用一张风牌（东南西北）与牌山交换",
         "icon": "th10-04b-head",
         "normal": "th10-04b-pic-01",
         "win": "th10-04b-pic-02",

@@ -154,7 +154,14 @@ export function riichiCheckWin(
     }
     const winner = gameState.players[playerWind];
     if (winner.isRiichi && gameState.uraDoraIndicators.length > 0) {
-      parts.push('+d' + gameState.uraDoraIndicators.map(tileStr).join(''));
+      const uraDoras = [...gameState.uraDoraIndicators];
+      // 魔理沙八卦炉：每发动一次能力，多翻一张里宝牌
+      if (winner.name === '雾雨魔理沙' && winner.abilityUseCount > 0) {
+        for (let i = 0; i < winner.abilityUseCount; i++) {
+          uraDoras.push(uraDoras[i % uraDoras.length]);
+        }
+      }
+      parts.push('+d' + uraDoras.map(tileStr).join(''));
     }
 
     const str = parts.join('');

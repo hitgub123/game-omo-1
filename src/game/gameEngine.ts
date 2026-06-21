@@ -1,5 +1,5 @@
 import type { Tile, Meld, GameState, Player, AvailableActions, ChiOption, HandResult, WinResult } from './types';
-import { Wind, MeldType, GamePhase, TOUHOU_CHARACTERS, INITIAL_SCORE, WINDS, DEFAULT_ENERGY_MAX, DEFAULT_ENERGY_PER_DISCARD, DEFAULT_ENERGY_PER_MELD, DEFAULT_ENERGY_PER_RIICHI, DEFAULT_ENERGY_PER_WIN } from './types';
+import { Wind, MeldType, GamePhase, TOUHOU_CHARACTERS, INITIAL_SCORE, WINDS, DEFAULT_ENERGY_MAX, DEFAULT_ENERGY_PER_DISCARD, DEFAULT_ENERGY_PER_DRAW, DEFAULT_ENERGY_PER_MELD, DEFAULT_ENERGY_PER_RIICHI, DEFAULT_ENERGY_PER_WIN, DEFAULT_SWAP_ENERGY_COST } from './types';
 import { createTileDeck, shuffleArray, sortHand, tileKey, findTiles, isTerminalHonor } from './tiles';
 import { checkTenpai, isWinningHand, tilesToHai } from './hand';
 import { checkMahjongStatus } from '../../utils/syanten.js';
@@ -34,14 +34,16 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     tenpai: false,
     hasCalled: false,
     restrictedDiscardKeys: [],
-    energy: 0,
+    energy: 0,  // 每局开始重置（组队模式由 useGame 恢复）
     energyMax: DEFAULT_ENERGY_MAX,
     energyPerDiscard: DEFAULT_ENERGY_PER_DISCARD,
+    energyPerDraw: DEFAULT_ENERGY_PER_DRAW,
     energyPerMeld: DEFAULT_ENERGY_PER_MELD,
     energyPerRiichi: DEFAULT_ENERGY_PER_RIICHI,
     energyPerWin: DEFAULT_ENERGY_PER_WIN,
     abilityUseCount: 0,
     swapEnergyCost: DEFAULT_SWAP_ENERGY_COST,
+    frozenByCirno: false,
   }));
 
   // 配牌：先处理能力需求，再随机分配剩余牌
@@ -111,6 +113,8 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
       furitenPlayers: [],
       claimedDiscardTileIds: [],
       gameLength,
+      reimuCharm: false,
+      sniperReserve: null,
     };
   }
 
@@ -142,18 +146,40 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     furitenPlayers: [],
     claimedDiscardTileIds: [],
     gameLength,
+    reimuCharm: false,
+    sniperReserve: null,
   };
 }
 
 // ---- Draw ----
 export function drawTile(state: GameState): GameState {
   if (state.wall.length === 0) return executeDraw(state);
-  const wall = [...state.wall];
-  const drawnTile = wall.shift()!;
+
+  // 铃仙狙击：如果预留了牌且当前玩家是目标，从牌山中找牌
+  let wall = [...state.wall];
+  let drawnTile: Tile;
+  let sniperUsed = false;
+
+  if (state.sniperReserve && state.sniperReserve.targetWind === state.currentPlayer) {
+    const { suit, value } = state.sniperReserve;
+    const idx = wall.findIndex(t => t.suit === suit && t.value === value);
+    if (idx >= 0) {
+      drawnTile = wall[idx];
+      wall.splice(idx, 1);
+      sniperUsed = true;
+    } else {
+      drawnTile = wall.shift()!;
+    }
+  } else {
+    drawnTile = wall.shift()!;
+  }
+
   const isLastDraw = wall.length === 0;
   const players = state.players.map(p => ({ ...p, hand: [...p.hand] }));
   const player = players[state.currentPlayer];
   player.hand = [...player.hand, drawnTile];
+  // 能量槽：摸牌 +energyPerDraw
+  player.energy = Math.min(player.energyMax, player.energy + player.energyPerDraw);
 
   const actions = getDrawActions(player, state, state.currentPlayer, drawnTile);
   const hasActions = actions.canRiichi || actions.canTsumo || actions.canAnkan || actions.canKakan || actions.canNineOrphans;
@@ -176,6 +202,7 @@ export function drawTile(state: GameState): GameState {
     }),
     isRinshan: false,
     isLastDraw,
+    sniperReserve: sniperUsed ? null : state.sniperReserve,
   };
 }
 
@@ -303,9 +330,6 @@ export function discardTile(state: GameState, tileId: number): GameState {
   const discarded = player.hand.splice(idx, 1)[0];
   player.hand = sortHand(player.hand);
 
-  // 能量槽：弃牌 +energyPerDiscard
-  player.energy = Math.min(player.energyMax, player.energy + player.energyPerDiscard);
-
   // 食替检查：不能打出鸣牌所关联的牌
   const tileKey_ = `${discarded.value}${discarded.suit}`;
   if (player.restrictedDiscardKeys.length > 0 && player.restrictedDiscardKeys.includes(tileKey_)) {
@@ -393,6 +417,12 @@ function getResponseActions(
   if (playerWind === nextPlayer && discarded.suit !== 'z') {
     const chiOpts = getChiOptions(player.hand, discarded);
     if (chiOpts.length > 0) { actions.canChi = true; actions.chiOptions = [chiOpts]; }
+  }
+
+  // 灵梦护符：灵梦打出的牌不可被鸣牌（吃碰杠），但可荣和
+  if (state.reimuCharm && state.players[discarderWind].name === '博丽灵梦') {
+    actions.canChi = false; actions.chiOptions = [];
+    actions.canPon = false; actions.canKan = false;
   }
 
   return actions;
@@ -981,11 +1011,13 @@ export function createNextHand(prevState: GameState): GameState {
     energy: prevState.players[wind].energy,  // 继承能量槽
     energyMax: prevState.players[wind].energyMax,
     energyPerDiscard: prevState.players[wind].energyPerDiscard,
+    energyPerDraw: prevState.players[wind].energyPerDraw,
     energyPerMeld: prevState.players[wind].energyPerMeld,
     energyPerRiichi: prevState.players[wind].energyPerRiichi,
     energyPerWin: prevState.players[wind].energyPerWin,
     abilityUseCount: prevState.players[wind].abilityUseCount,
     swapEnergyCost: prevState.players[wind].swapEnergyCost,
+    frozenByCirno: false,
   }));
 
   // 配牌：先处理能力需求，再随机分配剩余牌
@@ -1048,6 +1080,8 @@ export function createNextHand(prevState: GameState): GameState {
       furitenPlayers: [],
       gameLength: prevState.gameLength,
       claimedDiscardTileIds: [],
+      reimuCharm: false,  // 护符已消耗
+      sniperReserve: null,
     };
   }
 
@@ -1079,5 +1113,7 @@ export function createNextHand(prevState: GameState): GameState {
     furitenPlayers: [],
     gameLength: prevState.gameLength,
     claimedDiscardTileIds: [],
+    reimuCharm: false,  // 护符已消耗
+    sniperReserve: null,
   };
 }

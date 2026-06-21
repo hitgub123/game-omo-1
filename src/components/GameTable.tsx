@@ -148,7 +148,12 @@ const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical, revea
           {player.isDealer && <span className="dealer-badge">庄</span>}
         </div>
         <div className="energy-bar-wrap">
-          <span className="energy-text" style={{ color: ch.colorLight }}>⚡{player.energy}</span>
+          <span className="energy-text" style={{ color: ch.colorLight }}>⚡{player.energy}/{player.energyMax}</span>
+          {player.abilityUseCount > 0 && (
+            <span className="ability-count" style={{ color: ch.color, fontSize: 10, marginLeft: 3 }}>
+              ×{player.abilityUseCount}
+            </span>
+          )}
         </div>
       </div>
 
@@ -206,6 +211,7 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
   const ch = TOUHOU_CHARACTERS[playerWind];
   const isActive = state.currentPlayer === playerWind && state.phase !== GamePhase.HAND_OVER;
   const canAct = state.phase === GamePhase.DISCARDING || state.phase === GamePhase.ACTION_PROMPT;
+  const [flashKey, setFlashKey] = React.useState(0);
 
   const riichiWaitInfo = React.useMemo(() => {
     if (!riichiMode || selectedTileId === null) return null;
@@ -220,7 +226,7 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
   const displayWind = (playerWind - dealerIdx + 4) % 4;
 
   return (
-    <div className={`player-section ${isActive ? 'player-active' : ''}`}>
+    <div className={`player-section ${isActive ? 'player-active' : ''} ${flashKey > 0 ? 'ability-flash' : ''}`} key={flashKey}>
       <div className="player-bar">
         <div className="player-info" style={{ borderColor: ch.color }}>
           <div className="player-name-row">
@@ -237,9 +243,14 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
             {player.isDealer && <span className="dealer-badge">庄</span>}
           </div>
           <div className="energy-bar-wrap">
-            <span className="energy-text" style={{ color: ch.colorLight }}>⚡{player.energy}</span>
+            <span className="energy-text" style={{ color: ch.colorLight }}>⚡{player.energy}/{player.energyMax}</span>
+            {player.abilityUseCount > 0 && (
+              <span className="ability-count" style={{ color: ch.color, fontSize: 11, marginLeft: 4 }}>
+                能力×{player.abilityUseCount}
+              </span>
+            )}
             {player.isHuman && player.energy >= 100 && isActive && (
-              <button className="toggle-btn-sm" onClick={activateAbility}
+              <button className="toggle-btn-sm ability-btn" onClick={() => { if (activateAbility()) setFlashKey(k => k + 1); }}
                 style={{ fontSize: 11, marginLeft: 6, padding: '2px 8px', background: ch.color, color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                 title="消耗100能量发动能力">发动能力</button>
             )}

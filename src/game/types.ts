@@ -71,6 +71,8 @@ export interface Player {
   energyMax: number;
   /** 每弃牌增加能量 */
   energyPerDiscard: number;
+  /** 每摸牌增加能量 */
+  energyPerDraw: number;
   /** 每鸣牌增加能量 */
   energyPerMeld: number;
   /** 每立直增加能量 */
@@ -81,14 +83,17 @@ export interface Player {
   abilityUseCount: number;
   /** 换牌消耗能量（默认200，特殊角色可降低） */
   swapEnergyCost: number;
+  /** 琪露诺冰冻：下次摸牌必须自摸切 */
+  frozenByCirno: boolean;
 }
 
-/** 能量槽默认配置 */
-export const DEFAULT_ENERGY_MAX = 1000;
-export const DEFAULT_ENERGY_PER_DISCARD = 5;
-export const DEFAULT_ENERGY_PER_MELD = 10;
+/** 能量槽默认配置（能力模式下使用） */
+export const DEFAULT_ENERGY_MAX = 100;
+export const DEFAULT_ENERGY_PER_DISCARD = 0;  // 弃牌不加（普通模式保持0）
+export const DEFAULT_ENERGY_PER_DRAW = 2;     // 摸牌+2
+export const DEFAULT_ENERGY_PER_MELD = 5;
 export const DEFAULT_ENERGY_PER_RIICHI = 10;
-export const DEFAULT_ENERGY_PER_WIN = 10;
+export const DEFAULT_ENERGY_PER_WIN = 15;
 export const DEFAULT_SWAP_ENERGY_COST = 200;
 
 /** 牌局阶段 */
@@ -201,6 +206,12 @@ export interface GameState {
   isLastDraw?: boolean;     // 当前是否为最后一张牌（海底/河底用）
   claimedDiscardTileIds: number[];  // 被鸣牌后被移出弃牌区的牌ID（保留在弃牌区但半透明）
   gameLength: number;        // 游戏长度: 1=东风 2=东南 3=东西 4=东北
+  /** 灵梦护符：下局灵梦的弃牌不可被鸣牌（吃碰杠） */
+  reimuCharm: boolean;
+  /** 铃仙狙击：预留摸牌 */
+  sniperReserve: { tileKey: string; suit: string; value: number; targetWind: Wind } | null;
+  /** 咲夜额外一巡标记（内部用） */
+  _sakuyaExtraTurn?: boolean;
 }
 
 /** 角色定义 */

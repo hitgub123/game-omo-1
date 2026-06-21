@@ -14,6 +14,7 @@ import {
   nextTurn, createNextHand, executeNineOrphans, getDrawActions,
   emptyActions,
 } from './gameEngine';
+import { getAbilityCost, executeInstantAbility } from './abilities';
 import { sortHand } from './tiles';
 import { aiChooseDiscard, aiChooseAction, aiDecideRiichi } from './ai';
 import { sameTile } from './tiles';
@@ -55,8 +56,8 @@ export class GameController {
 
   get autoPlay(): boolean { return this._autoPlay; }
 
-  /** 发动能力：消耗100能量，abilityUseCount+1。仅限自己的出牌回合 */
-  activateAbility(): boolean {
+  /** 发动能力：消耗角色特定能量，abilityUseCount+1。仅限自己的出牌回合 */
+  activateAbility(targetWind?: Wind, extraTile?: { suit: string; value: number }): boolean {
     const s = this._state;
     const cp = s.players[s.currentPlayer];
     if (!cp) return false;
@@ -68,11 +69,70 @@ export class GameController {
       this.log('⛔ 只能在出牌回合发动能力');
       return false;
     }
+
     const players = s.players.map(p => ({ ...p }));
     players[s.currentPlayer].energy -= 100;
     players[s.currentPlayer].abilityUseCount++;
-    this._state = { ...s, players };
-    this.log(`⚡ ${cp.name} 发动能力！(剩余能量${players[s.currentPlayer].energy}，累计${players[s.currentPlayer].abilityUseCount}次)`);
+    this.log(`⚡ ${cp.name} 发动能力！(消耗100，剩余${players[s.currentPlayer].energy}，累计${players[s.currentPlayer].abilityUseCount}次)`);
+
+    // ── 牌山检查（铃仙/文）先扣能量再检查，没牌就白费能量 ──
+    if (cp.name === '铃仙·优昙华院·因幡' && extraTile) {
+      const key = `${extraTile.value}${extraTile.suit}`;
+      const found = s.wall.some(t => t.suit === extraTile.suit && t.value === extraTile.value);
+      if (!found) {
+        this._state = { ...s, players };
+        this.log(`🎯 牌山中没有${key}，狙击失败（能量已消耗）`);
+        this.emit();
+        return true;
+      }
+    }
+    if (cp.name === '射命丸文' && s.wall.length === 0) {
+      this._state = { ...s, players };
+      this.log('🍃 牌山已空，風速失败（能量已消耗）');
+      this.emit();
+      return true;
+    }
+
+    // ── 灵梦护符：下局不可鸣牌 ──
+    if (cp.name === '博丽灵梦') {
+      this._state = { ...s, players, reimuCharm: true };
+      this.log('🛡️ 博丽护符：下一局自己打出的牌不可被鸣牌');
+      this.emit();
+      return true;
+    }
+
+    // ── 琪露诺冰冻：所有对手强制自摸切 ──
+    if (cp.name === '琪露诺') {
+      for (let i = 0; i < 4; i++) {
+        if (i !== s.currentPlayer) {
+          players[i].frozenByCirno = true;
+        }
+      }
+      this._state = { ...s, players };
+      this.log('❄️ 氷結！所有对手下一次摸牌必须自摸切');
+      this.emit();
+      return true;
+    }
+
+    // ── 咲夜时间操作：标记额外一巡 ──
+    if (cp.name === '十六夜咲夜') {
+      this._state = { ...s, players, _sakuyaExtraTurn: true };
+      this.log('⏰ 时间操作：弃牌后将额外进行一次摸牌+弃牌');
+      this.emit();
+      return true;
+    }
+
+    // ── 即时能力（妖梦、文、铃仙） ──
+    const result = executeInstantAbility(cp.name, { ...s, players }, s.currentPlayer, targetWind, extraTile);
+    if (result.ok && result.state) {
+      this._state = result.state;
+      this.log(result.message);
+    } else {
+      // 失败也扣能量（不退还）
+      this._state = { ...s, players };
+      this.log(result.message || '能力发动失败');
+    }
+
     this.emit();
     return true;
   }
@@ -173,11 +233,33 @@ export class GameController {
       const cp = s.players[s.currentPlayer];
       if (!cp.isHuman || this._autoPlay) {
         s = this.aiDiscard(s);
+        // 咲夜时间操作：额外一巡（弃牌后再摸再弃）
+        if (s._sakuyaExtraTurn && s.phase === GamePhase.ACTION_PROMPT) {
+          s = { ...s, _sakuyaExtraTurn: undefined };
+          s = drawTile(s);
+          s = this.aiDiscard(s);
+          this.log('⏰ 咲夜完成额外一巡');
+        }
         this._state = s;
         this.emit();
         this.schedule(s.phase === GamePhase.ACTION_PROMPT ? 400 : 50);
       }
       // 人类非托管: 等待点击（自摸切由 App 层的 autoSelfDiscard 控制）
+      // 但琪露诺冰冻时强制自摸切
+      if (!this._autoPlay && cp.isHuman && cp.frozenByCirno && s.drawnTile) {
+        const acts = s.actionsAvailable[s.currentPlayer];
+        if (acts?.canTsumo) {
+          this._state = executeWin(s, s.currentPlayer, true);
+          this.log('❄️ 冰冻中自摸和牌！');
+        } else {
+          const result = discardTile(s, s.drawnTile.id);
+          result.players[s.currentPlayer].frozenByCirno = false;
+          this._state = result;
+          this.log('❄️ 被冰冻，强制自摸切');
+        }
+        this.emit();
+        this.schedule(400);
+      }
       return;
     }
 
@@ -279,6 +361,48 @@ export class GameController {
   /** AI 自动弃牌（支持立直） */
   private aiDiscard(s: GameState): GameState {
     const cp = s.players[s.currentPlayer];
+
+    // 琪露诺冰冻：必须自摸切（除非能暗杠/立直/和牌）
+    if (cp.frozenByCirno) {
+      const acts = s.actionsAvailable[s.currentPlayer];
+      if (acts?.canTsumo) {
+        this.log(`❄️ ${cp.name} 冰冻中自摸和牌！`);
+        return executeWin(s, s.currentPlayer, true);
+      }
+      if (acts?.canRiichi && aiDecideRiichi(cp.hand, s, s.currentPlayer, this._difficulty)) {
+        this.log(`❄️ ${cp.name} 冰冻中立直！`);
+        const tile = aiChooseDiscard(cp.hand, undefined, s, s.currentPlayer, this._difficulty);
+        if (tile) {
+          const isFirstTurn = s.turn <= 2 && cp.discards.length === 0 && !cp.hasCalled;
+          const marked = {
+            ...s,
+            riichiSticks: s.riichiSticks + 1,
+            players: s.players.map((p, i) =>
+              i === s.currentPlayer
+                ? { ...p, isRiichi: true, isDoubleRiichi: isFirstTurn, riichiTurnStart: s.turn, score: p.score - 1000, energy: Math.min(p.energyMax, p.energy + p.energyPerRiichi) }
+                : p
+            ),
+          };
+          const result = discardTile(marked, tile.id);
+          // 清除冰冻标记
+          result.players[s.currentPlayer].frozenByCirno = false;
+          return result;
+        }
+      }
+      if (acts?.canAnkan) {
+        this.log(`❄️ ${cp.name} 冰冻中暗杠！`);
+        // 简化处理：暗杠（TODO: 完整暗杠逻辑）
+      }
+      // 强制自摸切
+      if (s.drawnTile) {
+        this.log(`❄️ ${cp.name} 被冰冻，强制自摸切`);
+        const result = discardTile(s, s.drawnTile.id);
+        result.players[s.currentPlayer].frozenByCirno = false;
+        return result;
+      }
+      return s;
+    }
+
     // 食替：从手牌中排除被限制的牌
     const validHand = cp.restrictedDiscardKeys.length > 0
       ? cp.hand.filter(t => !cp.restrictedDiscardKeys.includes(`${t.value}${t.suit}`))
@@ -398,7 +522,19 @@ export class GameController {
 
     const newState = discardTile(s, tileId);
     if (newState !== s) {
-      this._state = newState;
+      // 咲夜时间操作：额外一巡
+      let finalState = newState;
+      if (newState._sakuyaExtraTurn && newState.phase === GamePhase.ACTION_PROMPT) {
+        finalState = { ...newState, _sakuyaExtraTurn: undefined };
+        finalState = drawTile(finalState);
+        // AI 自动弃牌（即使是人类玩家，额外一巡也自动处理）
+        const cp2 = finalState.players[finalState.currentPlayer];
+        if (cp2.isHuman || this._autoPlay) {
+          finalState = this.aiDiscard(finalState);
+          this.log('⏰ 咲夜完成额外一巡');
+        }
+      }
+      this._state = finalState;
       this.emit();
       this.schedule(50);
       return true;

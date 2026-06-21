@@ -496,6 +496,8 @@ body {
   padding: 1px 4px;
   background: rgba(0,0,0,0.3);
   border-radius: 6px;
+  z-index: 1;
+  position: relative;
 }
 
 .opponent-horizontal .hand-tiles {
@@ -526,6 +528,8 @@ body {
   background: rgba(0,0,0,0.3);
   border-radius: 8px;
   height: 100%;
+  z-index: 1;
+  position: relative;
 }
 
 .opponent-vertical .hand-vertical {
@@ -591,6 +595,35 @@ body {
 .energy-text {
   font-size: 13px;
   font-weight: 700;
+}
+.ability-count {
+  font-weight: 600;
+}
+.ability-btn {
+  transition: transform 0.1s;
+}
+.ability-btn:active {
+  transform: scale(0.9);
+}
+
+/* 能力发动闪光 */
+@keyframes ability-flash-anim {
+  0%   { box-shadow: 0 0 0px rgba(255,255,200,0); }
+  30%  { box-shadow: 0 0 30px rgba(255,255,100,0.9); }
+  100% { box-shadow: 0 0 0px rgba(255,255,200,0); }
+}
+.ability-flash {
+  animation: ability-flash-anim 0.8s ease-out;
+}
+
+/* 咲夜额外一巡闪光 */
+@keyframes sakuya-flash-anim {
+  0%   { box-shadow: 0 0 0px rgba(180,180,255,0); }
+  30%  { box-shadow: 0 0 40px rgba(150,150,255,0.9); }
+  100% { box-shadow: 0 0 0px rgba(180,180,255,0); }
+}
+.sakuya-flash {
+  animation: sakuya-flash-anim 1.2s ease-out;
 }
 .player-info-row {
   display: flex;

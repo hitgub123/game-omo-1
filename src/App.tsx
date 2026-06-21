@@ -48,6 +48,7 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
     swapMode, enterSwapMode, executeSwap, cancelSwap,
     riichiMode, riichiValidTileIds, cancelRiichi,
     difficulty, setDifficulty,
+    autoPlay, setAutoPlay,
     downloadLog,
   } = useGame(charNames, gameLength);
 
@@ -118,6 +119,7 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
   // ── 自动和：荣和或自摸时立即和牌 ──
   React.useEffect(() => {
     if (!autoWin) return;
+    if (state.phase === GamePhase.HAND_OVER || state.phase === GamePhase.GAME_OVER) return;
     const hWind = WINDS.find(w => state.players[w].isHuman);
     if (hWind === undefined) return;
     const actions = state.actionsAvailable[hWind];
@@ -210,6 +212,7 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
         onToggleNoCall={() => setNoCall(v => !v)}
         onToggleAutoWin={() => setAutoWin(v => !v)}
         gameLength={gameLength} onGameLengthChange={setGameLength}
+        autoPlay={autoPlay} onToggleAutoPlay={() => setAutoPlay(!autoPlay)}
       />
       <div className="status-bar">
         <div className="status-messages">

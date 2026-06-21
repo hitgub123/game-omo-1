@@ -807,6 +807,20 @@ body {
   margin-left: 2px;
 }
 
+.tenpai-tile-group {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.tenpai-remain {
+  font-size: 10px;
+  color: #4fc3f7;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .dora-label {
   font-size: 10px;
   color: var(--border-gold);

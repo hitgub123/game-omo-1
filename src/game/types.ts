@@ -121,6 +121,12 @@ export interface WinResult {
   basePoints: number;
   payments: { player: Wind; amount: number }[];
   winnerGets: number;
+  /** 不含本场費/立直棒的纯牌点数 */
+  basePayment: number;
+  /** 本场費加算 */
+  honbaAddition: number;
+  /** 立直棒回收 */
+  riichiBonus: number;
   isDealerWin: boolean;
   handTiles: Tile[];
 }

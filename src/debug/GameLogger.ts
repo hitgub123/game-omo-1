@@ -15,6 +15,7 @@
  */
 import type { GameState, Tile } from '../game/types';
 import { Wind, GamePhase, WINDS } from '../game/types';
+import { registerDebugLogger } from './debugLog';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,6 +41,8 @@ export class GameLogger {
 
   constructor() {
     this.startFlushTimer();
+    // 注册全局 debug log 通道，gameEngine/scoring 的日志通过此桥接写入 game.log
+    registerDebugLogger((type: string, data: Record<string, unknown>) => this.log(type, data));
   }
 
   /** Periodically flush buffered entries to server */
@@ -156,10 +159,11 @@ export class GameLogger {
 
     // ── Initial state ──
     if (!prev) {
+      this.logHandStart(state);
       this.log('INIT', {
         players: state.players.map(p => p.name).join(', '),
         dealer: state.players[state.dealerIndex].name,
-        round: `${state.roundWind === Wind.EAST ? '东' : '南'}${(state.handCount % 4) + 1}局`,
+        round: this.roundName(state),
         honba: state.honba,
         riichiSticks: state.riichiSticks,
       });
@@ -168,7 +172,13 @@ export class GameLogger {
       return;
     }
 
-    // ── Turn change (new round within the hand) ──
+    // ── Hand start (新的一局) ──
+    if ((prev.phase === GamePhase.HAND_OVER || prev.phase === GamePhase.GAME_OVER)
+        && state.phase === GamePhase.DRAWING && state.turn <= 1) {
+      this.logHandStart(state);
+    }
+
+    // ── Turn change ──
     if (state.phase === GamePhase.DRAWING && state.currentPlayer !== prev.currentPlayer) {
       this.turnLog++;
       const cp = state.players[state.currentPlayer];
@@ -242,9 +252,17 @@ export class GameLogger {
 
     // ── Hand over ──
     if (state.phase === GamePhase.HAND_OVER && prev.phase !== GamePhase.HAND_OVER) {
+      const resultType = state.result?.type || '?';
+      const winnerNames = state.result?.winners?.map(w => state.players[w].name).join(', ') || '—';
+      this.log('HAND_END', {
+        round: this.roundName(prev),
+        result: resultType,
+        winners: winnerNames,
+        scores: state.players.map(p => `${p.name}=${p.score}`).join(' '),
+      });
       this.log('RESULT', {
-        type: state.result?.type || '?',
-        winners: state.result?.winners?.map(w => state.players[w].name).join(', ') || '—',
+        type: resultType,
+        winners: winnerNames,
       });
       // Log scoring details for each winning player
       if (state.result?.winResults) {
@@ -261,6 +279,34 @@ export class GameLogger {
           });
         }
       }
+      // ── [DEBUG] 分数变动明细 ──
+      for (const w of WINDS) {
+        const p = state.players[w];
+        const pp = prev.players[w];
+        const diff = p.score - pp.score;
+        if (diff !== 0) {
+          this.log('SCORE_CHG', {
+            player: p.name,
+            from: pp.score,
+            to: p.score,
+            diff: diff > 0 ? `+${diff}` : `${diff}`,
+          });
+        }
+      }
+      // Log total riichi sticks + honba
+      this.log('SCORE_CTX', {
+        honba: state.honba,
+        riichiSticks: state.riichiSticks,
+        scores: state.players.map(p => `${p.name}=${p.score}`).join(' '),
+      });
+      // Log payment details
+      if (state.result?.payments) {
+        for (const pay of state.result.payments) {
+          const fromName = (pay.from as number) === -1 ? '供託' : state.players[pay.from]?.name ?? '?';
+          const toName = state.players[pay.to]?.name ?? '?';
+          this.log('PAYOUT', { from: fromName, to: toName, amount: pay.amount });
+        }
+      }
       this.logHands(state, '终局');
     }
 
@@ -271,6 +317,20 @@ export class GameLogger {
   }
 
   // ---- internal loggers ----
+
+  private roundName(state: GameState): string {
+    const round = state.roundWind === Wind.EAST ? '東' : '南';
+    const game = (state.handCount % 4) + 1;
+    return state.honba > 0 ? `${round}${game}局${state.honba}本場` : `${round}${game}局`;
+  }
+
+  private logHandStart(state: GameState): void {
+    this.log('HAND_START', {
+      round: this.roundName(state),
+      dealer: state.players[state.dealerIndex].name,
+      scores: state.players.map(p => `${p.name}=${p.score}`).join(' '),
+    });
+  }
 
   private logHands(state: GameState, label: string): void {
     const p = state.players[this.humanWind];
@@ -290,9 +350,15 @@ export class GameLogger {
       const curStr = this.actionStr(state.actionsAvailable[w]);
       const prevStr = prev ? this.actionStr(prev.actionsAvailable[w]) : '';
       if (!prev || curStr !== prevStr) {
+        // Extra context: note if riichi should be available but isn't (human player)
+        const p = state.players[w];
+        let extra = '';
+        if (p.isHuman && !p.isRiichi && !p.hasCalled && !state.actionsAvailable[w]?.canRiichi && state.wall.length >= 4 && p.score >= 1000 && state.phase === 'action_prompt' && !state.lastDiscard) {
+          extra = ' [⚠️ 立直不可用-需排查]';
+        }
         this.log('ACTIONS', {
           player: state.players[w].name,
-          available: curStr,
+          available: curStr + extra,
         });
       }
     }

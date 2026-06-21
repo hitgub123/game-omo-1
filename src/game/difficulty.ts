@@ -116,21 +116,21 @@ export const DIFFICULTY_HARD: DifficultyConfig = {
 
 export const DIFFICULTY_LUNATIC: DifficultyConfig = {
   level: 'lunatic',
-  defenseEnabled: true,
-  defenseAccuracy: 1.0,
+  defenseEnabled: false,  // 不防守，全力进攻
+  defenseAccuracy: 0,
   useWaitQuality: true,
   useHandValue: true,
   randomDiscardChance: 0,
   suboptimalDiscardChance: 0,
   intentionalDealInChance: 0,
-  callThresholdPon: 0.75,
-  callThresholdChi: 0.55,
-  callThresholdKan: 0.45,
-  riichiProbability: 0.85,
+  callThresholdPon: 0.80,
+  callThresholdChi: 0.60,
+  callThresholdKan: 0.50,
+  riichiProbability: 0.95,
   riichiMinWaits: 0,
-  riichiRequireValue: true,
-  foldThreshold: 0.35,
-  defenseWeight: 1.0,
+  riichiRequireValue: false,  // 不要求打点，听牌就立直
+  foldThreshold: 999,  // 永不缩
+  defenseWeight: 0,
 };
 
 /** 根据难度名称获取配置 */

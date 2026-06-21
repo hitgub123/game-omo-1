@@ -32,14 +32,16 @@ interface GameTableProps {
   onToggleNoCall: () => void;
   onToggleAutoWin: () => void;
   gameLength: number;
-  onGameLengthChange: (v: number) => void;
+  onGameLengthChange: (n: number) => void;
+  autoPlay: boolean;
+  onToggleAutoPlay: () => void;
 }
 
 function fmtScore(score: number): string {
   return score < 0 ? `−${Math.abs(score).toLocaleString()}` : score.toLocaleString();
 }
 
-const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi, difficulty, onDifficultyChange, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin, gameLength, onGameLengthChange }) => {
+const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, onAction, onNewGame, onNextHand, swapMode, onSwapTile, riichiMode, riichiValidTileIds, onCancelRiichi, difficulty, onDifficultyChange, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin, gameLength, onGameLengthChange, autoPlay, onToggleAutoPlay }) => {
   const [revealHands, setRevealHands] = React.useState(true);
   const riichiWaitFloat = React.useMemo(() => {
     if (!riichiMode || selectedTileId === null) return null;
@@ -97,7 +99,8 @@ const GameTable: React.FC<GameTableProps> = ({ state, selectedTileId, onTileClic
           onTileContextMenu={onTileContextMenu}
           riichiMode={riichiMode} riichiValidTileIds={riichiValidTileIds}
           autoSelfDiscard={autoSelfDiscard} noCall={noCall} autoWin={autoWin}
-          onToggleSelfDiscard={onToggleSelfDiscard} onToggleNoCall={onToggleNoCall} onToggleAutoWin={onToggleAutoWin} />
+          onToggleSelfDiscard={onToggleSelfDiscard} onToggleNoCall={onToggleNoCall} onToggleAutoWin={onToggleAutoWin}
+          autoPlay={autoPlay} onToggleAutoPlay={onToggleAutoPlay} />
       </div>
 
       <ActionPanel state={state} onAction={onAction} riichiMode={riichiMode} onCancelRiichi={onCancelRiichi} />
@@ -182,9 +185,11 @@ interface PlayerSectionProps {
   onToggleSelfDiscard: () => void;
   onToggleNoCall: () => void;
   onToggleAutoWin: () => void;
+  autoPlay: boolean;
+  onToggleAutoPlay: () => void;
 }
 
-const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, riichiMode, riichiValidTileIds, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin }) => {
+const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, selectedTileId, onTileClick, onTileDoubleClick, onTileContextMenu, riichiMode, riichiValidTileIds, autoSelfDiscard, noCall, autoWin, onToggleSelfDiscard, onToggleNoCall, onToggleAutoWin, autoPlay, onToggleAutoPlay }) => {
   const player = state.players[playerWind];
   const ch = TOUHOU_CHARACTERS[playerWind];
   const isActive = state.currentPlayer === playerWind && state.phase !== GamePhase.HAND_OVER;
@@ -221,6 +226,8 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
               onClick={onToggleNoCall} title="不提示吃碰杠，只提示和牌与暗杠">不鸣牌</button>
             <button className={`toggle-btn-sm ${autoWin ? 'toggle-on' : ''}`}
               onClick={onToggleAutoWin} title="可荣和或自摸时自动和牌">自动和</button>
+            <button className={`toggle-btn-sm ${autoPlay ? 'toggle-on' : ''}`}
+              onClick={onToggleAutoPlay} title="AI托管代打，自动观战">{autoPlay ? '🤖 托管中' : '托管'}</button>
           </div>
         </div>
         {player.melds.length > 0 && (
@@ -257,15 +264,44 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
         </div>
       </div>
 
-      {riichiWaitInfo && riichiWaitInfo.length > 0 && (
-        <div className="riichi-wait-hint">
-          打出此牌可听：
-          {riichiWaitInfo.map((tile, i) => (
-            <TileComponent key={i} tile={tile} small highlighted />
-          ))}
-          <span className="tenpai-count">共{riichiWaitInfo.length}种</span>
-        </div>
-      )}
+      {riichiWaitInfo && riichiWaitInfo.length > 0 && (() => {
+        // 计算可见枚数
+        const count = new Map<string, number>();
+        const visible = [
+          ...player.hand,
+          ...state.players.flatMap(p => p.discards),
+          ...state.players.flatMap(p => p.melds).flatMap(m => m.tiles),
+          ...state.doraIndicators,
+        ];
+        for (const t of visible) {
+          const k = `${t.suit}${t.value}`;
+          count.set(k, (count.get(k) || 0) + 1);
+        }
+        // 去重
+        const seen = new Map<string, Tile>();
+        for (const t of riichiWaitInfo) {
+          const k = `${t.suit}${t.value}`;
+          if (!seen.has(k)) seen.set(k, t);
+        }
+        const uniq = [...seen.values()];
+        return (
+          <div className="riichi-wait-hint">
+            打出此牌可听：
+            {uniq.map((tile, i) => {
+              const k = `${tile.suit}${tile.value}`;
+              const visibleCnt = count.get(k) || 0;
+              const remain = Math.max(0, 4 - visibleCnt);
+              return (
+                <span key={i} className="tenpai-tile-group">
+                  <TileComponent tile={tile} small highlighted />
+                  <span className="tenpai-remain">{remain}枚</span>
+                </span>
+              );
+            })}
+            <span className="tenpai-count">共{uniq.length}种</span>
+          </div>
+        );
+      })()}
     </div>
   );
 };
@@ -285,16 +321,50 @@ const TenpaiFloat: React.FC<{ state: GameState; riichiWaitTiles: Tile[] | null }
     try { return checkTenpai(h, player.melds); } catch { return null; }
   }, [player.hand, player.melds, state.drawnTile]);
 
-  const tiles = riichiWaitTiles && riichiWaitTiles.length > 0 ? riichiWaitTiles
+  // 计算每种待牌在牌山中的剩余枚数（4 - 可见枚数）
+  const wallRemain = React.useMemo(() => {
+    const count = new Map<string, number>();
+    // 可见：自己手牌 + 所有弃牌 + 所有鸣牌 + 宝牌指示牌
+    const visible = [
+      ...player.hand,
+      ...state.players.flatMap(p => p.discards),
+      ...state.players.flatMap(p => p.melds).flatMap(m => m.tiles),
+      ...state.doraIndicators,
+    ];
+    for (const t of visible) {
+      const k = `${t.suit}${t.value}`;
+      count.set(k, (count.get(k) || 0) + 1);
+    }
+    return count;
+  }, [player.hand, state.players, state.doraIndicators]);
+
+  const rawTiles = riichiWaitTiles && riichiWaitTiles.length > 0 ? riichiWaitTiles
     : (tenpai && tenpai.waitTiles.length > 0 ? tenpai.waitTiles : null);
 
-  if (!tiles || tiles.length === 0) return null;
+  if (!rawTiles || rawTiles.length === 0) return null;
+
+  // 去重（按 suit+value），计算每种牌的剩余枚数
+  const seen = new Map<string, Tile>();
+  for (const t of rawTiles) {
+    const k = `${t.suit}${t.value}`;
+    if (!seen.has(k)) seen.set(k, t);
+  }
+  const tiles = [...seen.values()];
+
   return (
     <div className="riichi-wait-hint">
       {riichiWaitTiles && riichiWaitTiles.length > 0 ? '打出此牌可听：' : '听牌：'}
-      {tiles.map((tile, i) => (
-        <TileComponent key={i} tile={tile} small highlighted />
-      ))}
+      {tiles.map((tile, i) => {
+        const k = `${tile.suit}${tile.value}`;
+        const visible = wallRemain.get(k) || 0;
+        const remain = Math.max(0, 4 - visible);
+        return (
+          <span key={i} className="tenpai-tile-group">
+            <TileComponent tile={tile} small highlighted />
+            <span className="tenpai-remain">{remain}枚</span>
+          </span>
+        );
+      })}
       <span className="tenpai-count">共{tiles.length}种</span>
     </div>
   );

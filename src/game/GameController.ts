@@ -28,6 +28,8 @@ export class GameController {
   private _difficulty: DifficultyConfig = DIFFICULTY_NORMAL;
   private _characters?: { name: string }[];
   private _gameLength: number;
+  private _autoPlay = false;
+  private _autoAdvanceScheduled = false; // 防止重复调度自动下一局
 
   constructor(characters?: { name: string }[], gameLength = 2) {
     this._characters = characters;
@@ -39,6 +41,19 @@ export class GameController {
   setDifficulty(level: DifficultyLevel): void {
     this._difficulty = getDifficulty(level);
   }
+
+  /** 托管模式：true=AI 代打人类玩家 */
+  setAutoPlay(on: boolean): void {
+    this._autoPlay = on;
+    if (on) {
+      this.log('🤖 托管模式开启');
+      this.schedule(50); // 立即触发 tick
+    } else {
+      this.log('🙋 手动模式');
+    }
+  }
+
+  get autoPlay(): boolean { return this._autoPlay; }
 
   /** 获取当前难度 */
   get difficulty(): DifficultyConfig {
@@ -89,6 +104,35 @@ export class GameController {
   // ── Game Loop ──
 
   private tick() {
+    // 托管模式：终局后自动推进
+    if (this._autoPlay && !this._autoAdvanceScheduled) {
+      if (this._state.phase === GamePhase.HAND_OVER) {
+        this._autoAdvanceScheduled = true;
+        this.log('⏱️ 5秒后自动下一局...');
+        this.schedule(5000);
+        return;
+      }
+      if (this._state.phase === GamePhase.GAME_OVER) {
+        this._autoAdvanceScheduled = true;
+        this.log('🔄 游戏结束，5秒后自动新游戏...');
+        this.schedule(5000);
+        return;
+      }
+    }
+
+    // 托管模式：定时器到期，执行推进
+    if (this._autoPlay && this._autoAdvanceScheduled) {
+      this._autoAdvanceScheduled = false;
+      if (this._state.phase === GamePhase.HAND_OVER) {
+        this.nextHand();
+        return;
+      }
+      if (this._state.phase === GamePhase.GAME_OVER) {
+        this.newGame();
+        return;
+      }
+    }
+
     if (this._state.phase === GamePhase.HAND_OVER || this._state.phase === GamePhase.GAME_OVER) return;
 
     let s = this._state;
@@ -105,13 +149,13 @@ export class GameController {
     // DISCARDING
     if (s.phase === GamePhase.DISCARDING) {
       const cp = s.players[s.currentPlayer];
-      if (!cp.isHuman) {
+      if (!cp.isHuman || this._autoPlay) {
         s = this.aiDiscard(s);
         this._state = s;
         this.emit();
         this.schedule(s.phase === GamePhase.ACTION_PROMPT ? 400 : 50);
       }
-      // 人类: 等待点击（自摸切由 App 层的 autoSelfDiscard 控制）
+      // 人类非托管: 等待点击（自摸切由 App 层的 autoSelfDiscard 控制）
       return;
     }
 
@@ -119,6 +163,59 @@ export class GameController {
     if (s.phase === GamePhase.ACTION_PROMPT) {
       const humanWind = WINDS.find(w => s.players[w].isHuman) ?? 0;
       const humanAct = s.actionsAvailable[humanWind];
+
+      // 托管模式：人类动作也由 AI 处理，不等待
+      if (this._autoPlay) {
+        if (s.lastDiscard) {
+          // 有人弃牌 → 所有玩家（含人类）响应
+          const next = this.processAllResponses(s);
+          if (next) { this._state = next; this.emit(); this.schedule(400); return; }
+          // 无人响应 → 振听 + 下一家
+          let furiten = s;
+          for (const w of WINDS) {
+            if (w !== s.currentPlayer && s.actionsAvailable[w]?.canRon) {
+              if (!furiten.furitenPlayers.includes(w)) {
+                furiten = { ...furiten, furitenPlayers: [...furiten.furitenPlayers, w] };
+              }
+            }
+          }
+          this._state = nextTurn(furiten);
+          this.emit();
+          this.schedule(50);
+        } else {
+          // 人类摸牌后 → AI 决策：自摸 > 立直 > 暗杠 > 加杠 > 弃牌
+          const cp = s.players[s.currentPlayer];
+          if (humanAct?.canTsumo) {
+            this._state = executeWin(s, s.currentPlayer, true);
+          } else if (humanAct?.canRiichi && aiDecideRiichi(cp.hand, s, s.currentPlayer, this._difficulty)) {
+            // 立直：找一张能听牌的牌打出
+            const tile = aiChooseDiscard(cp.hand, undefined, s, s.currentPlayer, this._difficulty);
+            if (tile) {
+              const isFirstTurn = s.turn <= 2 && cp.discards.length === 0 && !cp.hasCalled;
+              const marked = {
+                ...s,
+                riichiSticks: s.riichiSticks + 1,
+                players: s.players.map((p, i) =>
+                  i === s.currentPlayer
+                    ? { ...p, isRiichi: true, isDoubleRiichi: isFirstTurn, riichiTurnStart: s.turn, score: p.score - 1000 }
+                    : p
+                ),
+              };
+              this._state = discardTile(marked, tile.id);
+            } else {
+              this._state = { ...s, phase: GamePhase.DISCARDING };
+            }
+          } else if (humanAct?.canAnkan || humanAct?.canKakan) {
+            // 暗杠/加杠暂不自动处理，进入弃牌
+            this._state = { ...s, phase: GamePhase.DISCARDING };
+          } else {
+            this._state = { ...s, phase: GamePhase.DISCARDING };
+          }
+          this.emit();
+          this.schedule(400);
+        }
+        return;
+      }
 
       // 人类有响应选项 → 等待
       if (s.lastDiscard && humanAct && (humanAct.canRon || humanAct.canPon || humanAct.canChi || humanAct.canKan)) return;
@@ -187,14 +284,27 @@ export class GameController {
 
   /** AI 响应（荣和 > 碰 > 吃） */
   private processAiResponses(s: GameState): GameState | null {
+    return this.processResponses(s, false);
+  }
+
+  /** 所有玩家响应（托管模式下含人类） */
+  private processAllResponses(s: GameState): GameState | null {
+    return this.processResponses(s, true);
+  }
+
+  private processResponses(s: GameState, includeHuman: boolean): GameState | null {
     for (const wind of WINDS) {
       if (wind === s.currentPlayer) continue;
       const actions = s.actionsAvailable[wind];
       if (!actions) continue;
       const player = s.players[wind];
-      if (player.isHuman) continue;
+      if (!includeHuman && player.isHuman) continue; // 非托管模式跳过人类
       const choice = aiChooseAction(s, wind, this._difficulty);
-      if (choice === 'ron' && actions.canRon) return executeWin(s, wind, false);
+      if (choice === 'ron' && actions.canRon) {
+        if (s.phase !== GamePhase.HAND_OVER && s.phase !== GamePhase.GAME_OVER) {
+          return executeWin(s, wind, false);
+        }
+      }
       if (choice === 'pon' && actions.canPon && s.lastDiscard) {
         const matching = player.hand.filter(t => sameTile(t, s.lastDiscard!));
         if (matching.length >= 2) {
@@ -300,6 +410,7 @@ export class GameController {
 
     switch (action) {
       case 'tsumo':
+        if (s.phase === GamePhase.HAND_OVER || s.phase === GamePhase.GAME_OVER) break;
         if (s.actionsAvailable[humanWind]?.canTsumo) {
           this._state = executeWin(s, humanWind, true);
           this.log('🎉 自摸和牌！');
@@ -307,6 +418,7 @@ export class GameController {
         break;
 
       case 'ron':
+        if (s.phase === GamePhase.HAND_OVER || s.phase === GamePhase.GAME_OVER) break;
         if (!s.actionsAvailable[humanWind]?.canRon) {
           console.warn('[AUTO-RON] blocked: canRon is false', {
             phase: s.phase, humanWind, lastDiscard: s.lastDiscard ? s.lastDiscard.suit + s.lastDiscard.value : 'none',

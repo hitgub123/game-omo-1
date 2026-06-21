@@ -1,4 +1,5 @@
 import { Wind, WINDS } from './types';
+import { debugLog } from '../debug/debugLog';
 
 function tsumoPayment(basePoints: number, isDealerWinner: boolean): { payments: number[]; winnerGets: number } {
   if (isDealerWinner) {
@@ -77,22 +78,45 @@ export function calculatePayouts(
   honba: number,
   riichiSticks: number,
   isDealerWin: boolean,
+  dealerWind: Wind,
 ): { from: Wind; to: Wind; amount: number }[] {
   const payouts: { from: Wind; to: Wind; amount: number }[] = [];
   const score = calculateScore(fu, han, isDealerWin, loserWind === null, honba, riichiSticks);
+
+  // ── [DEBUG] payout 计算日志 → game.log ──
+  const payDebugParts: string[] = [];
+  debugLog('PAYOUT_DBG', {
+    event: 'calc_start',
+    isDealerWin,
+    winnerWind,
+    dealerWind,
+    payments: `[${score.payments}]`,
+    honba,
+  });
 
   if (loserWind === null) {
     for (let i = 0; i < 4; i++) {
       const wind = WINDS[i];
       if (wind !== winnerWind) {
-        const amount = (wind === Wind.EAST ? score.payments[0] : score.payments[1]) + honba * 100;
+        // 自摸时 payments 数组: payments[0]=庄家支付额, payments[1]=子家支付额
+        // 庄家赢→所有人都是子家(idx=1); 子家赢→庄家付idx=0, 子家付idx=1
+        const isPayerDealer = !isDealerWin && wind === dealerWind;
+        const useIdx = isPayerDealer ? 0 : 1;
+        const amount = (isPayerDealer ? score.payments[0] : score.payments[1]) + honba * 100;
+        payDebugParts.push(`wind${wind}:isDealer=${isPayerDealer}→idx${useIdx}=${score.payments[useIdx]}+${honba*100}=${amount}`);
         payouts.push({ from: wind, to: winnerWind, amount });
       }
     }
   } else {
     payouts.push({ from: loserWind, to: winnerWind, amount: score.ronPayment });
+    payDebugParts.push(`ron:wind${loserWind}→wind${winnerWind}=${score.ronPayment}`);
   }
 
+  debugLog('PAYOUT_DBG', {
+    event: 'calc_end',
+    details: payDebugParts.join('|'),
+    result: payouts.map(p => `wind${p.from}→wind${p.to}:${p.amount}`).join(','),
+  });
   return payouts;
 }
 

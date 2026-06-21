@@ -357,11 +357,11 @@ describe('scoring.ts', () => {
 
   describe('calculatePayouts', () => {
     it('自摸: 3人支付', () => {
-      const payouts = calculatePayouts(Wind.EAST, null, 30, 1, 0, 0, true);
+      const payouts = calculatePayouts(Wind.EAST, null, 30, 1, 0, 0, true, Wind.EAST);
       expect(payouts).toHaveLength(3); // dealer gets paid by 3 others
     });
     it('荣和: 1人支付', () => {
-      const payouts = calculatePayouts(Wind.EAST, Wind.SOUTH, 30, 1, 0, 0, true);
+      const payouts = calculatePayouts(Wind.EAST, Wind.SOUTH, 30, 1, 0, 0, true, Wind.EAST);
       expect(payouts).toHaveLength(1);
     });
   });

@@ -56,10 +56,10 @@ export function aiChooseDiscard(
     return { tile: t, shanten, offense, danger };
   });
 
-  // P0: 以向听数为首要排序（越低越好），同向听数内按进攻评分（越高越好）
+  // P0: 以向听数为首要排序（越低越好），同向听数内按评分升序（低分先弃）
   scored.sort((a, b) => {
     if (a.shanten !== b.shanten) return a.shanten - b.shanten;
-    // 同向听数内：防守调整
+    // 防守调整
     let aScore = a.offense;
     let bScore = b.offense;
     if (pushFold === 'fold') {
@@ -72,7 +72,7 @@ export function aiChooseDiscard(
       aScore -= a.danger * 3;
       bScore -= b.danger * 3;
     }
-    return bScore - aScore;
+    return aScore - bScore;  // 升序：低分在前 → 优先弃掉价值最低的牌
   });
 
   // 次优选择（模拟失误）
@@ -164,8 +164,20 @@ function scoreDiscardTile(
   // ── 字牌：役牌価値 + 対子/刻子状態 ──
   if (tile.suit === 'z') {
     const count = hand.filter(t => t.suit === tile.suit && t.value === tile.value).length;
+    // 计算可见枚数（全场弃牌+鸣牌+宝牌指示）
+    let visible = 0;
+    for (const p of state.players) {
+      for (const d of p.discards) if (d.suit === tile.suit && d.value === tile.value) visible++;
+      for (const m of p.melds) for (const mt of m.tiles) if (mt.suit === tile.suit && mt.value === tile.value) visible++;
+    }
+    for (const di of state.doraIndicators) if (di.suit === tile.suit && di.value === tile.value) visible++;
+    // 包含自己手牌中的这一张
+    const totalVisible = visible + count;
+    const isDead = totalVisible >= 3; // 已有3+张可见，不可能成刻子/对子
     const isYakuhai = isYakuhaiTile(tile, state.roundWind, _playerWind);
-    if (count >= 3) score += isYakuhai ? 20 : 12;
+    if (isDead) {
+      score += isYakuhai ? 1 : 0; // 死牌几乎无价值
+    } else if (count >= 3) score += isYakuhai ? 20 : 12;
     else if (count === 2) score += isYakuhai ? 14 : 8;
     else score += isYakuhai ? 6 : 2;
     return score;

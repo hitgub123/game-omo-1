@@ -8,7 +8,7 @@
  */
 
 import type { Tile, GameState, Wind } from './types';
-import { tileKey, isDragonTile, isMiddleTile, isTerminalHonor } from './tiles';
+import { tileKey, isDragonTile, isMiddleTile, isTerminalHonor, isYakuhaiTile } from './tiles';
 import { getTileCounts, tilesToHai } from './hand';
 import { checkMahjongStatus } from '../../utils/syanten.js';
 import { WINDS } from './types';
@@ -22,11 +22,10 @@ import { calculateDanger } from './defense';
  * 返回 -1 = 已和牌, 0 = 听牌, 1+ = 一向听以上
  */
 export function getShanten(hand: Tile[], _melds?: Tile[][]): number {
-  // 使用 utils/syanten.js 引擎
   const hai = tilesToHai(hand);
   const result = checkMahjongStatus(hai);
-  if (typeof result === 'object') return 0; // { status: 0, info: [...] } = 听牌
-  return result as number; // -1 和牌, 0 听牌, 1+ 向听
+  if (typeof result === 'object') return 0;
+  return result as number;
 }
 
 // ── 2. 立直判断 ──
@@ -36,26 +35,19 @@ export interface RiichiJudgment {
   reason: string;
 }
 
-/**
- * 判断是否立直
- * 对比 aiDecideRiichi — 增加难度参数控制
- */
 export function shouldRiichi(
   hand: Tile[],
   state: GameState,
   playerWind: Wind,
   config: DifficultyConfig,
 ): RiichiJudgment {
-  // 检查是否能立直（手牌13张 = 未摸牌，用 syanten 判断听牌）
   const hai = tilesToHai(hand);
   const result = checkMahjongStatus(hai);
 
-  // 不在听牌状态
   if (typeof result !== 'object' || !result.info) {
     return { should: false, reason: 'noten' };
   }
 
-  // 检查待牌数
   let totalWaits = 0;
   const uniqueWaits = new Set<string>();
   for (const info of result.info) {
@@ -68,14 +60,11 @@ export function shouldRiichi(
     return { should: false, reason: `waits ${totalWaits} < min ${config.riichiMinWaits}` };
   }
 
-  // 概率判定
   if (Math.random() > config.riichiProbability) {
     return { should: false, reason: 'probability check failed' };
   }
 
-  // Hard/Lunatic: 检查打点
   if (config.riichiRequireValue) {
-    // 简单估算：有宝牌或断幺等高价值牌型才立直
     const hasDora = state.doraIndicators.some(di =>
       hand.some(t => t.suit === di.suit && t.value === (di.value === 9 ? 1 : di.value + 1))
     );
@@ -83,23 +72,7 @@ export function shouldRiichi(
     const hasYakuhai = hasHonorTriplet(hand);
 
     if (!hasDora && !hasTanyao && !hasYakuhai && totalWaits <= 2) {
-      // 低打点 + 少待牌 → 不立直
       return { should: false, reason: 'low hand value' };
-    }
-  }
-
-  // Lunatic: 检查危险度（有人立直时缩）
-  if (config.level === 'lunatic') {
-    for (const w of WINDS) {
-      if (w === playerWind) continue;
-      if (state.players[w].isRiichi) {
-        // 有人立直，检查安全弃牌
-        const danger = calculateDanger(hand, state, playerWind, config);
-        const safeCount = hand.filter(t => (danger.get(tileKey(t)) ?? 0.5) < 0.3).length;
-        if (safeCount === 0) {
-          return { should: false, reason: 'no safe discard (lunatic)' };
-        }
-      }
     }
   }
 
@@ -111,8 +84,52 @@ export function shouldRiichi(
 export type MeldAction = 'pon' | 'chi' | 'kan';
 
 /**
- * 判断是否鸣牌
+ * 鸣牌后是否有役（简化判断：役牌刻子 or 断幺九）
  */
+function hasYakuAfterMeld(
+  hand: Tile[],
+  discarded: Tile,
+  meldType: MeldAction,
+  state: GameState,
+  playerWind: Wind,
+): boolean {
+  // 模拟鸣牌后的手牌
+  const key = tileKey(discarded);
+  let testHand: Tile[];
+  if (meldType === 'pon') {
+    testHand = removeTilesByKey(hand, key, 2);
+  } else {
+    testHand = removeTilesByKey(hand, key, 2);
+  }
+  if (testHand.length !== hand.length - 2) return false; // 牌不够？不可能
+
+  // 1. 检查鸣牌后是否有役牌刻子（含本次鸣的牌）
+  const counts = new Map<string, number>();
+  for (const t of testHand) counts.set(tileKey(t), (counts.get(tileKey(t)) ?? 0) + 1);
+  // 本次鸣牌形成的刻子
+  const meldCount = (counts.get(key) ?? 0) + 3; // 鸣的3张
+  if (meldCount >= 3) {
+    if (isYakuhaiTile(discarded, state.roundWind, playerWind)) return true;
+  }
+  // 手牌中已有的役牌刻子
+  for (const [k, c] of counts) {
+    if (c >= 3 && k[0] === 'z') {
+      const val = parseInt(k.slice(1));
+      const t = { id: -1, suit: 'z' as const, value: val };
+      if (isYakuhaiTile(t, state.roundWind, playerWind)) return true;
+    }
+  }
+
+  // 2. 检查是否为断幺九（全部中张牌 2-8）
+  const allTiles = [...testHand, discarded, discarded, discarded]; // 鸣牌后手牌等效
+  const isTanyao = allTiles.every(t =>
+    t.suit !== 'z' && t.value >= 2 && t.value <= 8
+  );
+  if (isTanyao) return true;
+
+  return false;
+}
+
 export function shouldCallMeld(
   hand: Tile[],
   discarded: Tile,
@@ -124,10 +141,12 @@ export function shouldCallMeld(
   const shantenBefore = getShanten(hand);
 
   if (meldType === 'pon') {
-    // 东/南/西/北 + 自风/圈风翻倍判断
+    // 先检查鸣牌后是否有役
+    if (!hasYakuAfterMeld(hand, discarded, 'pon', state, playerWind)) {
+      return false;
+    }
     if (isDragonTile(discarded)) return Math.random() < config.callThresholdPon + 0.2;
     if (isMiddleTile(discarded)) {
-      // 鸣中张牌能否减少向听
       const testHand = removeTilesByKey(hand, tileKey(discarded), 2);
       if (testHand.length === hand.length - 2) {
         const shantenAfter = getShanten(testHand);
@@ -135,9 +154,7 @@ export function shouldCallMeld(
       }
       return Math.random() < (config.callThresholdPon * 0.5);
     }
-    // 幺九牌碰了役牌或减少向听
     if (isTerminalHonor(discarded)) {
-      // 幺九牌碰了可能会破坏手牌形状
       const testHand = removeTilesByKey(hand, tileKey(discarded), 2);
       if (testHand.length === hand.length - 2) {
         const shantenAfter = getShanten(testHand);
@@ -149,13 +166,14 @@ export function shouldCallMeld(
   }
 
   if (meldType === 'chi') {
-    // 吃牌一般只在能减少向听或不破坏好形时才做
+    // 先检查吃牌后是否有役
+    if (!hasYakuAfterMeld(hand, discarded, 'chi', state, playerWind)) {
+      return false;
+    }
     const testHand = removeTilesByKey(hand, tileKey(discarded), 2);
     if (testHand.length === hand.length - 2) {
       const shantenAfter = getShanten(testHand);
-      // 减少向听 → 高概率
       if (shantenAfter < shantenBefore) return Math.random() < config.callThresholdChi;
-      // 向听不变 → Low 概率（除非已经副露过）
       if (shantenAfter === shantenBefore && state.players[playerWind].hasCalled) {
         return Math.random() < config.callThresholdChi * 0.5;
       }
@@ -164,7 +182,6 @@ export function shouldCallMeld(
   }
 
   if (meldType === 'kan') {
-    // 大明杠：如果不是役牌或不减少向听，一般不杠
     if (isDragonTile(discarded)) return Math.random() < config.callThresholdKan + 0.2;
     const testHand = hand.filter(t => !sameTileKey(t, discarded));
     const shantenAfter = getShanten(testHand);
@@ -179,9 +196,6 @@ export function shouldCallMeld(
 
 export type PushFold = 'push' | 'fold' | 'ambiguous';
 
-/**
- * 判断应该进攻还是防守
- */
 export function shouldPushOrFold(
   hand: Tile[],
   state: GameState,
@@ -190,7 +204,6 @@ export function shouldPushOrFold(
 ): PushFold {
   if (!config.defenseEnabled) return 'push';
 
-  // 检查是否有对手立直
   let maxDanger = 0;
   for (const w of WINDS) {
     if (w === playerWind) continue;
@@ -202,7 +215,6 @@ export function shouldPushOrFold(
     }
   }
 
-  // 对手副露较多 → 危险
   for (const w of WINDS) {
     if (w === playerWind) continue;
     if (state.players[w].melds.length >= 2) {
@@ -218,11 +230,9 @@ export function shouldPushOrFold(
 // ── 5. 暗杠判断 ──
 
 export function shouldAnkan(hand: Tile[], config: DifficultyConfig): boolean {
-  // 手牌中有4张一样的牌
   const counts = getTileCounts(hand);
   for (const c of Object.values(counts)) {
     if (c >= 4) {
-      // 立直后暗杠要看是否改变听牌形状
       return Math.random() < (config.level === 'lunatic' ? 0.3 : 0.5);
     }
   }
@@ -231,7 +241,6 @@ export function shouldAnkan(hand: Tile[], config: DifficultyConfig): boolean {
 
 // ── 辅助 ──
 
-/** 检查是否有役牌对子 */
 function hasHonorTriplet(hand: Tile[]): boolean {
   const counts = new Map<string, number>();
   for (const t of hand) {
@@ -244,7 +253,6 @@ function hasHonorTriplet(hand: Tile[]): boolean {
   return false;
 }
 
-/** 从手牌中移除指定 key 的 n 张牌 */
 function removeTilesByKey(hand: Tile[], key: string, count: number): Tile[] {
   const result = [...hand];
   let removed = 0;
@@ -257,7 +265,6 @@ function removeTilesByKey(hand: Tile[], key: string, count: number): Tile[] {
   return result;
 }
 
-/** 比较 tileKey */
 function sameTileKey(t: Tile, d: Tile): boolean {
   return t.suit === d.suit && t.value === d.value;
 }

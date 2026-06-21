@@ -62,7 +62,15 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ state, onNewGame, onNextH
                   ) : (
                     <span>{getManganName(wr.totalHan, wr.fu)} ({wr.totalHan}翻{wr.fu}符)</span>
                   )}
-                  <span className="win-points">{wr.winnerGets.toLocaleString()}点</span>
+                  <span className="win-points">
+                    {wr.basePayment.toLocaleString()}点
+                    {wr.honbaAddition > 0 && (
+                      <span className="win-points-breakdown">
+                        {' + 本場'}{wr.honbaAddition.toLocaleString()}点{' = '}
+                        <strong>{(wr.basePayment + wr.honbaAddition).toLocaleString()}点</strong>
+                      </span>
+                    )}
+                  </span>
                 </div>
                 <div className="yaku-list">
                   {wr.yaku.map((y, yi) => (

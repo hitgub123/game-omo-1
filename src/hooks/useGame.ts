@@ -40,6 +40,9 @@ export interface GameControllerAPI {
   difficulty: DifficultyLevel;
   /** 设置难度 */
   setDifficulty: (level: DifficultyLevel) => void;
+  /** 托管模式 */
+  autoPlay: boolean;
+  setAutoPlay: (on: boolean) => void;
   /** 下载游戏日志 (Ctrl+L) */
   downloadLog: () => void;
 }
@@ -79,6 +82,7 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
   const [riichiMode, setRiichiMode] = useState(false);
   const [riichiValidTileIds, setRiichiValidTileIds] = useState<Map<number, TenpaiInfo>>(new Map());
   const [difficulty, setDifficultyState] = useState<DifficultyLevel>('easy');
+  const [autoPlay, setAutoPlayState] = useState(true);
   const ctrlRef = useRef<GameController | null>(null);
   const charsRef = useRef(initialChars);
   const gameLengthRef = useRef(gameLength);
@@ -105,6 +109,7 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
     setIsAiThinking(true);
     const aiStateRef = { current: (() => {}) as () => void };
     const t = setTimeout(() => {
+      ctrl.setAutoPlay(true);
       ctrl.start();
       aiStateRef.current = ctrl.subscribe((s) => {
         setIsAiThinking(
@@ -327,6 +332,12 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
     setDifficultyState(level);
   }, []);
 
+  const setAutoPlay = useCallback((on: boolean) => {
+    const ctrl = ctrlRef.current;
+    if (ctrl) ctrl.setAutoPlay(on);
+    setAutoPlayState(on);
+  }, []);
+
   const downloadLog = useCallback(() => {
     loggerRef.current?.download();
   }, []);
@@ -339,6 +350,7 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
     swapMode, swapSourceTileId, enterSwapMode, executeSwap, cancelSwap,
     riichiMode, riichiValidTileIds, cancelRiichi,
     difficulty, setDifficulty,
+    autoPlay, setAutoPlay,
     downloadLog,
   };
 }

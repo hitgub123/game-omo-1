@@ -5,6 +5,7 @@ import { checkTenpai, isWinningHand, tilesToHai } from './hand';
 import { checkMahjongStatus } from '../../utils/syanten.js';
 import { riichiCheckWin as checkWin } from './riichi-check';
 import { calculateScore, calculatePayouts } from './scoring';
+import { debugLog } from '../debug/debugLog';
 
 export function createInitialState(characters?: { name: string }[], dealerWind?: Wind, gameLength = 2): GameState {
   const deck = shuffleArray(createTileDeck());
@@ -127,12 +128,39 @@ export function getDrawActions(player: Player, state: GameState, playerWind: Win
     }
   }
 
+  // ── [DEBUG] 立直按钮判定日志 → game.log ──
+  const riichiReasons: string[] = [];
   if (!player.hasCalled && !player.isRiichi && state.wall.length >= 4 && player.score >= 1000) {
     const engResult = checkMahjongStatus(tilesToHai(player.hand));
-    // 可立直条件：手牌听牌（返回对象）或已和牌（返回-1，可打一张弃和）
-    // 兜底：门清且有1000点以上基本都可以立直
-    actions.canRiichi = typeof engResult === 'object' || engResult === -1;
+    const isTenpai = typeof engResult === 'object' || engResult === -1;
+    actions.canRiichi = isTenpai;
+    if (isTenpai) {
+      riichiReasons.push('手牌听牌(门清+够1000点+牌山>=4)');
+      if (typeof engResult === 'object') {
+        const infoCount = (engResult as any).info?.length ?? 0;
+        riichiReasons.push(`听牌选择数=${infoCount}`);
+      } else if (engResult === -1) {
+        riichiReasons.push('已和牌形(可打一张弃和立直)');
+      }
+    } else {
+      riichiReasons.push(`听牌NG: syanten返回${JSON.stringify(engResult)}`);
+    }
+  } else {
+    if (player.hasCalled) riichiReasons.push('已鸣牌(非门清)');
+    if (player.isRiichi) riichiReasons.push('已立直');
+    if (state.wall.length < 4) riichiReasons.push(`牌山不足4张(当前${state.wall.length})`);
+    if (player.score < 1000) riichiReasons.push(`分数不足1000点(当前${player.score})`);
   }
+  debugLog('RIICHI_CHECK', {
+    player: player.name,
+    wind: playerWind,
+    canRiichi: actions.canRiichi,
+    reason: riichiReasons.join(' | ') || '无',
+    hasCalled: player.hasCalled,
+    isRiichi: player.isRiichi,
+    wall: state.wall.length,
+    score: player.score,
+  });
 
   if (!player.hasCalled && state.turn === 0) {
     const uniqueTermHonors = new Set(player.hand.filter(t => isTerminalHonor(t)).map(t => tileKey(t)));
@@ -423,6 +451,17 @@ export function executeMeld(state: GameState, playerWind: Wind, meldType: MeldTy
   player.melds.push(meld);
   player.hasCalled = true;
 
+  // ── [DEBUG] 鸣牌日志 → game.log ──
+  debugLog('MELD_DBG', {
+    player: player.name,
+    wind: playerWind,
+    type: meldType,
+    tiles: meld.tiles.map(t => t.suit + t.value).join(','),
+    fromWind: state.lastDiscardPlayer,
+    handLeft: player.hand.length,
+    hasCalled: true,
+  });
+
   // 食替：设置限制弃牌
   const restrictedKeys = getRestrictedKeys();
   if (restrictedKeys.length > 0) {
@@ -512,9 +551,25 @@ function removeTilesFromHand(hand: Tile[], remove: Tile[]): Tile[] {
 
 // ---- Win ----
 export function executeWin(state: GameState, playerWind: Wind, isTsumo: boolean): GameState {
+  // 防止重复执行：如果已经终局或游戏结束，直接返回
+  if (state.phase === GamePhase.HAND_OVER || state.phase === GamePhase.GAME_OVER) {
+    debugLog('EXEC_WIN', { event: 'blocked_duplicate', phase: state.phase, playerWind, isTsumo });
+    return state;
+  }
+
   const player = state.players[playerWind];
   const winningTile = isTsumo ? state.drawnTile! : state.lastDiscard!;
   if (!winningTile) return state;
+
+  // ── [DEBUG] executeWin 调用追踪（检测是否被重复调用） ──
+  debugLog('EXEC_WIN', {
+    player: player.name,
+    wind: playerWind,
+    isTsumo,
+    phase: state.phase,
+    turn: state.turn,
+    wall: state.wall.length,
+  });
 
   const evalResult = checkWin(
     isTsumo ? player.hand : [...player.hand],
@@ -526,7 +581,13 @@ export function executeWin(state: GameState, playerWind: Wind, isTsumo: boolean)
   );
 
   if (!evalResult) {
-    console.log('[executeWin] checkWin returned null — 和了不成立', { isTsumo, hand: player.hand.length, melds: player.melds.length, tile: winningTile?.suit + winningTile?.value });
+    debugLog('EXEC_WIN', {
+      event: 'checkwin_null',
+      isTsumo,
+      handLen: player.hand.length,
+      meldsLen: player.melds.length,
+      tile: winningTile.suit + winningTile.value,
+    });
     return state;
   }
 
@@ -547,16 +608,69 @@ function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winning
     evalResult.fu, evalResult.totalHan,
     state.honba, state.riichiSticks,
     isDealerWin,
+    state.dealerIndex,
   );
+
+  // ── [DEBUG] 详细分数变动日志 → game.log ──
+  const scoreBefore = state.players.map(p => p.score);
+  const winType = isTsumo ? 'tsumo' : 'ron';
+  const dealerTag = isDealerWin ? 'oya' : 'ko';
+  debugLog('SCORE_DBG', {
+    event: 'win_start',
+    type: winType,
+    player: player.name,
+    wind: String(playerWind),
+    dealer: dealerTag,
+    tile: `${winningTile.suit}${winningTile.value}`,
+    han: evalResult.totalHan,
+    fu: evalResult.fu,
+    basePts: score.basePoints,
+    payments: `[${score.payments}]`,
+    honba: state.honba,
+    sticks: state.riichiSticks,
+    scoresPre: `[${scoreBefore}]`,
+  });
 
   const players = state.players.map(p => ({ ...p }));
   for (const pay of payouts) {
+    debugLog('SCORE_DBG', {
+      event: 'payout',
+      from: state.players[pay.from].name,
+      fromWind: pay.from,
+      to: state.players[pay.to].name,
+      toWind: pay.to,
+      amount: pay.amount,
+      fromPre: players[pay.from].score,
+      fromPost: players[pay.from].score - pay.amount,
+      toPre: players[pay.to].score,
+      toPost: players[pay.to].score + pay.amount,
+    });
     players[pay.from].score -= pay.amount;
     players[pay.to].score += pay.amount;
   }
   if (state.riichiSticks > 0) {
+    debugLog('SCORE_DBG', {
+      event: 'riichi_return',
+      player: state.players[playerWind].name,
+      sticks: state.riichiSticks,
+      amount: state.riichiSticks * 1000,
+    });
     players[playerWind].score += state.riichiSticks * 1000;
   }
+  const modifiedWinds = new Set<number>();
+  for (const pay of payouts) { modifiedWinds.add(pay.from); modifiedWinds.add(pay.to); }
+  if (state.riichiSticks > 0) modifiedWinds.add(playerWind);
+  const scoreAfter = players.map(p => p.score);
+  const changes = players.map((p, i) =>
+    modifiedWinds.has(i)
+      ? `${p.name}:${scoreBefore[i]}→${scoreAfter[i]}(${scoreAfter[i]-scoreBefore[i] >= 0 ? '+' : ''}${scoreAfter[i]-scoreBefore[i]})`
+      : `${p.name}:${scoreBefore[i]}(不变)`
+  ).join('|');
+  debugLog('SCORE_DBG', {
+    event: 'win_end',
+    scoresPost: `[${scoreAfter}]`,
+    changes,
+  });
 
   const winResult: WinResult = {
     player: playerWind,
@@ -569,6 +683,9 @@ function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winning
     basePoints: score.basePoints,
     payments: payouts.map(p => ({ player: p.to, amount: p.amount })),
     winnerGets: score.winnerGets,
+    basePayment: score.winnerGets - score.honbaAddition - score.riichiBonus,
+    honbaAddition: score.honbaAddition,
+    riichiBonus: score.riichiBonus,
     isDealerWin,
     handTiles: player.hand,
   };
@@ -588,6 +705,7 @@ function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winning
 
   return {
     ...state, players, result, phase: GamePhase.HAND_OVER,
+    actionsAvailable: WINDS.map(() => emptyActions()),  // 清空所有动作，防止 effect 二次触发
     claimedDiscardTileIds: !isTsumo && state.lastDiscard
       ? [...state.claimedDiscardTileIds, state.lastDiscard.id]
       : state.claimedDiscardTileIds,

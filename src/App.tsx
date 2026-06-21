@@ -63,27 +63,29 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
     setSkinIdx(Number(e.target.value));
   }, []);
 
-  // ── 自摸切：自动弃刚摸的牌（除非有动作提示） ──
+  // ── 自摸切：自动弃刚摸的牌（除非有动作提示）──
+  // 托管模式下由 GameController.tick() 通过 AI 选牌，此 effect 不触发
   React.useEffect(() => {
     if (!autoSelfDiscard) return;
+    if (autoPlay) return; // 托管时 AI 选牌，不盲打摸牌
     const cp = state.players[state.currentPlayer];
     if (!cp?.isHuman) return;
     if (state.phase !== GamePhase.DISCARDING) return;
     if (!state.drawnTile) return;
     humanDiscard(state.drawnTile.id);
-  }, [state.phase, state.currentPlayer, state.drawnTile?.id, autoSelfDiscard, humanDiscard]);
+  }, [state.phase, state.currentPlayer, state.drawnTile?.id, autoSelfDiscard, autoPlay, humanDiscard]);
 
-  // ── 立直后默认开启自摸切，可手动取消勾选 ──
+  // ── 立直后默认开启自摸切（托管模式除外）──
   const humanWind = React.useMemo(() => WINDS.find(w => state.players[w].isHuman), [state.players]);
   const prevRiichiRef = React.useRef(false);
   React.useEffect(() => {
     if (humanWind === undefined) return;
     const isRiichi = state.players[humanWind].isRiichi;
-    if (isRiichi && !prevRiichiRef.current) {
+    if (isRiichi && !prevRiichiRef.current && !autoPlay) {
       setAutoSelfDiscard(true);
     }
     prevRiichiRef.current = isRiichi;
-  }, [state.players[humanWind ?? 0]?.isRiichi]);
+  }, [state.players[humanWind ?? 0]?.isRiichi, autoPlay]);
 
   const handleNewGame = React.useCallback(() => {
     setGameKey(k => k + 1);

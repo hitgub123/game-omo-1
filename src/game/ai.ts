@@ -7,6 +7,8 @@
 
 import type { Tile, GameState, Wind } from './types';
 import { tileKey, isTerminalHonor, isMiddleTile, isDragonTile, isYakuhaiTile } from './tiles';
+import { tilesToHai } from './hand';
+import { checkMahjongStatus } from '../../utils/syanten.js';
 
 import type { DifficultyConfig } from './difficulty';
 import { DIFFICULTY_NORMAL } from './difficulty';
@@ -47,12 +49,43 @@ export function aiChooseDiscard(
   // 推/缩判断
   const pushFold = shouldPushOrFold(hand, state, playerWind, config);
 
-  // 对每张牌算两个值：打出后的向听数 + 进攻评分
+  // 对每张牌算三个值：打出后的向听数 + 进攻评分 + 待牌剩余枚数
   const scored = hand.map(t => {
     const remaining = hand.filter(h => h.id !== t.id);
     const shanten = getShanten(remaining);
-    const offense = scoreDiscardTile(t, hand, state, playerWind, config);
+    let offense = scoreDiscardTile(t, hand, state, playerWind, config);
     const danger = dangerMap.get(tileKey(t)) ?? 0;
+
+    // 听牌时：计算待牌总剩余枚数，剩余越多越该保留此弃牌路径
+    if (shanten === 0) {
+      const hai = tilesToHai(remaining);
+      const tenpaiResult = checkMahjongStatus(hai);
+      if (typeof tenpaiResult === 'object' && tenpaiResult.info) {
+        const uniqueWaits = new Set<string>();
+        for (const sol of tenpaiResult.info) {
+          for (const w of sol.waits) uniqueWaits.add(w);
+        }
+        // 统计每张待牌的可见枚数
+        let totalRemain = 0;
+        for (const w of uniqueWaits) {
+          const suit = w.slice(-1) as import('./types').TileSuit;
+          const val = parseInt(w.slice(0, -1));
+          let visible = 0;
+          for (const p of state.players) {
+            for (const d of p.discards) if (d.suit === suit && d.value === val) visible++;
+            for (const m of p.melds) for (const mt of m.tiles) if (mt.suit === suit && mt.value === val) visible++;
+          }
+          for (const di of state.doraIndicators) if (di.suit === suit && di.value === val) visible++;
+          // 自己手牌中的该牌也算可见
+          const inHand = hand.filter(h => h.suit === suit && h.value === val).length;
+          visible += inHand;
+          totalRemain += Math.max(0, 4 - visible);
+        }
+        // 剩余枚数越多越优先（×3 让枚数差影响大于牌自身分差）
+        offense += totalRemain * 5;
+      }
+    }
+
     return { tile: t, shanten, offense, danger };
   });
 

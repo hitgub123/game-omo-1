@@ -81,7 +81,7 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
   const [swapSourceTileId, setSwapSourceTileId] = useState<number | null>(null);
   const [riichiMode, setRiichiMode] = useState(false);
   const [riichiValidTileIds, setRiichiValidTileIds] = useState<Map<number, TenpaiInfo>>(new Map());
-  const [difficulty, setDifficultyState] = useState<DifficultyLevel>('easy');
+  const [difficulty, setDifficultyState] = useState<DifficultyLevel>('lunatic');
   const [autoPlay, setAutoPlayState] = useState(true);
   const ctrlRef = useRef<GameController | null>(null);
   const charsRef = useRef(initialChars);
@@ -109,6 +109,7 @@ export function useGame(characters?: { name: string }[], gameLength = 2): GameCo
     setIsAiThinking(true);
     const aiStateRef = { current: (() => {}) as () => void };
     const t = setTimeout(() => {
+      ctrl.setDifficulty('lunatic');
       ctrl.setAutoPlay(true);
       ctrl.start();
       aiStateRef.current = ctrl.subscribe((s) => {

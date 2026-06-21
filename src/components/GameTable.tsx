@@ -133,8 +133,12 @@ const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical, revea
   return (
     <div className={`opponent-area ${vertical ? 'opponent-vertical' : 'opponent-horizontal'} opponent-${['east','south','west','north'][wind]} ${isActive ? 'player-active' : ''}`}>`
       <div className="player-info" style={{ borderColor: ch.color }}>
-        {(() => { const av = getCharAvatar(player.name); return av ? <img src={av} className="player-avatar" width={36} height={36} alt="" /> : null; })()}
-        <span className="player-name" style={{ color: ch.color }}>{player.name}</span>
+        <div className="player-name-row">
+          {(() => { const av = getCharAvatar(player.name); return av ? <img src={av} className="player-avatar" width={36} height={36} alt="" /> : null; })()}
+          <div className="player-name-col">
+            <span className="player-name" style={{ color: ch.color }}>{player.name}</span>
+          </div>
+        </div>
         <div className="player-info-row">
           <span className="player-score" style={{ color: ch.colorLight }}>{fmtScore(player.score)}</span>
           <span className="player-wind">{['東','南','西','北'][displayWind]}</span>
@@ -213,9 +217,13 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ state, playerWind, select
     <div className={`player-section ${isActive ? 'player-active' : ''}`}>
       <div className="player-bar">
         <div className="player-info" style={{ borderColor: ch.color }}>
-          {(() => { const av = getCharAvatar(player.name); return av ? <img src={av} className="player-avatar" width={40} height={40} alt="" /> : null; })()}
-          <span className="player-name" style={{ color: ch.color }}>{player.name}</span>
-          <span className="player-title">{ch.title}</span>
+          <div className="player-name-row">
+            {(() => { const av = getCharAvatar(player.name); return av ? <img src={av} className="player-avatar" width={40} height={40} alt="" /> : null; })()}
+            <div className="player-name-col">
+              <span className="player-name" style={{ color: ch.color }}>{player.name}</span>
+              <span className="player-title">{ch.title}</span>
+            </div>
+          </div>
           <div className="player-info-row">
             <span className="player-score" style={{ color: ch.colorLight }}>{fmtScore(player.score)}</span>
             <span className="player-wind">{['東','南','西','北'][displayWind]}</span>

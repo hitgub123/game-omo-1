@@ -572,6 +572,17 @@ body {
   object-fit: cover;
   flex-shrink: 0;
 }
+.player-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.player-name-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  line-height: 1.2;
+}
 .player-info-row {
   display: flex;
   align-items: center;

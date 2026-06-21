@@ -85,15 +85,19 @@ export interface Player {
   swapEnergyCost: number;
   /** 琪露诺冰冻：下次摸牌必须自摸切 */
   frozenByCirno: boolean;
+  /** 跳过下次摸牌（冬眠、距離等） */
+  skipNextDraw: boolean;
+  /** 弃牌对对手不可见（蟲群、煙幕等） */
+  hideDiscards: boolean;
 }
 
-/** 能量槽默认配置（能力模式下使用） */
-export const DEFAULT_ENERGY_MAX = 100;
-export const DEFAULT_ENERGY_PER_DISCARD = 0;  // 弃牌不加（普通模式保持0）
-export const DEFAULT_ENERGY_PER_DRAW = 2;     // 摸牌+2
-export const DEFAULT_ENERGY_PER_MELD = 5;
-export const DEFAULT_ENERGY_PER_RIICHI = 10;
-export const DEFAULT_ENERGY_PER_WIN = 15;
+/** 能量槽默认配置 */
+export const DEFAULT_ENERGY_MAX = 1000;
+export const DEFAULT_ENERGY_PER_DISCARD = 20;
+export const DEFAULT_ENERGY_PER_DRAW = 0;
+export const DEFAULT_ENERGY_PER_MELD = 40;
+export const DEFAULT_ENERGY_PER_RIICHI = 40;
+export const DEFAULT_ENERGY_PER_WIN = 0;
 export const DEFAULT_SWAP_ENERGY_COST = 200;
 
 /** 牌局阶段 */

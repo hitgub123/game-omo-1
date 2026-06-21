@@ -39,7 +39,7 @@ const THEMES = [
 
 const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
   const charNames = characters.map(c => ({ name: c.nameCN }));
-  const [gameLength, setGameLength] = React.useState(1);
+  const [gameLength, setGameLength] = React.useState(4);
   const [noCall, setNoCall] = React.useState(true);
   const [autoWin, setAutoWin] = React.useState(true);
   const {
@@ -73,6 +73,9 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
     if (!cp?.isHuman) return;
     if (state.phase !== GamePhase.DISCARDING) return;
     if (!state.drawnTile) return;
+    // 有可执行动作时不自动弃牌（防止覆盖立直/自摸/暗杠等选择）
+    const acts = state.actionsAvailable[state.currentPlayer];
+    if (acts && (acts.canTsumo || acts.canRiichi || acts.canAnkan || acts.canKakan)) return;
     humanDiscard(state.drawnTile.id);
   }, [state.phase, state.currentPlayer, state.drawnTile?.id, autoSelfDiscard, autoPlay, humanDiscard]);
 

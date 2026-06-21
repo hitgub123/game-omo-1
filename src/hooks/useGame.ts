@@ -62,7 +62,7 @@ function buildTeamRoster(chars: { name: string }[]): { name: string }[][] {
   return roster;
 }
 
-export function useGame(characters?: { name: string }[], gameLength = 1): GameControllerAPI {
+export function useGame(characters?: { name: string }[], gameLength = 4): GameControllerAPI {
   const isTeamMode = characters && characters.length > 4;
   const teamRosterRef = useRef<{ name: string }[][] | null>(null);
   const currentRoundRef = useRef(0);
@@ -83,8 +83,8 @@ export function useGame(characters?: { name: string }[], gameLength = 1): GameCo
   const [swapSourceTileId, setSwapSourceTileId] = useState<number | null>(null);
   const [riichiMode, setRiichiMode] = useState(false);
   const [riichiValidTileIds, setRiichiValidTileIds] = useState<Map<number, TenpaiInfo>>(new Map());
-  const [difficulty, setDifficultyState] = useState<DifficultyLevel>('lunatic');
-  const [autoPlay, setAutoPlayState] = useState(true);
+  const [difficulty, setDifficultyState] = useState<DifficultyLevel>('easy');
+  const [autoPlay, setAutoPlayState] = useState(false);
   const ctrlRef = useRef<GameController | null>(null);
   const charsRef = useRef(initialChars);
   const gameLengthRef = useRef(gameLength);
@@ -111,8 +111,8 @@ export function useGame(characters?: { name: string }[], gameLength = 1): GameCo
     setIsAiThinking(true);
     const aiStateRef = { current: (() => {}) as () => void };
     const t = setTimeout(() => {
-      ctrl.setDifficulty('lunatic');
-      ctrl.setAutoPlay(true);
+      ctrl.setDifficulty(difficulty);
+      ctrl.setAutoPlay(autoPlay);
       ctrl.start();
       aiStateRef.current = ctrl.subscribe((s) => {
         setIsAiThinking(

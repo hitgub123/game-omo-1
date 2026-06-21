@@ -6,9 +6,9 @@ import { checkMahjongStatus } from '../../utils/syanten.js';
 import { riichiCheckWin as checkWin } from './riichi-check';
 import { calculateScore, calculatePayouts } from './scoring';
 import { debugLog } from '../debug/debugLog';
-import { getAllRequirements } from './abilities';
+import { getAllRequirements, tryMakeTenpai } from './abilities';
 
-export function createInitialState(characters?: { name: string }[], dealerWind?: Wind, gameLength = 1): GameState {
+export function createInitialState(characters?: { name: string }[], dealerWind?: Wind, gameLength = 4): GameState {
   const deck = shuffleArray(createTileDeck());
   const deadWall = deck.slice(0, 14);
   const wall = deck.slice(14);
@@ -44,6 +44,8 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     abilityUseCount: 0,
     swapEnergyCost: DEFAULT_SWAP_ENERGY_COST,
     frozenByCirno: false,
+    skipNextDraw: false,
+    hideDiscards: false,
   }));
 
   // 配牌：先处理能力需求，再随机分配剩余牌
@@ -56,13 +58,46 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     const wallPool = [...wall];
     const reserved: { wind: number; tiles: Tile[] }[] = [];
 
+    // ── 第一步：处理配牌即听牌，必须最先从完整牌山拿牌 ──
     for (const req of requirements) {
+      if (req.tenpai) {
+        const result = tryMakeTenpai([], wallPool); // 空手牌，从完整牌山构建
+        if (result.used > 0) {
+          reserved.push({ wind: req.wind, tiles: result.hand });
+        }
+      }
+    }
+
+    // ── 第二步：处理普通配牌需求 ──
+    for (const req of requirements) {
+      if (req.tenpai) continue; // 已在上一步处理
       const taken: Tile[] = [];
-      for (const rt of req.tiles) {
-        const idx = wallPool.findIndex(t => t.suit === rt.suit && t.value === rt.value);
-        if (idx >= 0) {
-          taken.push(wallPool[idx]);
-          wallPool.splice(idx, 1);
+      const gs = req.groupSize || 1;
+      // 按组处理：每组必须全部找到才取，否则全组跳过
+      for (let g = 0; g < req.tiles.length; g += gs) {
+        const group = req.tiles.slice(g, g + gs);
+        const groupTiles: Tile[] = [];
+        const poolCopy = [...wallPool];
+        let allFound = true;
+        for (const rt of group) {
+          const idx = poolCopy.findIndex(t => t.suit === rt.suit && t.value === rt.value);
+          if (idx >= 0) {
+            groupTiles.push(poolCopy[idx]);
+            poolCopy.splice(idx, 1);
+          } else {
+            allFound = false;
+            break;
+          }
+        }
+        if (allFound) {
+          // 全组找到，正式从 wallPool 中移除
+          for (const rt of group) {
+            const idx = wallPool.findIndex(t => t.suit === rt.suit && t.value === rt.value);
+            if (idx >= 0) {
+              taken.push(wallPool[idx]);
+              wallPool.splice(idx, 1);
+            }
+          }
         }
       }
       if (taken.length > 0) {
@@ -178,8 +213,6 @@ export function drawTile(state: GameState): GameState {
   const players = state.players.map(p => ({ ...p, hand: [...p.hand] }));
   const player = players[state.currentPlayer];
   player.hand = [...player.hand, drawnTile];
-  // 能量槽：摸牌 +energyPerDraw
-  player.energy = Math.min(player.energyMax, player.energy + player.energyPerDraw);
 
   const actions = getDrawActions(player, state, state.currentPlayer, drawnTile);
   const hasActions = actions.canRiichi || actions.canTsumo || actions.canAnkan || actions.canKakan || actions.canNineOrphans;
@@ -329,6 +362,9 @@ export function discardTile(state: GameState, tileId: number): GameState {
 
   const discarded = player.hand.splice(idx, 1)[0];
   player.hand = sortHand(player.hand);
+
+  // 能量槽：弃牌 +energyPerDiscard
+  player.energy = Math.min(player.energyMax, player.energy + player.energyPerDiscard);
 
   // 食替检查：不能打出鸣牌所关联的牌
   const tileKey_ = `${discarded.value}${discarded.suit}`;
@@ -772,8 +808,6 @@ function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winning
     });
     players[playerWind].score += state.riichiSticks * 1000;
   }
-  // 能量槽：和牌 +energyPerWin
-  players[playerWind].energy = Math.min(players[playerWind].energyMax, players[playerWind].energy + players[playerWind].energyPerWin);
   const modifiedWinds = new Set<number>();
   for (const pay of payouts) { modifiedWinds.add(pay.from); modifiedWinds.add(pay.to); }
   if (state.riichiSticks > 0) modifiedWinds.add(playerWind);
@@ -1018,6 +1052,8 @@ export function createNextHand(prevState: GameState): GameState {
     abilityUseCount: prevState.players[wind].abilityUseCount,
     swapEnergyCost: prevState.players[wind].swapEnergyCost,
     frozenByCirno: false,
+    skipNextDraw: false,
+    hideDiscards: false,
   }));
 
   // 配牌：先处理能力需求，再随机分配剩余牌
@@ -1029,13 +1065,42 @@ export function createNextHand(prevState: GameState): GameState {
     const wallPool = [...wall];
     const reserved: { wind: number; tiles: Tile[] }[] = [];
 
+    // ── 第一步：处理配牌即听牌（wind=-3）──
     for (const req of requirements2) {
+      if (req.tenpai) {
+        const result = tryMakeTenpai([], wallPool);
+        if (result.used > 0) {
+          reserved.push({ wind: req.wind, tiles: result.hand });
+        }
+      }
+    }
+
+    // ── 第二步：处理普通配牌需求 ──
+    for (const req of requirements2) {
+      if (req.tenpai) continue;
       const taken: Tile[] = [];
-      for (const rt of req.tiles) {
-        const idx = wallPool.findIndex(t => t.suit === rt.suit && t.value === rt.value);
-        if (idx >= 0) {
-          taken.push(wallPool[idx]);
-          wallPool.splice(idx, 1);
+      const gs2 = req.groupSize || 1;
+      for (let g = 0; g < req.tiles.length; g += gs2) {
+        const group = req.tiles.slice(g, g + gs2);
+        const poolCopy2 = [...wallPool];
+        let allFound2 = true;
+        for (const rt of group) {
+          const idx = poolCopy2.findIndex(t => t.suit === rt.suit && t.value === rt.value);
+          if (idx >= 0) {
+            poolCopy2.splice(idx, 1);
+          } else {
+            allFound2 = false;
+            break;
+          }
+        }
+        if (allFound2) {
+          for (const rt of group) {
+            const idx = wallPool.findIndex(t => t.suit === rt.suit && t.value === rt.value);
+            if (idx >= 0) {
+              taken.push(wallPool[idx]);
+              wallPool.splice(idx, 1);
+            }
+          }
         }
       }
       if (taken.length > 0) {

@@ -25,9 +25,11 @@ function tryJokerSubstitutions(
 
   // 只取第一张当 joker（最多1张）
   const jokerCount = 1;
-  // 候选牌型：s→仅索子1-9, p→全部34种
+  // 候选牌型：s→仅索子1-9, z→仅字牌1-7, p→全部34种
   const candidates = jokerSuit === 's'
     ? ALL_TILE_TYPES.filter(t => t.suit === 's')
+    : jokerSuit === 'z'
+    ? ALL_TILE_TYPES.filter(t => t.suit === 'z')
     : ALL_TILE_TYPES;
 
   return tryCombinations(normalTiles, jokerCount, 0, [], candidates);
@@ -288,6 +290,23 @@ export function riichiCheckWin(
       }
     }
 
+    // ── 紅葉宝牌（秋静叶：所有发变宝牌）──
+    let leafDoraCount = 0;
+    if (!isYakuman && winner.name === '秋静叶') {
+      for (const t of allHandTiles) {
+        if (t.suit === 'z' && t.value === 6 && !t.isAkadora) leafDoraCount++;
+      }
+      if (leafDoraCount > 0) {
+        yaku.push({ id: 'leaf_dora', name: '紅葉宝牌', han: leafDoraCount, isYakuman: false, isDoubleYakuman: false, hanOpen: undefined });
+      }
+    }
+
+    // ── 光学迷彩（河城荷取：宝牌每张计2翻）──
+    let opticsDouble = false;
+    if (!isYakuman && winner.name === '河城荷取') {
+      opticsDouble = true;
+    }
+
     if (result.yaku) {
       for (const [name, hanStr] of Object.entries(result.yaku)) {
         const str = hanStr as string;
@@ -302,9 +321,20 @@ export function riichiCheckWin(
       }
     }
 
+    // ── 光学迷彩：宝牌每张翻倍 ──
+    let opticsBonus = 0;
+    if (opticsDouble) {
+      for (const y of yaku) {
+        if (y.id === 'dora' || y.id === 'akadora' || y.id === 'death_dora' || y.id === 'bug_dora' || y.id === 'eternal_dora' || y.id === 'leaf_dora') {
+          opticsBonus += y.han;
+          y.han *= 2;
+        }
+      }
+    }
+
     return {
       yaku,
-      totalHan: isYakuman ? result.yakuman * 13 : (result.han || 0) + deathDoraCount + bugDoraCount + eternalDoraCount,
+      totalHan: isYakuman ? result.yakuman * 13 : (result.han || 0) + deathDoraCount + bugDoraCount + eternalDoraCount + leafDoraCount + opticsBonus,
       fu: isYakuman ? 0 : (result.fu || 0),
       divisions: [],
     };

@@ -48,7 +48,7 @@ const REGISTRY: Record<string, AbilityDef> = {
   '帕秋莉·诺蕾姬':    { cost:100, type:'instant',  implemented:true,  description:'七曜魔法 — 手牌一张与牌山交换' },
   '十六夜咲夜':        { cost:100, type:'modifier', implemented:true,  description:'时间操作 — 弃牌后再摸再弃（额外一巡）' },
   '蕾米莉亚·斯卡蕾特': { cost:100, type:'instant',  implemented:true,  description:'運命干渉 — 听牌后从牌山找牌自摸和牌' },
-  '芙兰朵露·斯卡蕾特': { cost:100, type:'instant',  implemented:true,  description:'破壊 — 随机弃对手各一张手牌，从弃牌区回收一张' },
+  '芙兰朵露·斯卡蕾特': { cost:100, type:'instant',  implemented:true,  description:'破壊 — 随机弃对手手牌(跳过立直)，对手从弃牌区摸回' },
 
   // ── th07 妖妖梦 ──
   '蕾蒂·霍瓦特洛克':   { cost:100, type:'instant', implemented:true, description:'冬眠 — 局终能量+20×全员技能次数' },
@@ -79,15 +79,15 @@ const REGISTRY: Record<string, AbilityDef> = {
   '四季映姬':          { cost:100, type:'instant', implemented:true, description:'審判 — 所有玩家手牌对你可见' },
 
   // ── th10 风神录 ──
-  '秋静叶':            { cost:100, type:'instant', implemented:true, description:'紅葉 — 摸牌后可弃万子再摸一张' },
-  '秋穰子':            { cost:100, type:'instant', implemented:true, description:'豊穣 — 自己摸牌时额外+5能量' },
-  '键山雏':            { cost:100, type:'instant', implemented:true, description:'厄流し — 弃牌区一张放回牌山底，摸一张' },
-  '河城荷取':          { cost:100, type:'instant', implemented:true, description:'光学迷彩 — 本巡弃牌对手不可见' },
-  '犬走椛':            { cost:100, type:'instant', implemented:true, description:'千里眼 — 查看牌山顶3张' },
+  '秋静叶':            { cost:100, type:'instant', implemented:true, description:'紅葉 — 手牌里的发都是宝牌' },
+  '秋穰子':            { cost:100, type:'instant', implemented:true, description:'豊穣 — 一张发可变任意字牌(joker)' },
+  '键山雏':            { cost:100, type:'instant', implemented:true, description:'厄流し — 上家弃牌最后一张与手牌交换' },
+  '河城荷取':          { cost:100, type:'instant', implemented:true, description:'光学迷彩 — 宝牌每张计2翻' },
+  '犬走椛':            { cost:100, type:'instant', implemented:true, description:'千里眼 — 牌山按钮查看剩余牌' },
   '射命丸文':          { cost:100, type:'instant', implemented:true, description:'風速 — 用一张风牌与牌山交换' },
   '东风谷早苗':        { cost:100, type:'dealing',  implemented:true, description:'奇跡 — 奇数次字牌对子，偶数升暗刻' },
-  '八坂神奈子':        { cost:100, type:'instant', implemented:true, description:'天流 — 本局和牌得分+30%' },
-  '洩矢诹访子':        { cost:100, type:'instant', implemented:true, description:'大地 — 被荣和时支付减半' },
+  '八坂神奈子':        { cost:100, type:'modifier', implemented:true, description:'天流 — 索子摸牌概率+40/50/60%' },
+  '洩矢诹访子':        { cost:100, type:'modifier', implemented:true, description:'大地 — 饼子摸牌概率+40/50/60%' },
 
   // ── th11 地灵殿 ──
   '黑谷山女':          { cost:100, type:'instant', implemented:true, description:'疫病 — 指定对手下张摸牌自摸切' },

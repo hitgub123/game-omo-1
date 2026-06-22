@@ -51,6 +51,10 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     dollCount: 0,
     deathDoraIds: [],
     jokerSuit: null,
+    abilityBlocked: false,
+    energyGainBlocked: false,
+    satoriCopyTarget: null,
+    satoriCopyUsed: false,
   }));
 
   // 配牌：先处理能力需求，再随机分配剩余牌
@@ -229,6 +233,27 @@ export function drawTile(state: GameState): GameState {
     drawnTile = wall.shift()!;
   }
 
+  // ── 天流/大地：摸牌概率偏向特定花色 ──
+  const cp = state.players[state.currentPlayer];
+  let biasSuit: string | null = null;
+  if (cp.name === '八坂神奈子') biasSuit = 's';
+  else if (cp.name === '洩矢诹访子') biasSuit = 'p';
+  if (biasSuit && cp.abilityUseCount > 0 && wall.length > 0) {
+    const level = Math.min(cp.abilityUseCount, 3);
+    const chance = 0.3 + level * 0.1; // 40%/50%/60%
+    if (Math.random() < chance) {
+      // 从牌山随机位置找指定花色
+      const indices = wall.map((t, i) => ({ t, i })).filter(x => x.t.suit === biasSuit);
+      if (indices.length > 0) {
+        const pick = indices[Math.floor(Math.random() * indices.length)];
+        // 交换：把牌山顶的牌放到找到的位置，摸找到的牌
+        drawnTile = pick.t;
+        wall[pick.i] = wall[0];
+        wall.shift();
+      }
+    }
+  }
+
   const isLastDraw = wall.length === 0;
   const players = state.players.map(p => ({ ...p, hand: [...p.hand] }));
   const player = players[state.currentPlayer];
@@ -377,8 +402,10 @@ export function discardTile(state: GameState, tileId: number): GameState {
   const discarded = player.hand.splice(idx, 1)[0];
   player.hand = sortHand(player.hand);
 
-  // 能量槽：弃牌 +energyPerDiscard
-  player.energy = Math.min(player.energyMax, player.energy + player.energyPerDiscard);
+  // 能量槽：弃牌 +energyPerDiscard（嫉妬封锁除外）
+  if (!player.energyGainBlocked) {
+    player.energy = Math.min(player.energyMax, player.energy + player.energyPerDiscard);
+  }
 
   // 食替检查：不能打出鸣牌所关联的牌
   const tileKey_ = `${discarded.value}${discarded.suit}`;
@@ -628,15 +655,19 @@ export function executeMeld(state: GameState, playerWind: Wind, meldType: MeldTy
   player.melds.push(meld);
   player.hasCalled = true;
 
-  // 能量槽：鸣牌 +energyPerMeld
-  player.energy = Math.min(player.energyMax, player.energy + player.energyPerMeld);
+  // 能量槽：鸣牌 +energyPerMeld（嫉妬封锁除外）
+  if (!player.energyGainBlocked) {
+    player.energy = Math.min(player.energyMax, player.energy + player.energyPerMeld);
+  }
 
   // ── 普莉兹姆利巴合奏：鸣其他玩家牌时对方付30能量 ──
   if (player.name === '普莉兹姆利巴三姐妹' && meld.from !== undefined) {
     const fromPlayer = players[meld.from];
     const tax = Math.min(fromPlayer.energy, 30);
     fromPlayer.energy -= tax;
-    player.energy = Math.min(player.energyMax, player.energy + tax);
+    if (!player.energyGainBlocked) {
+      player.energy = Math.min(player.energyMax, player.energy + tax);
+    }
     debugLog('MELD_DBG', { event: 'prismriver_tax', from: fromPlayer.name, to: player.name, amount: tax });
   }
 
@@ -923,7 +954,7 @@ function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winning
 
   // ── 蕾蒂冬眠：局终能量+20×全员技能次数 ──
   for (const p of players) {
-    if (p.name === '蕾蒂·霍瓦特洛克' && state.totalAbilityUses > 0) {
+    if (p.name === '蕾蒂·霍瓦特洛克' && state.totalAbilityUses > 0 && !p.energyGainBlocked) {
       const bonus = state.totalAbilityUses * 20;
       p.energy = Math.min(p.energyMax, p.energy + bonus);
       debugLog('WINTER_DBG', { player: p.name, totalUses: state.totalAbilityUses, bonus, energyAfter: p.energy });
@@ -1100,8 +1131,24 @@ export function createNextHand(prevState: GameState): GameState {
   const wall = deck.slice(14);
   const doraIndicators = [deadWall[4]];
 
-  // 继承分数和名字
-  const players: Player[] = WINDS.map((wind) => ({
+  // 继承分数和名字 + 処理さとりコピー状態
+  const satoriMap: Record<number, { target: Wind | null; used: boolean }> = {};
+  for (const wind of WINDS) {
+    const prev = prevState.players[wind];
+    let target = prev.satoriCopyTarget ?? null;
+    let used = prev.satoriCopyUsed ?? false;
+    if (target !== null && used) { target = null; used = false; }
+    else if (target !== null && !used) { used = true; }
+    satoriMap[wind] = { target, used };
+  }
+
+  // ── 星熊勇仪三色同顺 ──
+  const doSanshoku = prevState.yuugiSanshoku === true;
+  const yuugiWind = doSanshoku ? WINDS.find(w => prevState.players[w].name === '星熊勇仪') : undefined;
+
+  const players: Player[] = WINDS.map((wind) => {
+    const sm = satoriMap[wind];
+    return {
     name: prevState.players[wind].name,
     wind,
     hand: [],
@@ -1135,7 +1182,11 @@ export function createNextHand(prevState: GameState): GameState {
     dollCount: 0,
     deathDoraIds: [],
     jokerSuit: null,
-  }));
+    abilityBlocked: false,
+    energyGainBlocked: false,
+    satoriCopyTarget: sm.target,
+    satoriCopyUsed: sm.used,
+  });
 
   // 配牌：先处理能力需求，再随机分配剩余牌
   const playerNames2 = players.map(p => p.name);

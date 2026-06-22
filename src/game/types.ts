@@ -99,6 +99,14 @@ export interface Player {
   deathDoraIds: number[];
   /** joker花色（米斯蒂娅1s/辉夜1p当任意牌，null=无） */
   jokerSuit: string | null;
+  /** 疫病：被指定本局无法使用技能（黑谷山女） */
+  abilityBlocked: boolean;
+  /** 嫉妬：被指定本局无法增加能量（水桥帕露希） */
+  energyGainBlocked: boolean;
+  /** 読心：复制目标技能（古明地觉，null=未复制） */
+  satoriCopyTarget: Wind | null;
+  /** 読心：复制是否已生效过一局 */
+  satoriCopyUsed: boolean;
 }
 
 /** 能量槽默认配置 */
@@ -230,6 +238,8 @@ export interface GameState {
   seeAllHands: boolean;
   /** 咲夜额外一巡标记（内部用） */
   _sakuyaExtraTurn?: boolean;
+  /** 星熊勇仪怪力：下局配牌有三色同顺 */
+  yuugiSanshoku?: boolean;
 }
 
 /** 角色定义 */

@@ -48,6 +48,9 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     hideDiscards: 0,
     seeNextDraw: false,
     abilityUsedThisHand: 0,
+    dollCount: 0,
+    deathDoraIds: [],
+    jokerSuit: null,
   }));
 
   // 配牌：先处理能力需求，再随机分配剩余牌
@@ -58,14 +61,14 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
   if (requirements.length > 0) {
     // 有配牌需求：从牌山中预留给对应玩家
     const wallPool = [...wall];
-    const reserved: { wind: number; tiles: Tile[] }[] = [];
+    const reserved: { wind: number; tiles: Tile[]; playerIndex?: number }[] = [];
 
     // ── 第一步：处理配牌即听牌，必须最先从完整牌山拿牌 ──
     for (const req of requirements) {
       if (req.tenpai) {
         const result = tryMakeTenpai([], wallPool); // 空手牌，从完整牌山构建
         if (result.used > 0) {
-          reserved.push({ wind: req.wind, tiles: result.hand });
+          reserved.push({ wind: req.wind, tiles: result.hand, playerIndex: req.playerIndex });
         }
       }
     }
@@ -103,7 +106,7 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
         }
       }
       if (taken.length > 0) {
-        reserved.push({ wind: req.wind, tiles: taken });
+        reserved.push({ wind: req.wind, tiles: taken, playerIndex: req.playerIndex });
       }
     }
 
@@ -163,6 +166,8 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
       gameLength,
       reimuCharm: false,
       sniperReserve: null,
+      totalAbilityUses: 0,
+      seeAllHands: false,
     };
   }
 
@@ -196,6 +201,8 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     gameLength,
     reimuCharm: false,
     sniperReserve: null,
+    totalAbilityUses: 0,
+    seeAllHands: false,
   };
 }
 
@@ -385,6 +392,14 @@ export function discardTile(state: GameState, tileId: number): GameState {
   }
   player.discards.push(discarded);
 
+  // ── 梅蒂欣毒素：其他角色弃牌时-2能量 ──
+  for (const p of players) {
+    if (p.name === '梅蒂欣·梅兰可莉' && p.wind !== state.currentPlayer) {
+      players[state.currentPlayer].energy = Math.max(0, players[state.currentPlayer].energy - 2);
+      break;
+    }
+  }
+
   // Check responses from other players
   const actionsAvailable = WINDS.map((wind) => {
     if (wind === state.currentPlayer) return emptyActions();
@@ -459,6 +474,14 @@ function getResponseActions(
   if (playerWind === nextPlayer && discarded.suit !== 'z') {
     const chiOpts = getChiOptions(player.hand, discarded);
     if (chiOpts.length > 0) { actions.canChi = true; actions.chiOptions = [chiOpts]; }
+  }
+
+  // 小野塚小町距離：其他玩家禁止吃（可碰杠）
+  for (const p of state.players) {
+    if (p.name === '小野塚小町' && p.wind !== playerWind) {
+      actions.canChi = false; actions.chiOptions = [];
+      break;
+    }
   }
 
   // 灵梦护符：灵梦打出的牌不可被鸣牌（吃碰杠），但可荣和
@@ -608,6 +631,15 @@ export function executeMeld(state: GameState, playerWind: Wind, meldType: MeldTy
   // 能量槽：鸣牌 +energyPerMeld
   player.energy = Math.min(player.energyMax, player.energy + player.energyPerMeld);
 
+  // ── 普莉兹姆利巴合奏：鸣其他玩家牌时对方付30能量 ──
+  if (player.name === '普莉兹姆利巴三姐妹' && meld.from !== undefined) {
+    const fromPlayer = players[meld.from];
+    const tax = Math.min(fromPlayer.energy, 30);
+    fromPlayer.energy -= tax;
+    player.energy = Math.min(player.energyMax, player.energy + tax);
+    debugLog('MELD_DBG', { event: 'prismriver_tax', from: fromPlayer.name, to: player.name, amount: tax });
+  }
+
   // ── [DEBUG] 鸣牌日志 → game.log ──
   debugLog('MELD_DBG', {
     player: player.name,
@@ -754,16 +786,33 @@ export function executeWin(state: GameState, playerWind: Wind, isTsumo: boolean)
 
 function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winningTile: Tile, evalResult: any): GameState {
   const player = state.players[playerWind];
+
+  // ── 爱丽丝人偶：减少获胜者番数 ──
+  let totalHan = evalResult.totalHan;
+  const players = state.players.map(p => ({ ...p }));
+  for (let i = 0; i < 4; i++) {
+    if (i === playerWind) continue;
+    const loser = players[i];
+    if (loser.name === '爱丽丝·玛格特罗依德' && loser.dollCount > 0) {
+      const reduce = Math.min(loser.dollCount, totalHan - 1);
+      if (reduce > 0) {
+        totalHan -= reduce;
+        loser.dollCount -= reduce;
+        debugLog('DOLL_DBG', { player: loser.name, dollsBefore: loser.dollCount + reduce, reduce, hanAfter: totalHan, dollsAfter: loser.dollCount });
+      }
+    }
+  }
+
   const isDealerWin = player.isDealer;
   const score = calculateScore(
-    evalResult.fu, evalResult.totalHan, isDealerWin, isTsumo,
+    evalResult.fu, totalHan, isDealerWin, isTsumo,
     state.honba, state.riichiSticks,
   );
 
   const payouts = calculatePayouts(
     playerWind,
     isTsumo ? null : state.lastDiscardPlayer!,
-    evalResult.fu, evalResult.totalHan,
+    evalResult.fu, totalHan,
     state.honba, state.riichiSticks,
     isDealerWin,
     state.dealerIndex,
@@ -789,7 +838,6 @@ function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winning
     scoresPre: `[${scoreBefore}]`,
   });
 
-  const players = state.players.map(p => ({ ...p }));
   for (const pay of payouts) {
     debugLog('SCORE_DBG', {
       event: 'payout',
@@ -818,6 +866,18 @@ function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winning
   const modifiedWinds = new Set<number>();
   for (const pay of payouts) { modifiedWinds.add(pay.from); modifiedWinds.add(pay.to); }
   if (state.riichiSticks > 0) modifiedWinds.add(playerWind);
+
+  // ── 藤原妹红不死：被和时对方偿还4000分 ──
+  for (const pay of payouts) {
+    const loser = players[pay.from];
+    if (loser.name === '藤原妹红' && pay.from !== playerWind) {
+      const refund = Math.min(4000, players[playerWind].score);
+      players[playerWind].score -= refund;
+      loser.score += refund;
+      debugLog('PHOENIX_DBG', { player: loser.name, from: players[playerWind].name, refund });
+    }
+  }
+
   const scoreAfter = players.map(p => p.score);
   const changes = players.map((p, i) =>
     modifiedWinds.has(i)
@@ -860,6 +920,15 @@ function finishWin(state: GameState, playerWind: Wind, isTsumo: boolean, winning
     winResults: [winResult],
     payments: allPayments,
   };
+
+  // ── 蕾蒂冬眠：局终能量+20×全员技能次数 ──
+  for (const p of players) {
+    if (p.name === '蕾蒂·霍瓦特洛克' && state.totalAbilityUses > 0) {
+      const bonus = state.totalAbilityUses * 20;
+      p.energy = Math.min(p.energyMax, p.energy + bonus);
+      debugLog('WINTER_DBG', { player: p.name, totalUses: state.totalAbilityUses, bonus, energyAfter: p.energy });
+    }
+  }
 
   return {
     ...state, players, result, phase: GamePhase.HAND_OVER,
@@ -1063,6 +1132,9 @@ export function createNextHand(prevState: GameState): GameState {
     hideDiscards: 0,
     seeNextDraw: false,
     abilityUsedThisHand: 0,
+    dollCount: 0,
+    deathDoraIds: [],
+    jokerSuit: null,
   }));
 
   // 配牌：先处理能力需求，再随机分配剩余牌
@@ -1072,14 +1144,14 @@ export function createNextHand(prevState: GameState): GameState {
 
   if (requirements2.length > 0) {
     const wallPool = [...wall];
-    const reserved: { wind: number; tiles: Tile[] }[] = [];
+    const reserved: { wind: number; tiles: Tile[]; playerIndex?: number }[] = [];
 
     // ── 第一步：处理配牌即听牌（wind=-3）──
     for (const req of requirements2) {
       if (req.tenpai) {
         const result = tryMakeTenpai([], wallPool);
         if (result.used > 0) {
-          reserved.push({ wind: req.wind, tiles: result.hand });
+          reserved.push({ wind: req.wind, tiles: result.hand, playerIndex: req.playerIndex });
         }
       }
     }
@@ -1113,7 +1185,7 @@ export function createNextHand(prevState: GameState): GameState {
         }
       }
       if (taken.length > 0) {
-        reserved.push({ wind: req.wind, tiles: taken });
+        reserved.push({ wind: req.wind, tiles: taken, playerIndex: req.playerIndex });
       }
     }
 
@@ -1165,6 +1237,8 @@ export function createNextHand(prevState: GameState): GameState {
       claimedDiscardTileIds: [],
       reimuCharm: false,  // 护符已消耗
       sniperReserve: null,
+      totalAbilityUses: 0,
+      seeAllHands: false,
     };
   }
 
@@ -1198,5 +1272,7 @@ export function createNextHand(prevState: GameState): GameState {
     claimedDiscardTileIds: [],
     reimuCharm: false,  // 护符已消耗
     sniperReserve: null,
+    totalAbilityUses: 0,
+    seeAllHands: false,
   };
 }

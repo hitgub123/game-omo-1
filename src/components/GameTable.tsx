@@ -159,7 +159,7 @@ const OpponentSection: React.FC<OpponentProps> = ({ state, wind, vertical, revea
 
         <div className={`hand-tiles ${vertical ? 'hand-vertical' : ''}`}>
           {player.hand.map(t => (
-            <TileComponent key={t.id} tile={t} faceDown={!revealHands} small={vertical} />
+            <TileComponent key={t.id} tile={t} faceDown={!revealHands && !state.seeAllHands} small={vertical} />
           ))}
         </div>
 

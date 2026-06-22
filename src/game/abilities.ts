@@ -51,32 +51,32 @@ const REGISTRY: Record<string, AbilityDef> = {
   '芙兰朵露·斯卡蕾特': { cost:100, type:'instant',  implemented:true,  description:'破壊 — 随机弃对手各一张手牌，从弃牌区回收一张' },
 
   // ── th07 妖妖梦 ──
-  '蕾蒂·霍瓦特洛克':   { cost:100, type:'instant', implemented:true, description:'冬眠 — 跳过自己回合，回复1000点' },
-  '橙':                { cost:100, type:'instant', implemented:true, description:'式神 — 模仿上一家使用的能力效果' },
-  '爱丽丝·玛格特罗依德':{ cost:100, type:'instant', implemented:true, description:'人形操作 — 弃牌区一张牌与牌山交换' },
-  '普莉兹姆利巴三姐妹': { cost:100, type:'instant', implemented:true, description:'合奏 — 手牌面子数×2=额外能量' },
+  '蕾蒂·霍瓦特洛克':   { cost:100, type:'instant', implemented:true, description:'冬眠 — 局终能量+20×全员技能次数' },
+  '橙':                { cost:100, type:'modifier',implemented:true, description:'式神 — 其他玩家用技能需付1000分' },
+  '爱丽丝·玛格特罗依德':{ cost:100, type:'instant', implemented:true, description:'人形操作 — 积攒人偶，被和时消耗减1番（最低1番）' },
+  '普莉兹姆利巴三姐妹': { cost:100, type:'modifier',implemented:true, description:'合奏 — 鸣其他玩家牌时对方付30能量' },
   '魂魄妖梦':          { cost:100, type:'instant', implemented:true, description:'剣術 — 其他每人减60能量，不足变0' },
-  '西行寺幽幽子':      { cost:100, type:'instant', implemented:true, description:'死誘 — 指定对手本巡不能荣和' },
-  '八云蓝':            { cost:100, type:'instant', implemented:true, description:'九尾 — 摸牌后可再摸一张再弃一张' },
-  '八云紫':            { cost:100, type:'instant', implemented:true, description:'境界 — 手牌一张与牌山交换' },
+  '西行寺幽幽子':      { cost:100, type:'instant', implemented:true, description:'死誘 — 随机一张手牌变宝牌' },
+  '八云蓝':            { cost:100, type:'modifier',implemented:true, description:'九尾 — 其他玩家用技能需付20能量' },
+  '八云紫':            { cost:100, type:'instant', implemented:true, description:'境界 — 指定花色全换（先塞后摸等量）' },
 
   // ── th08 永夜抄 ──
-  '莉格露·奈特巴格':   { cost:100, type:'instant', implemented:true, description:'蟲群 — 对手本巡弃牌不显示' },
-  '米斯蒂娅·萝蕾拉':   { cost:100, type:'instant', implemented:true, description:'夜雀 — 对手本巡摸牌不显示' },
-  '上白泽慧音':        { cost:100, type:'instant', implemented:true, description:'歴史 — 弃牌可撤销，手牌恢复' },
-  '博丽灵梦':          { cost:100, type:'modifier', implemented:true, description:'博丽护符 — 自己打出的牌无法被鸣牌' },
-  '雾雨魔理沙':        { cost:100, type:'modifier', implemented:true, description:'八卦炉 — 立直和牌时多翻里宝牌' },
-  '因幡帝':            { cost:100, type:'instant', implemented:true, description:'幸運 — 指定一张牌，摸到同花色+10能量' },
+  '莉格露·奈特巴格':   { cost:100, type:'instant', implemented:true, description:'蟲群 — 和牌时索子50%概率变宝牌' },
+  '米斯蒂娅·萝蕾拉':   { cost:100, type:'instant', implemented:true, description:'夜雀 — 1张1索可变任意索子(joker)' },
+  '上白泽慧音':        { cost:100, type:'instant', implemented:true, description:'歴史 — 首弃牌进入下次庄家配牌' },
+  '博丽灵梦':          { cost:100, type:'modifier', implemented:true, description:'夢想封印 — 自己弃牌不可鸣牌(下一局有效)' },
+  '雾雨魔理沙':        { cost:100, type:'modifier', implemented:true, description:'八卦炉 — 立直和牌多翻里宝牌' },
+  '因幡帝':            { cost:100, type:'instant', implemented:true, description:'幸運 — 摸宝牌同花色+10能量/局终统计' },
   '铃仙·优昙华院·因幡':{ cost:100, type:'instant', implemented:true, description:'狙击 — 听牌后指定玩家摸到和牌' },
-  '八意永琳':          { cost:100, type:'instant', implemented:true, description:'薬学 — 弃牌后可再摸一张' },
-  '蓬莱山辉夜':        { cost:100, type:'instant', implemented:true, description:'永遠 — 牌山增加10张' },
-  '藤原妹红':          { cost:100, type:'instant', implemented:true, description:'不死 — 点炮后分数不扣至负数' },
+  '八意永琳':          { cost:100, type:'modifier', implemented:true, description:'薬学 — 其他玩家能力消耗翻倍(200)' },
+  '蓬莱山辉夜':        { cost:100, type:'instant', implemented:true, description:'永遠 — 1张1饼=joker+全部1饼变宝牌' },
+  '藤原妹红':          { cost:100, type:'modifier', implemented:true, description:'不死 — 被和时对方偿还4000分' },
 
   // ── th09 花映塚 ──
-  '梅蒂欣·梅兰可莉':   { cost:100, type:'instant', implemented:true, description:'毒素 — 指定对手减30能量' },
-  '风见幽香':          { cost:100, type:'instant', implemented:true, description:'花符 — 手牌万子本巡可当筒子' },
-  '小野塚小町':        { cost:100, type:'instant', implemented:true, description:'距離 — 跳过下家一次摸牌' },
-  '四季映姬':          { cost:100, type:'instant', implemented:true, description:'審判 — 流局罚符收支反转' },
+  '梅蒂欣·梅兰可莉':   { cost:100, type:'modifier',implemented:true, description:'毒素 — 其他角色每次弃牌-2能量' },
+  '风见幽香':          { cost:100, type:'dealing', implemented:true, description:'花符 — 下局配牌有一个随机筒子暗杠' },
+  '小野塚小町':        { cost:100, type:'modifier',implemented:true, description:'距離 — 其他玩家禁止吃（可碰杠）' },
+  '四季映姬':          { cost:100, type:'instant', implemented:true, description:'審判 — 所有玩家手牌对你可见' },
 
   // ── th10 风神录 ──
   '秋静叶':            { cost:100, type:'instant', implemented:true, description:'紅葉 — 摸牌后可弃万子再摸一张' },
@@ -243,6 +243,12 @@ export function getHandRequirement(name: string, useCount: number): HandRequirem
   // 斯塔·萨菲雅：配牌即听牌
   if (name === '斯塔·萨菲雅' && useCount > 0) {
     return { wind: -1, useCount, tiles: [], tenpai: true };
+  }
+
+  // 风见幽香：配牌随机筒子暗杠
+  if (name === '风见幽香' && useCount > 0) {
+    const v = Math.floor(Math.random() * 9) + 1; // 1-9p
+    return { wind: -1, useCount, tiles: [{ suit: 'p', value: v }], groupSize: 4 };
   }
 
   return null;

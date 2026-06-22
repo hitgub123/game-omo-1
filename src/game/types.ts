@@ -93,6 +93,12 @@ export interface Player {
   seeNextDraw: boolean;
   /** 本局已发动过能力（红美玲等每局限一次用此计数） */
   abilityUsedThisHand: number;
+  /** 人偶计数（爱丽丝） */
+  dollCount: number;
+  /** 死誘宝牌（幽幽子标记的手牌ID） */
+  deathDoraIds: number[];
+  /** joker花色（米斯蒂娅1s/辉夜1p当任意牌，null=无） */
+  jokerSuit: string | null;
 }
 
 /** 能量槽默认配置 */
@@ -218,6 +224,10 @@ export interface GameState {
   reimuCharm: boolean;
   /** 铃仙狙击：预留摸牌 */
   sniperReserve: { tileKey: string; suit: string; value: number; targetWind: Wind } | null;
+  /** 本局所有玩家技能发动总次数（蕾蒂冬眠用） */
+  totalAbilityUses: number;
+  /** 四季映姬審判：所有玩家手牌可见 */
+  seeAllHands: boolean;
   /** 咲夜额外一巡标记（内部用） */
   _sakuyaExtraTurn?: boolean;
 }

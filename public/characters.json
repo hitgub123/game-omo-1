@@ -157,7 +157,7 @@
         "race": "雪女",
         "ability": "操纵寒气的能力",
         "personality": "温和、冬之妖怪",
-        "mahjong_skill": "冬眠 — 跳过自己回合，回复1000点"
+        "mahjong_skill": "冬眠 — 本局结束后能量槽增加20×全员技能发动次数"
       },
       {
         "id": "th07-02",
@@ -172,7 +172,7 @@
         "race": "猫又（式神）",
         "ability": "使用妖术的能力",
         "personality": "活泼任性",
-        "mahjong_skill": "式神 — 模仿上一家使用的能力效果"
+        "mahjong_skill": "式神 — 本局其他角色使用技能需付你1000分，分数不足无法发动"
       },
       {
         "id": "th07-03",
@@ -187,7 +187,7 @@
         "race": "魔法使",
         "ability": "操纵魔法程度的能力",
         "personality": "完美主义、人形控、外冷内热",
-        "mahjong_skill": "人形操作 — 弃牌区一张牌与牌山交换"
+        "mahjong_skill": "人形操作 — 积攒人偶，被和时消耗人偶减1番（最低1番）"
       },
       {
         "id": "th07-04",
@@ -201,7 +201,8 @@
         "skill": "th07-04-pic-04",
         "race": "骚灵",
         "ability": "演奏弦乐器",
-        "personality": "真面目、责任感强"
+        "personality": "真面目、责任感强",
+        "mahjong_skill": "合奏 — 本局鸣其他玩家牌时对方付30能量"
       },
       {
         "id": "th07-05",
@@ -231,7 +232,7 @@
         "race": "亡灵",
         "ability": "操纵死亡",
         "personality": "天然吃货、腹黑",
-        "mahjong_skill": "死誘 — 指定对手本巡不能荣和"
+        "mahjong_skill": "死誘 — 每发动一次，随机一张手牌变为宝牌"
       },
       {
         "id": "th07-07",
@@ -246,7 +247,7 @@
         "race": "九尾狐（式神）",
         "ability": "使用妖术",
         "personality": "贤淑忠诚",
-        "mahjong_skill": "九尾 — 摸牌后可再摸一张再弃一张"
+        "mahjong_skill": "九尾 — 本局其他角色用技能需付你20能量，不足无法发动"
       },
       {
         "id": "th07-08",
@@ -261,7 +262,7 @@
         "race": "境界妖怪",
         "ability": "操纵境界",
         "personality": "腹黑慵懒",
-        "mahjong_skill": "境界 — 手牌一张与牌山交换"
+        "mahjong_skill": "境界 — 指定一种花色(万/饼/索/字)，全部与牌山等量交换"
       }
     ]
   },
@@ -282,7 +283,7 @@
         "race": "虫妖怪",
         "ability": "操纵虫子",
         "personality": "开朗好战",
-        "mahjong_skill": "蟲群 — 对手本巡弃牌不显示"
+        "mahjong_skill": "蟲群 — 技能发动后，本局和牌时你的每张索子牌有50%概率成为宝牌"
       },
       {
         "id": "th08-02",
@@ -297,7 +298,7 @@
         "race": "夜雀",
         "ability": "用歌声迷惑",
         "personality": "小商贩",
-        "mahjong_skill": "夜雀 — 对手本巡摸牌不显示"
+        "mahjong_skill": "夜雀 — 本局你手牌里的1索中的一枚可当任意索子使用"
       },
       {
         "id": "th08-03",
@@ -312,7 +313,7 @@
         "race": "半人半兽（白泽）",
         "ability": "吞噬/创造历史",
         "personality": "认真教师",
-        "mahjong_skill": "歴史 — 弃牌可撤销，手牌恢复"
+        "mahjong_skill": "歴史 — 你本局的第一张弃牌，会出现在你下次庄家的配牌里"
       },
       {
         "id": "th08-04a",
@@ -327,7 +328,7 @@
         "race": "人类（巫女）",
         "ability": "操纵灵力程度的能力（主要是飞行）",
         "personality": "乐天、退治妖怪、无自觉的努力家",
-        "mahjong_skill": "博丽护符 — 自己打出的牌无法被鸣牌（吃碰杠）"
+        "mahjong_skill": "夢想封印 — 自己打出的牌无法被鸣牌。每局只能发动一次，对下一局有效"
       },
       {
         "id": "th08-04b",
@@ -357,7 +358,7 @@
         "race": "妖怪兔",
         "ability": "赋予幸运",
         "personality": "狡猾调皮",
-        "mahjong_skill": "幸運 — 指定一张牌，摸到同花色+10能量"
+        "mahjong_skill": "幸運 — 本局摸到宝牌同花色+10能量，局终手牌同花色+10能量"
       },
       {
         "id": "th08-05b",
@@ -387,7 +388,7 @@
         "race": "月人（贤者）",
         "ability": "制药 / 智慧",
         "personality": "冷静腹黑",
-        "mahjong_skill": "薬学 — 弃牌后可再摸一张"
+        "mahjong_skill": "薬学 — 每局限一次，本局其他玩家发动技能需要的能量槽翻倍"
       },
       {
         "id": "th08-06b",
@@ -402,7 +403,7 @@
         "race": "月人（公主）",
         "ability": "操纵永远和须臾",
         "personality": "优雅高傲",
-        "mahjong_skill": "永遠 — 牌山增加10张（延长游戏）"
+        "mahjong_skill": "永遠 — 本局1饼中的一枚可当任意牌使用，所有1饼都是宝牌"
       },
       {
         "id": "th08-07",
@@ -417,7 +418,7 @@
         "race": "人类（不老不死）",
         "ability": "不老不死",
         "personality": "好战直率",
-        "mahjong_skill": "不死 — 点炮后分数≥0则不扣至负数"
+        "mahjong_skill": "不死 — 本局其他人因自摸或点炮从你身上获得分数后需偿还4000分"
       }
     ]
   },
@@ -454,7 +455,7 @@
         "race": "人形（付丧神）",
         "ability": "操纵毒",
         "personality": "对人类含恨",
-        "mahjong_skill": "毒素 — 指定对手减30能量"
+        "mahjong_skill": "毒素 — 本局其他角色每次弃牌时-2能量"
       },
       {
         "id": "th09-03",
@@ -469,7 +470,7 @@
         "race": "妖怪（花）",
         "ability": "操纵花",
         "personality": "优雅残酷",
-        "mahjong_skill": "花符 — 手牌中万子本巡可当筒子用"
+        "mahjong_skill": "花符 — 每局限一次，下一局配牌有一个随机筒子暗杠"
       },
       {
         "id": "th09-04",
@@ -484,7 +485,7 @@
         "race": "死神",
         "ability": "操纵距离",
         "personality": "悠闲偷懒",
-        "mahjong_skill": "距離 — 跳过下家一次摸牌"
+        "mahjong_skill": "距離 — 下一局配牌时其他玩家禁止吃（可碰杠）"
       },
       {
         "id": "th09-05",
@@ -499,7 +500,7 @@
         "race": "阎魔",
         "ability": "判断是非黑白",
         "personality": "严厉说教魔",
-        "mahjong_skill": "審判 — 流局罚符收支反转"
+        "mahjong_skill": "審判 — 本局所有玩家的手牌对你可见"
       }
     ]
   },
@@ -1992,7 +1993,7 @@
         "race": "人类（巫女）",
         "ability": "操纵灵力程度的能力（主要是飞行）",
         "personality": "乐天、退治妖怪、无自觉的努力家",
-        "mahjong_skill": "博丽护符 — 自己打出的牌无法被鸣牌（吃碰杠）",
+        "mahjong_skill": "夢想封印 — 自己打出的牌无法被鸣牌。每局只能发动一次，对下一局有效",
         "icon": "th08-04a-head",
         "normal": "th08-04a-pic-01",
         "win": "th08-04a-pic-02",

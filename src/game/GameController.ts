@@ -800,12 +800,11 @@ export class GameController {
     const wall = [...s.wall];
 
     // === 能量操作 ===
-    if (name === '露米娅' || name === '梅蒂欣·梅兰可莉') {
-      // 暗黒/毒素：指定对手-20/-30能量
+    if (name === '梅蒂欣·梅兰可莉') {
+      // 毒素：指定对手-30能量
       if (targetWind === undefined) { this.log('需要指定目标'); return null; }
-      const amt = name === '梅蒂欣·梅兰可莉' ? 30 : 20;
-      players[targetWind].energy = Math.max(0, players[targetWind].energy - amt);
-      this.log(`💀 ${name}：${s.players[targetWind].name} 能量-${amt}`);
+      players[targetWind].energy = Math.max(0, players[targetWind].energy - 30);
+      this.log(`💀 ${name}：${s.players[targetWind].name} 能量-30`);
       return { ...s, players };
     }
     if (name === '秋穰子') {
@@ -833,26 +832,53 @@ export class GameController {
       return { ...s, players };
     }
 
-    // === 强制自摸切（单目标） ===
-    if (name === '蕾米莉亚·斯卡蕾特' || name === '黑谷山女') {
+    // === 運命干渉：听牌后从牌山自摸 ===
+    if (name === '蕾米莉亚·斯卡蕾特') {
+      const tenpai = checkTenpai(p.hand, p.melds);
+      if (!tenpai) {
+        this.log('🧛 未听牌，无法发动運命干渉');
+        return { ...s, players };
+      }
+      const waitKeys = new Set(tenpai.waitTiles.map(t => `${t.value}${t.suit}`));
+      const idx = wall.findIndex(t => waitKeys.has(`${t.value}${t.suit}`));
+      if (idx < 0) {
+        this.log('🧛 牌山中无等待牌，運命干渉失败（能量已消耗）');
+        return { ...s, players };
+      }
+      // 从牌山中取出等待牌
+      const snipeTile = wall[idx];
+      wall.splice(idx, 1);
+      this.log(`🧛 運命干渉：牌山中找到${snipeTile.value}${snipeTile.suit}，下一巡自摸`);
+      return { ...s, players, wall, sniperReserve: { tileKey: `${snipeTile.value}${snipeTile.suit}`, suit: snipeTile.suit, value: snipeTile.value, targetWind: s.currentPlayer } };
+    }
+    if (name === '黑谷山女') {
       if (targetWind === undefined) { this.log('需要指定目标'); return null; }
       players[targetWind].frozenByCirno = true;
-      this.log(`🧛 ${name}：${s.players[targetWind].name} 下张摸牌必须自摸切`);
+      this.log(`🕷️ ${name}：${s.players[targetWind].name} 下张摸牌必须自摸切`);
       return { ...s, players };
     }
 
-    // === 弃牌操作 ===
+    // === 破壊：对手各弃一张手牌，然后从自己弃牌区摸回一张 ===
     if (name === '芙兰朵露·斯卡蕾特') {
-      if (targetWind === undefined) { this.log('需要指定目标'); return null; }
-      const tgt = s.players[targetWind];
-      if (tgt.discards.length > 0) {
-        const d = tgt.discards[tgt.discards.length - 1];
-        players[targetWind].discards = tgt.discards.slice(0, -1);
-        wall.push(d);
-        this.log(`💥 破壊：${tgt.name} 弃牌区一张牌移回牌山`);
-        return { ...s, players, wall };
+      for (let i = 0; i < 4; i++) {
+        if (i === s.currentPlayer) continue;
+        const opp = players[i];
+        if (opp.hand.length === 0) continue;
+        // 弃一张手牌到弃牌区
+        const ri = Math.floor(Math.random() * opp.hand.length);
+        const removed = opp.hand[ri];
+        opp.hand = [...opp.hand.slice(0, ri), ...opp.hand.slice(ri + 1)];
+        opp.discards = [...opp.discards, removed];
+        this.log(`💥 破壊：${opp.name} 弃出${removed.value}${removed.suit}`);
+        // 从弃牌区摸一张回来
+        if (opp.discards.length > 0) {
+          const di = Math.floor(Math.random() * opp.discards.length);
+          const pickup = opp.discards[di];
+          opp.discards = [...opp.discards.slice(0, di), ...opp.discards.slice(di + 1)];
+          opp.hand = [...opp.hand, pickup];
+          this.log(`💥 破壊：${opp.name} 摸回${pickup.value}${pickup.suit}`);
+        }
       }
-      this.log('目标弃牌区为空');
       return { ...s, players };
     }
     if (name === '键山雏') {
@@ -882,11 +908,15 @@ export class GameController {
       return { ...s, players, wall };
     }
     if (name === '红美玲') {
-      if (wall.length === 0) { this.log('牌山已空'); return { ...s, players }; }
-      const bottom = wall.pop()!;
-      players[s.currentPlayer].hand = [...p.hand, bottom];
-      this.log(`🐉 気功：从牌山底摸得${bottom.value}${bottom.suit}`);
-      return { ...s, players, wall };
+      // 気功：每局一次，获得150能量
+      if (p.abilityUsedThisHand > 0) {
+        this.log('🐉 本局已发动过気功');
+        return { ...s, players };
+      }
+      p.energy = Math.min(p.energyMax, p.energy + 150);
+      p.abilityUsedThisHand = 1;
+      this.log(`🐉 気功：${p.name} 能量+150 (当前${p.energy})`);
+      return { ...s, players };
     }
 
     // === 额外摸牌 ===
@@ -918,8 +948,15 @@ export class GameController {
       return { ...s, players };
     }
 
-    // === 查看信息（日志输出） ===
-    if (name === '小恶魔' || name === '娜兹玲' || name === '犬走椛' || name === '九十九弁弁') {
+    // === 查看信息 ===
+    if (name === '小恶魔') {
+      // 書庫検索：每局限一次，发动后整局可见牌山下一张
+      p.seeNextDraw = true;
+      const next = wall.length > 0 ? `${wall[0].value}${wall[0].suit}` : '无';
+      this.log(`📚 書庫検索：下一张牌=${next}（整局有效）`);
+      return { ...s, players };
+    }
+    if (name === '娜兹玲' || name === '犬走椛' || name === '九十九弁弁') {
       const peek = wall.slice(0, Math.min(3, wall.length));
       const names = peek.map(t => `${t.value}${t.suit}`).join(' ');
       this.log(`🔍 ${name} 查看牌山顶：${names}`);
@@ -953,13 +990,19 @@ export class GameController {
     }
 
     // === 弃牌隐藏 ===
+    if (name === '露米娅') {
+      // 暗黒：发动次数×30%概率隐藏弃牌 (最高90%)
+      players[s.currentPlayer].hideDiscards = Math.min(players[s.currentPlayer].abilityUseCount * 0.3, 0.9);
+      this.log(`🌑 ${name}：暗黒 — 弃牌${Math.round(players[s.currentPlayer].hideDiscards * 100)}%概率不可见`);
+      return { ...s, players };
+    }
     if (name === '莉格露·奈特巴格' || name === '河城荷取' || name === '驹草山如') {
-      players[s.currentPlayer].hideDiscards = true;
+      players[s.currentPlayer].hideDiscards = 1;
       this.log(`🪲 ${name}：本巡弃牌对对手不可见`);
       return { ...s, players };
     }
     if (name === '古明地恋') {
-      players[s.currentPlayer].hideDiscards = true;
+      players[s.currentPlayer].hideDiscards = 1;
       this.log(`💜 無意識：弃牌对对手不可见`);
       return { ...s, players };
     }

@@ -88,7 +88,11 @@ export interface Player {
   /** 跳过下次摸牌（冬眠、距離等） */
   skipNextDraw: boolean;
   /** 弃牌对对手不可见（蟲群、煙幕等） */
-  hideDiscards: boolean;
+  hideDiscards: number;  // 0=正常显示, >0=每张弃牌以此概率显示牌背(露米娅等)
+  /** 书库检索：可见牌山下一张（小恶魔等） */
+  seeNextDraw: boolean;
+  /** 本局已发动过能力（红美玲等每局限一次用此计数） */
+  abilityUsedThisHand: number;
 }
 
 /** 能量槽默认配置 */

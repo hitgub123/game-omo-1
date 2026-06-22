@@ -19,7 +19,7 @@ import { checkTenpai } from './hand';
 // ═══════════════════════════════════════════
 
 export interface RequiredTile { suit: 'm' | 'p' | 's' | 'z'; value: number; }
-export interface HandRequirement { wind: number; useCount: number; tiles: RequiredTile[]; groupSize?: number; tenpai?: boolean; }
+export interface HandRequirement { wind: number; useCount: number; tiles: RequiredTile[]; groupSize?: number; tenpai?: boolean; playerIndex?: number; }
 
 export interface AbilityDef {
   cost: number;
@@ -40,15 +40,15 @@ export interface AbilityResult {
 
 const REGISTRY: Record<string, AbilityDef> = {
   // ── th06 红魔乡 ──
-  '露米娅':           { cost:100, type:'instant',  implemented:true,  description:'暗黒 — 对手能量-20' },
+  '露米娅':           { cost:100, type:'instant',  implemented:true,  description:'暗黒 — 弃牌按概率对对手不可见（30%/60%/90%）' },
   '大妖精':           { cost:100, type:'dealing',  implemented:true,  description:'妖精の加護 — 下局其他玩家各有一张牌不得打出' },
   '琪露诺':           { cost:100, type:'modifier', implemented:true,  description:'氷結 — 所有对手下次摸牌必须自摸切' },
-  '红美玲':           { cost:100, type:'instant',  implemented:true,  description:'気功 — 摸牌时可选择从牌山底摸' },
-  '小恶魔':           { cost:100, type:'instant',  implemented:true,  description:'書庫検索 — 查看牌山顶3张' },
+  '红美玲':           { cost:100, type:'instant',  implemented:true,  description:'気功 — 每局一次获得150能量' },
+  '小恶魔':           { cost:100, type:'instant',  implemented:true,  description:'書庫検索 — 每局限一次发动后整局可见牌山下一张' },
   '帕秋莉·诺蕾姬':    { cost:100, type:'instant',  implemented:true,  description:'七曜魔法 — 手牌一张与牌山交换' },
   '十六夜咲夜':        { cost:100, type:'modifier', implemented:true,  description:'时间操作 — 弃牌后再摸再弃（额外一巡）' },
-  '蕾米莉亚·斯卡蕾特': { cost:100, type:'instant',  implemented:true,  description:'運命干渉 — 指定对手下张摸牌自摸切' },
-  '芙兰朵露·斯卡蕾特': { cost:100, type:'instant',  implemented:true,  description:'破壊 — 指定对手弃牌区一张牌移回牌山' },
+  '蕾米莉亚·斯卡蕾特': { cost:100, type:'instant',  implemented:true,  description:'運命干渉 — 听牌后从牌山找牌自摸和牌' },
+  '芙兰朵露·斯卡蕾特': { cost:100, type:'instant',  implemented:true,  description:'破壊 — 随机弃对手各一张手牌，从弃牌区回收一张' },
 
   // ── th07 妖妖梦 ──
   '蕾蒂·霍瓦特洛克':   { cost:100, type:'instant', implemented:true, description:'冬眠 — 跳过自己回合，回复1000点' },
@@ -354,7 +354,12 @@ export function getAllRequirements(
   const reqs: HandRequirement[] = [];
   for (let i = 0; i < playerNames.length; i++) {
     const req = getHandRequirement(playerNames[i], useCounts[i]);
-    if (req) { req.wind = i; reqs.push(req); }
+    // wind < 0: 特殊需求 (如 -2=对手限打), 不覆盖 wind, 记录发动者为 i
+    if (req) { 
+      if (req.wind >= 0) req.wind = i;
+      req.playerIndex = i;  // 记录发起玩家
+      reqs.push(req); 
+    }
   }
   reqs.sort((a, b) => b.useCount - a.useCount);
   return reqs;

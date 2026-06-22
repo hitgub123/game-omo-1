@@ -45,7 +45,9 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     swapEnergyCost: DEFAULT_SWAP_ENERGY_COST,
     frozenByCirno: false,
     skipNextDraw: false,
-    hideDiscards: false,
+    hideDiscards: 0,
+    seeNextDraw: false,
+    abilityUsedThisHand: 0,
   }));
 
   // 配牌：先处理能力需求，再随机分配剩余牌
@@ -109,8 +111,19 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     const remaining = shuffleArray(wallPool);
 
     // 按优先级发预留牌（reserved 已按 useCount 降序）
+    // wind < 0: 大妖精等特殊需求，牌不进入手牌而是用作限制标记
     for (const r of reserved) {
-      players[r.wind].hand = [...r.tiles];
+      if (r.wind < 0) {
+        // wind=-2: 对其他3位玩家的 restrictedDiscardKeys 各加牌
+        const abilityUser = r.playerIndex ?? 0;
+        for (let j = 0; j < 4; j++) {
+          if (j === abilityUser) continue;
+          const keys = r.tiles.map(t => `${t.value}${t.suit}`);
+          players[j].restrictedDiscardKeys = [...new Set([...players[j].restrictedDiscardKeys, ...keys])];
+        }
+      } else {
+        players[r.wind].hand = [...r.tiles];
+      }
     }
 
     // 补足到13张
@@ -1047,7 +1060,9 @@ export function createNextHand(prevState: GameState): GameState {
     swapEnergyCost: prevState.players[wind].swapEnergyCost,
     frozenByCirno: false,
     skipNextDraw: false,
-    hideDiscards: false,
+    hideDiscards: 0,
+    seeNextDraw: false,
+    abilityUsedThisHand: 0,
   }));
 
   // 配牌：先处理能力需求，再随机分配剩余牌
@@ -1104,7 +1119,16 @@ export function createNextHand(prevState: GameState): GameState {
 
     const remaining2 = shuffleArray(wallPool);
     for (const r of reserved) {
-      players[r.wind].hand = [...r.tiles];
+      if (r.wind < 0) {
+        const abilityUser = r.playerIndex ?? 0;
+        for (let j = 0; j < 4; j++) {
+          if (j === abilityUser) continue;
+          const keys = r.tiles.map(t => `${t.value}${t.suit}`);
+          players[j].restrictedDiscardKeys = [...new Set([...players[j].restrictedDiscardKeys, ...keys])];
+        }
+      } else {
+        players[r.wind].hand = [...r.tiles];
+      }
     }
     let ri2 = 0;
     for (let i = 0; i < 4; i++) {

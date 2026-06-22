@@ -425,18 +425,31 @@ const DiscardArea: React.FC<{ state: GameState }> = ({ state }) => {
             {player.discards.length === 0 ? (
               <span className="discard-empty">-</span>
             ) : (
-              player.discards.map((tile, j) => (
-                <TileComponent key={`d${i}-${j}`} tile={tile} small dimmed
-                  isRiichi={player.isRiichi && player.riichiDiscardIndex === j}
-                  isCalled={humanCanCall && state.lastDiscard?.id === tile.id}
-                  className={state.claimedDiscardTileIds?.includes(tile.id) ? 'tile-claimed' : ''} />
-              ))
+              player.discards.map((tile, j) => {
+                // 概率隐藏：用 tile.id 的 hash 决定是否显示牌背
+                const hidden = player.hideDiscards > 0 && 
+                  player.hideDiscards >= 1 ? true :
+                  ((tile.id * 2654435761 >>> 0) / 4294967296) < player.hideDiscards;
+                return hidden ? (
+                  <div key={`d${i}-${j}`} className="tile tile-back tile-small" />
+                ) : (
+                  <TileComponent key={`d${i}-${j}`} tile={tile} small dimmed
+                    isRiichi={player.isRiichi && player.riichiDiscardIndex === j}
+                    isCalled={humanCanCall && state.lastDiscard?.id === tile.id}
+                    className={state.claimedDiscardTileIds?.includes(tile.id) ? 'tile-claimed' : ''} />
+                );
+              })
             )}
           </div>
         </div>
       ))}
       <div className="wall-info">
         <span className="wall-count">残 {state.wall.length} 枚</span>
+        {player.seeNextDraw && state.wall.length > 0 && (
+          <span className="next-draw" style={{ marginLeft: 12, color: '#ffd700' }}>
+            下一张: <TileComponent tile={state.wall[0]} small />
+          </span>
+        )}
       </div>
       <div className="dora-section">
         {state.doraIndicators.map((tile, i) => {

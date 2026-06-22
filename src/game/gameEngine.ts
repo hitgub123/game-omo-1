@@ -8,7 +8,7 @@ import { calculateScore, calculatePayouts } from './scoring';
 import { debugLog } from '../debug/debugLog';
 import { getAllRequirements, tryMakeTenpai } from './abilities';
 
-export function createInitialState(characters?: { name: string }[], dealerWind?: Wind, gameLength = 4): GameState {
+export function createInitialState(characters?: { name: string }[], dealerWind?: Wind, gameLength = 4, initialScore = INITIAL_SCORE): GameState {
   const deck = shuffleArray(createTileDeck());
   const deadWall = deck.slice(0, 14);
   const wall = deck.slice(14);
@@ -28,7 +28,7 @@ export function createInitialState(characters?: { name: string }[], dealerWind?:
     isDoubleRiichi: false,
     riichiDiscardIndex: -1,
     riichiTurnStart: -1,
-    score: INITIAL_SCORE,
+    score: initialScore,
     isDealer: wind === actualDealer,
     isHuman: wind === Wind.EAST,
     tenpai: false,
@@ -247,23 +247,17 @@ export function getDrawActions(player: Player, state: GameState, playerWind: Win
   };
 
   if (drawnTile) {
-    // 立直玩家门清，isWinningHand 检查 14 张正确
-    if (player.isRiichi) {
-      if (isWinningHand(player.hand, player.melds)) {
-        actions.canTsumo = true;
-      }
-    } else {
-      const winCheck = checkWin(player.hand, player.melds, drawnTile, true, playerWind, state);
-      actions.canTsumo = winCheck !== null;
-      if (!winCheck && drawnTile) {
-        console.debug('[BUG] tsumo check failed', {
-          hand: player.hand.map(t => t.suit + t.value).join(''),
-          drawnTile: drawnTile.suit + drawnTile.value,
-          meldCount: player.melds.length,
-          handLen: player.hand.length,
-          hasKakan: player.melds.some(m => m.type === 'pon' && player.hand.some(t => t.suit === m.tiles[0].suit && t.value === m.tiles[0].value)),
-        });
-      }
+    // 立直玩家和非立直玩家统一用 checkWin 判定（避免 isWinningHand 和 riichiCheckWin 不一致）
+    const winCheck = checkWin(player.hand, player.melds, drawnTile, true, playerWind, state);
+    actions.canTsumo = winCheck !== null;
+    if (!winCheck && drawnTile) {
+      console.debug('[BUG] tsumo check failed', {
+        hand: player.hand.map(t => t.suit + t.value).join(''),
+        drawnTile: drawnTile.suit + drawnTile.value,
+        meldCount: player.melds.length,
+        handLen: player.hand.length,
+        hasKakan: player.melds.some(m => m.type === 'pon' && player.hand.some(t => t.suit === m.tiles[0].suit && t.value === m.tiles[0].value)),
+      });
     }
   }
 
@@ -416,11 +410,10 @@ function getResponseActions(
   };
 
   const testHand = [...player.hand, discarded];
-  // 立直玩家门清，isWinningHand 检查 13+1=14 张正确
+  // 统一用 checkWin 判定（和实际执行一致，避免按钮亮了但点不了）
   if (player.isRiichi) {
-    if (isWinningHand(testHand, player.melds)) {
-      actions.canRon = true;
-    }
+    const winCheck = checkWin(player.hand, player.melds, discarded, false, playerWind, state);
+    actions.canRon = winCheck !== null;
   } else {
     // riichiCheckWin 内含 syanten 快速预检，无需在外面包一层
     const winCheck = checkWin(player.hand, player.melds, discarded, false, playerWind, state);
@@ -738,6 +731,7 @@ export function executeWin(state: GameState, playerWind: Wind, isTsumo: boolean)
       handLen: player.hand.length,
       meldsLen: player.melds.length,
       tile: winningTile.suit + winningTile.value,
+      handTiles: player.hand.map(t => t.suit + t.value).join(','),
     });
     return state;
   }

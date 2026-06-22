@@ -41,7 +41,7 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
   const charNames = characters.map(c => ({ name: c.nameCN }));
   const [gameLength, setGameLength] = React.useState(4);
   const [noCall, setNoCall] = React.useState(true);
-  const [autoWin, setAutoWin] = React.useState(true);
+  const [autoWin, setAutoWin] = React.useState(false);
   const {
     state, humanDiscard, humanAction, newGame, nextHand,
     selectedTileId, setSelectedTileId, messages, isAiThinking,
@@ -95,7 +95,6 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
     setGameKey(k => k + 1);
     setAutoSelfDiscard(false);
     setNoCall(true);
-    setAutoWin(true);
     newGame();
   }, [newGame]);
 
@@ -103,7 +102,6 @@ const GamePage: React.FC<GamePageProps> = ({ characters, onExit }) => {
     setGameKey(k => k + 1);
     setAutoSelfDiscard(false);
     setNoCall(true);
-    setAutoWin(true);
     nextHand();
   }, [nextHand]);
 

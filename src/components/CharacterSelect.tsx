@@ -152,22 +152,37 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStart, onBack, team
 
   const quickStart = React.useCallback(() => {
     if (teamMode) {
-      const shuffledTeams = [...teams].sort(() => Math.random() - 0.5).slice(0, 4);
+      // 保留已选队伍，只填充空位
+      const currentTeams = selectedTeams;
+      const currentTeamIds = new Set(currentTeams.map(t => t.teamId));
+      const available = teams.filter(t => !currentTeamIds.has(t.teamId));
+      const needed = 4 - currentTeams.length;
+      const shuffled = [...available].sort(() => Math.random() - 0.5).slice(0, needed);
+      const newTeams = [...currentTeams, ...shuffled];
+
       const membersMap = new Map<string, Character[]>();
-      for (const team of shuffledTeams) {
-        const shuffled = [...team.members].sort(() => Math.random() - 0.5).slice(0, 5);
-        membersMap.set(team.teamId, shuffled);
+      for (const team of newTeams) {
+        const shuffledMembers = [...team.members].sort(() => Math.random() - 0.5).slice(0, 5);
+        membersMap.set(team.teamId, shuffledMembers);
       }
-      setSelectedTeams(shuffledTeams);
+      setSelectedTeams(newTeams);
       setSelectedTeamMembers(membersMap);
       setConfirming(true);
     } else {
-      const allChars = teams.flatMap(t => t.members);
+      // 保留已选角色，只填充空位
+      const currentIds = new Set(selected.filter(c => c !== null).map(c => c!.id));
+      const allChars = teams.flatMap(t => t.members).filter(c => !currentIds.has(c.id));
       const shuffled = [...allChars].sort(() => Math.random() - 0.5);
-      setSelected(shuffled.slice(0, 4));
+      let si = 0;
+      const next = selected.map(c => {
+        if (c !== null) return c;
+        if (si < shuffled.length) return shuffled[si++];
+        return null;
+      });
+      setSelected(next);
       setConfirming(true);
     }
-  }, [teams, teamMode]);
+  }, [teams, teamMode, selected, selectedTeams]);
 
   const handleStartClick = () => {
     if (teamMode && selectedTeams.length < 4) return;

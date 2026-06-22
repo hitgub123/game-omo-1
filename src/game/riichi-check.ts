@@ -67,6 +67,11 @@ function optsStr(state: GameState, playerWind: Wind): string {
     ops.push('h');
   }
 
+  // 天和/地和：第一巡且无人鸣牌
+  if (state.turn <= 3 && !state.players.some(p => p.hasCalled)) {
+    ops.push('t');
+  }
+
   ops.push(`${state.roundWind + 1}${playerWind + 1}`);
   return ops.join('');
 }
@@ -96,7 +101,10 @@ export function canWinBySyanten(
   winningTile: Tile,
   isTsumo: boolean,
 ): boolean {
-  const allTiles = handTiles.filter(t => t.id !== winningTile.id);
+  // splice 删除第一个匹配（避免 tile ID 碰撞导致多删）
+  const allTiles = [...handTiles];
+  const removeIdx = allTiles.findIndex(t => t.id === winningTile.id);
+  if (removeIdx >= 0) allTiles.splice(removeIdx, 1);
   if (isTsumo) allTiles.push(winningTile);
   const validationTiles = [...allTiles];
   if (!isTsumo) validationTiles.push(winningTile);
@@ -113,8 +121,17 @@ export function riichiCheckWin(
 ): EvaluationResult | null {
   try {
     const parts: string[] = [];
-    // 荣和牌去重
-    const allHandTiles = handTiles.filter(t => t.id !== winningTile.id);
+    // 荣和牌去重（用 splice 替代 filter，防止 tile ID 碰撞多删）
+    const allHandTiles = [...handTiles];
+    const removeIdx = allHandTiles.findIndex(t => t.id === winningTile.id);
+    if (removeIdx >= 0) allHandTiles.splice(removeIdx, 1);
+    logDebug('WIN_DBG', { 
+      event: 'filter_check',
+      handLen: handTiles.length, 
+      allLen: allHandTiles.length,
+      winTileId: winningTile.id,
+      handIds: handTiles.map(t => t.id).join(','),
+    });
     if (isTsumo) allHandTiles.push(winningTile);
     const handStr = allHandTiles.map(tileStr).join('');
     parts.push(handStr);

@@ -95,7 +95,7 @@ export function useGame(characters?: { name: string }[], gameLength = 4): GameCo
 
   // 首次挂载：创建控制器并订阅
   useEffect(() => {
-    const ctrl = new GameController(charsRef.current, gameLengthRef.current);
+    const ctrl = new GameController(charsRef.current, gameLengthRef.current, isTeamMode ? 200000 : undefined);
     ctrlRef.current = ctrl;
     const logger = new GameLogger();
     loggerRef.current = logger;

@@ -299,9 +299,8 @@ export function tryMakeTenpai(_hand: Tile[], wallPool: Tile[]): { hand: Tile[]; 
   if (seqs.length < 3) return { hand: [], used: 0 };
 
   // 随机选1暗刻 + 3顺子（互不冲突）
-  const result: Tile[] = [];
-  // 先试随机组合，最多尝试50次
-  for (let attempt = 0; attempt < 50; attempt++) {
+  // 先试随机组合，最多尝试200次
+  for (let attempt = 0; attempt < 200; attempt++) {
     const poolCopy = [...pool];
     const chosen: Tile[] = [];
     let ok = true;
@@ -315,9 +314,10 @@ export function tryMakeTenpai(_hand: Tile[], wallPool: Tile[]): { hand: Tile[]; 
     if (!ok) continue;
 
     const pickedSeqs: RequiredTile[][] = [];
-    for (let i = 0; i < 3; i++) {
-      const si = Math.floor(Math.random() * seqs.length);
-      const s = seqs[si];
+    // 用 shuffled copy 避免重复选同一模板
+    const shuffledSeqs = [...seqs].sort(() => Math.random() - 0.5);
+    for (let i = 0; i < 3 && i < shuffledSeqs.length; i++) {
+      const s = shuffledSeqs[i];
       let seqOk = true;
       const seqTiles: Tile[] = [];
       for (const rt of s) {
@@ -337,7 +337,12 @@ export function tryMakeTenpai(_hand: Tile[], wallPool: Tile[]): { hand: Tile[]; 
     // 补1张牌山顶
     if (poolCopy.length > 0) chosen.push(poolCopy.shift()!);
 
-    return { hand: chosen, used: wallPool.length - poolCopy.length };
+    // 从 wallPool 中真正移除已选的牌（之前只操作了本地副本，导致牌被重复分配）
+    for (const tile of chosen) {
+      const idx = wallPool.findIndex(t => t.id === tile.id);
+      if (idx >= 0) wallPool.splice(idx, 1);
+    }
+    return { hand: chosen, used: chosen.length };
   }
 
   return { hand: [], used: 0 };

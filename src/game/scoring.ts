@@ -18,8 +18,11 @@ function ronPayment(basePoints: number, isDealerWin: boolean): number {
 }
 
 export function calculateBasePoints(fu: number, han: number): number {
+  // 役满按倍数封顶（riichi 库 yakuman * 13 = han）
+  if (han >= 39) return 32000; // 三倍役满
+  if (han >= 26) return 16000; // 二倍役满（四暗刻单骑/大四喜 等）
+  if (han >= 13) return 8000;  // 一倍役满 / 数え役满
   const base = fu * Math.pow(2, han + 2);
-  if (han >= 13) return 8000;
   if (han >= 11) return 6000;
   if (han >= 8) return 4000;
   if (han >= 6) return 3000;

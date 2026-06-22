@@ -232,7 +232,7 @@ export interface TouhouCharacter {
 // 常量
 // ============================================================
 
-export const INITIAL_SCORE = 25000;
+export const INITIAL_SCORE = 100000;
 export const RIICHI_AMOUNT = 1000;
 
 export const WIND_NAMES: Record<Wind, string> = {

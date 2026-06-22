@@ -33,10 +33,10 @@ export class GameController {
   private _autoPlay = false;
   private _autoAdvanceScheduled = false; // 防止重复调度自动下一局
 
-  constructor(characters?: { name: string }[], gameLength = 4) {
+  constructor(characters?: { name: string }[], gameLength = 4, initialScore?: number) {
     this._characters = characters;
     this._gameLength = gameLength;
-    this._state = createInitialState(characters, undefined, gameLength);
+    this._state = createInitialState(characters, undefined, gameLength, initialScore);
   }
 
   /** 设置 AI 难度 */
@@ -592,7 +592,11 @@ export class GameController {
         if (s.phase === GamePhase.HAND_OVER || s.phase === GamePhase.GAME_OVER) break;
         if (s.actionsAvailable[humanWind]?.canTsumo) {
           this._state = executeWin(s, humanWind, true);
-          this.log('🎉 自摸和牌！');
+          if (this._state.phase === GamePhase.HAND_OVER) {
+            this.log('🎉 自摸和牌！');
+          } else {
+            this.log('⚠️ 自摸失败（牌型无效或无役）');
+          }
         }
         break;
 
